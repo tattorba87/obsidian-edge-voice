@@ -5,8 +5,8 @@ const production = process.argv[2] === "production";
 
 const context = await esbuild.context({
 	entryPoints: ["src/main.ts"],
-	// server.py ships inside main.js; Obsidian installs only main.js, manifest.json and styles.css.
-	loader: { ".py": "text" },
+	// server.py and the engine's locks ship inside main.js; Obsidian installs only main.js, manifest.json and styles.css.
+	loader: { ".py": "text", ".txt": "text" },
 	bundle: true,
 	external: ["obsidian", "electron", "@codemirror/*", "@lezer/*", ...builtins],
 	format: "cjs",

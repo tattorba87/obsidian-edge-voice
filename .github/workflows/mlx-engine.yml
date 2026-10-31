@@ -1,8 +1,8 @@
 name: MLX engine
 
 # The faster engine only runs on Apple silicon, so the unit tests use a stub.
-# This runs the real thing: it installs what setup installs (versions and
-# checksums read from src/setup.ts, so they can't drift), then has server.py
+# This runs the real thing: it installs what setup installs (the locks, and
+# the checksums from src/setup.ts, so they can't drift), then has server.py
 # load a Kokoro voice with MLX and speak, and fails if it fell back to
 # Moonshine or made no audio.
 on:
@@ -10,6 +10,7 @@ on:
     paths:
       - server.py
       - src/setup.ts
+      - locks/**
       - .github/workflows/mlx-engine.yml
   workflow_dispatch:
 
@@ -32,25 +33,23 @@ jobs:
           src = open("src/setup.ts").read()
           engine_wheels = src[src.index("const ENGINE_WHEELS"):]
           wheel = re.search(r'"darwin-arm64": \{\s*asset: "([^"]+)",\s*sha256: "([0-9a-f]{64})"', engine_wheels)
-          packages = re.search(r"const MLX_PACKAGES = \[(.*?)\];", src, re.S).group(1)
           model = re.search(r'const SPACY_MODEL = \{\s*url: "([^"]+)",\s*asset: "([^"]+)",\s*sha256: "([0-9a-f]{64})"', src)
           print(f"WHEEL={wheel.group(1)}\nWHEEL_SHA256={wheel.group(2)}")
-          print("MLX_PACKAGES=" + " ".join(re.findall(r'"([^"]+)"', packages)))
           print(f"MODEL_URL={model.group(1)}\nMODEL={model.group(2)}\nMODEL_SHA256={model.group(3)}")
           EOF
-      - name: Install as setup does
+      - name: Install as setup does, from the locks
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p .mlx
-          gh release download moonshine-voice-0.1.5 -p "$WHEEL" -D .mlx
-          echo "$WHEEL_SHA256  .mlx/$WHEEL" | shasum -a 256 -c -
-          curl -sSLf -o ".mlx/$MODEL" "$MODEL_URL"
-          echo "$MODEL_SHA256  .mlx/$MODEL" | shasum -a 256 -c -
+          mkdir -p .mlx/files
+          gh release download moonshine-voice-0.1.5 -p "$WHEEL" -D .mlx/files
+          echo "$WHEEL_SHA256  .mlx/files/$WHEEL" | shasum -a 256 -c -
+          curl -sSLf -o ".mlx/files/$MODEL" "$MODEL_URL"
+          echo "$MODEL_SHA256  .mlx/files/$MODEL" | shasum -a 256 -c -
           uv venv -q --python 3.12 .mlx/venv
           # No pip in the environment, as in setup: spaCy can't fetch its model itself.
-          # shellcheck disable=SC2086
-          uv pip install --python .mlx/venv/bin/python ".mlx/$WHEEL" $MLX_PACKAGES ".mlx/$MODEL"
+          uv pip install --python .mlx/venv/bin/python --require-hashes --find-links .mlx/files -r locks/darwin-arm64.txt
+          uv pip install --python .mlx/venv/bin/python --require-hashes --find-links .mlx/files -r locks/darwin-arm64-mlx.txt
       - name: Load a voice with MLX and speak
         run: |
           mkdir -p .mlx/home && cp server.py .mlx/home/
