@@ -206,12 +206,13 @@ export class MarkdownSource implements SegmentSource {
 		const preview = this.view.previewMode;
 		const sections = readingSections(this.view);
 		if (!sections) return [preview.containerEl];
-		const find = () => {
-			const hit = sections.filter((section) => section.lineStart <= line && line <= section.lineEnd);
-			return hit.length > 0 && hit.every((section) => section.el.isConnected && section.el.textContent)
+		const hit = sections.filter((section) => section.lineStart <= line && line <= section.lineEnd);
+		// No section covers the line: waiting for one to render can't help.
+		if (hit.length === 0) return null;
+		const find = () =>
+			hit.every((section) => section.el.isConnected && section.el.textContent)
 				? hit.map((section) => section.el)
 				: undefined;
-		};
 		let roots = find();
 		if (!roots && scroll) {
 			preview.applyScroll(line);
@@ -282,9 +283,33 @@ interface ReadingSection {
 	lineEnd: number;
 }
 
+/** A section as Obsidian's renderer keeps it: `start`/`end` positions now, `lineStart`/`lineEnd` in older versions. */
+interface RawReadingSection {
+	el: HTMLElement;
+	start?: { line: number };
+	end?: { line: number };
+	lineStart?: number;
+	lineEnd?: number;
+}
+
 /** Reading view's rendered sections. Obsidian's renderer is not public API. */
 function readingSections(view: MarkdownView): ReadingSection[] | undefined {
-	return (view.previewMode as unknown as { renderer?: { sections?: ReadingSection[] } }).renderer?.sections;
+	const sections = (view.previewMode as unknown as { renderer?: { sections?: RawReadingSection[] } }).renderer
+		?.sections;
+	return sections && sectionLines(sections);
+}
+
+/** The source lines each rendered section covers, whichever way this Obsidian version records them. */
+export function sectionLines(sections: RawReadingSection[]): ReadingSection[] {
+	const lines: ReadingSection[] = [];
+	for (const section of sections) {
+		const lineStart = section.start?.line ?? section.lineStart;
+		const lineEnd = section.end?.line ?? section.lineEnd;
+		if (typeof lineStart === "number" && typeof lineEnd === "number") {
+			lines.push({ el: section.el, lineStart, lineEnd });
+		}
+	}
+	return lines;
 }
 
 /**
