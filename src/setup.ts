@@ -148,9 +148,20 @@ export function mlxSupported(
 	return platform === "darwin" && arch === "arm64" && Number.parseInt(darwinRelease, 10) >= 23;
 }
 
-/** Whether `python` has the faster engine and its English model installed. */
+/**
+ * Where the faster engine's model lands, at the commit server.py pins
+ * (read from server.py, so the two can't drift): the Hugging Face cache layout,
+ * under HF_HOME, which server.py sets to ~/.edge-voice/hf.
+ */
+export function mlxModelDir(): string {
+	const repo = /^MLX_WEIGHTS = "([^"]+)"/m.exec(serverSource)?.[1] ?? "";
+	const revision = /^MLX_REVISION = "([0-9a-f]+)"/m.exec(serverSource)?.[1] ?? "";
+	return join(SETUP_HOME, "hf", "hub", `models--${repo.replace("/", "--")}`, "snapshots", revision);
+}
+
+/** Whether `python` has the faster engine, its English model and its voice files. */
 export async function mlxInstalled(python: string): Promise<boolean> {
-	if (!existsSync(python)) return false;
+	if (!existsSync(python) || !existsSync(mlxModelDir())) return false;
 	const code = await run(
 		python,
 		["-I", "-c", "import importlib.metadata as m; m.version('mlx-audio'); m.version('en_core_web_sm')"],
@@ -159,8 +170,18 @@ export async function mlxInstalled(python: string): Promise<boolean> {
 	return code === 0;
 }
 
-/** Installs the faster engine into `python`'s environment. Rejects on failure or when `signal` aborts. */
-export async function installMlx(python: string, progress: SetupProgress, signal: AbortSignal): Promise<void> {
+/**
+ * Installs the faster engine into `python`'s environment, then has the real
+ * sidecar load `voice` with it once, which downloads the model and voice (a few
+ * hundred MB) now rather than on the next press of play, and shows it works.
+ * Rejects on failure or when `signal` aborts.
+ */
+export async function installMlx(
+	python: string,
+	voice: string,
+	progress: SetupProgress,
+	signal: AbortSignal,
+): Promise<void> {
 	await ensureUv(progress, signal);
 	progress.step("mlx", "running");
 	const model = join(SETUP_HOME, "download", SPACY_MODEL.asset);
@@ -185,7 +206,73 @@ export async function installMlx(python: string, progress: SetupProgress, signal
 		progress,
 		signal,
 	);
+	progress.log(`Loading ${voice} with the faster engine (downloads its files the first time).`);
+	const reply = await sidecarRequest(
+		python,
+		installServerScript(),
+		{ id: 1, op: "load", language: "en_us", voice, engine: "mlx" },
+		progress,
+		signal,
+	);
+	if (reply.engine !== "mlx") {
+		const why =
+			typeof reply.fallback === "string"
+				? reply.fallback
+				: typeof reply.error === "string"
+					? reply.error
+					: "it didn't load";
+		throw new Error(`The faster engine doesn't work here: ${why}`);
+	}
 	progress.step("mlx", "done");
+}
+
+/** Starts a sidecar, sends it one request, and resolves with the reply to it. */
+function sidecarRequest(
+	python: string,
+	script: string,
+	request: { id: number } & Record<string, unknown>,
+	progress: SetupProgress,
+	signal: AbortSignal,
+): Promise<Record<string, unknown>> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(python, ["-I", script], { stdio: ["pipe", "pipe", "pipe"] });
+		const onAbort = () => child.kill();
+		signal.addEventListener("abort", onAbort, { once: true });
+		let buffer = "";
+		let settled = false;
+		const finish = (result: Record<string, unknown> | Error) => {
+			if (settled) return;
+			settled = true;
+			signal.removeEventListener("abort", onAbort);
+			child.stdin.end();
+			if (result instanceof Error) reject(result);
+			else resolve(result);
+		};
+		child.stdout.on("data", (data: Buffer) => {
+			buffer += data.toString("utf8");
+			let newline: number;
+			while ((newline = buffer.indexOf("\n")) >= 0) {
+				const line = buffer.slice(0, newline).trim();
+				buffer = buffer.slice(newline + 1);
+				if (!line) continue;
+				let message: Record<string, unknown>;
+				try {
+					message = JSON.parse(line) as Record<string, unknown>;
+				} catch {
+					continue;
+				}
+				if (message.event === "ready") child.stdin.write(JSON.stringify(request) + "\n");
+				else if (message.id === request.id) finish(message);
+			}
+		});
+		child.stderr.on("data", (data: Buffer) => {
+			for (const line of data.toString("utf8").split(/\r?\n/)) if (line.trim()) progress.log(line);
+		});
+		child.on("error", (error) => finish(error));
+		child.on("close", (code) =>
+			finish(new Error(signal.aborted ? "Cancelled" : `The sidecar exited (${code}) before answering.`)),
+		);
+	});
 }
 
 function uvEnv(): NodeJS.ProcessEnv {

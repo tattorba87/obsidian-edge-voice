@@ -76,7 +76,10 @@ jobs:
           assert seconds > 1, spoken
           proc.stdin.close(); proc.wait(timeout=30)
           EOF
-      - name: Downloads stayed in the engine's folder
+      - name: Downloads stayed in the engine's folder, where setup looks for them
         run: |
           du -sh .mlx/home/hf
-          test -d .mlx/home/hf
+          # src/setup.ts (mlxModelDir) counts the faster engine as installed when this exists.
+          repo=$(sed -n 's/^MLX_WEIGHTS = "\(.*\)"$/\1/p' server.py | sed 's#/#--#')
+          revision=$(sed -n 's/^MLX_REVISION = "\(.*\)"$/\1/p' server.py)
+          ls -d ".mlx/home/hf/hub/models--$repo/snapshots/$revision"
