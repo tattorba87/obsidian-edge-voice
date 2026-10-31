@@ -381,7 +381,7 @@ body.theme-dark {
 	margin-top: 8px;
 }
 
-/* Status bar: an indicator, the text, and a progress bar while downloading. */
+/* Status bar: an indicator, the text, and a progress bar while downloading, in the highlight colour. */
 .edge-voice-status {
 	display: inline-flex;
 	align-items: center;
@@ -402,7 +402,7 @@ body.theme-dark {
 	width: 2.5px;
 	height: 100%;
 	border-radius: 1px;
-	background-color: var(--interactive-accent);
+	background-color: rgb(var(--edge-voice-accent));
 	transform-origin: bottom;
 	animation: edge-voice-eq 0.9s ease-in-out infinite;
 }
@@ -443,7 +443,7 @@ body.theme-dark {
 	inset: 0;
 	border-radius: 50%;
 	border: 2px solid var(--background-modifier-border);
-	border-top-color: var(--interactive-accent);
+	border-top-color: rgb(var(--edge-voice-accent));
 	animation: edge-voice-spin 0.9s linear infinite;
 }
 
@@ -459,7 +459,7 @@ body.theme-dark {
 	display: block;
 	height: 100%;
 	border-radius: 2px;
-	background-color: var(--interactive-accent);
+	background-color: rgb(var(--edge-voice-accent));
 	transition: width 200ms ease;
 }
 
