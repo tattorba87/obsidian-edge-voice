@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { engineSource, platformSupport } from "../src/setup";
+import { engineSource, mlxSupported, platformSupport } from "../src/setup";
 
 const { platform, arch } = process;
 
@@ -48,5 +48,14 @@ describe("setup", () => {
 		for (const key of ["win32-x64", "linux-x64", "linux-arm64"]) {
 			expect(engineSource(key)).toEqual({ python: "3.12", wheel: undefined });
 		}
+	});
+
+	it("offers the faster engine only on Apple silicon with macOS 14 or later", () => {
+		expect(mlxSupported("darwin", "arm64", "23.0.0")).toBe(true); // macOS 14
+		expect(mlxSupported("darwin", "arm64", "25.5.0")).toBe(true);
+		expect(mlxSupported("darwin", "arm64", "22.6.0")).toBe(false); // macOS 13
+		expect(mlxSupported("darwin", "x64", "25.5.0")).toBe(false);
+		expect(mlxSupported("win32", "arm64", "10.0.26100")).toBe(false);
+		expect(mlxSupported("linux", "arm64", "6.8.0")).toBe(false);
 	});
 });

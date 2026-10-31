@@ -21,6 +21,16 @@ describe("Sidecar", () => {
 		expect(await sidecar.cacheDir()).toBe("/tmp/cache");
 	});
 
+	it("asks for the faster engine and reports a fallback", async () => {
+		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
+		expect(await sidecar.load("en_us", "kokoro_am_santa")).toEqual({ engine: "moonshine", fallback: undefined });
+		expect(await sidecar.load("en_us", "kokoro_am_santa", "mlx")).toEqual({ engine: "mlx", fallback: undefined });
+		expect(await sidecar.load("en_us", "piper_en_US-lessac-medium", "mlx")).toEqual({
+			engine: "moonshine",
+			fallback: "the faster engine only has Kokoro voices",
+		});
+	});
+
 	it("answers requests in order", async () => {
 		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
 		const lengths = await Promise.all(["slow one", "b", "cc"].map((text) => sidecar!.synthesize(text, 1)));

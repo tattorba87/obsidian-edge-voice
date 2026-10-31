@@ -118,8 +118,18 @@ export class Sidecar {
 		proc?.kill();
 	}
 
-	async load(language: string, voice: string): Promise<void> {
-		await this.request({ op: "load", language, voice });
+	/**
+	 * Loads a voice. With `engine: "mlx"` the sidecar tries the faster engine
+	 * and falls back to Moonshine; the result says which loaded, and why not MLX.
+	 */
+	async load(language: string, voice: string, engine?: "mlx"): Promise<{ engine: string; fallback?: string }> {
+		const reply = await this.request(
+			engine ? { op: "load", language, voice, engine } : { op: "load", language, voice },
+		);
+		return {
+			engine: typeof reply.engine === "string" ? reply.engine : "moonshine",
+			fallback: typeof reply.fallback === "string" ? reply.fallback : undefined,
+		};
 	}
 
 	async voices(language: string): Promise<{ present: string[]; downloadable: string[] }> {

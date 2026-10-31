@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { createHash } from "crypto";
 import { existsSync, mkdirSync, promises as fs, readFileSync, writeFileSync } from "fs";
-import { homedir } from "os";
+import { homedir, release } from "os";
 import { dirname, join } from "path";
 import { requestUrl } from "obsidian";
 import serverSource from "../server.py";
@@ -71,6 +71,18 @@ const PYTHON_REQUEST: Record<string, string> = {
 	"win32-arm64": `cpython-${PYTHON_VERSION}-windows-x86_64-none`,
 };
 
+// On Apple silicon with macOS 14 or later (MLX's floor), Kokoro can run on
+// the GPU through MLX, about twice as fast as Moonshine on the CPU in the
+// engine benchmark (scripts/bench_engines.py). It goes into the same
+// environment, after the engine. misaki needs spaCy's English model, which is
+// downloaded and checked here, so spaCy never fetches it itself.
+const MLX_PACKAGES = ["mlx-audio==0.5.9", "misaki[en]==0.9.4"];
+const SPACY_MODEL = {
+	url: "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+	asset: "en_core_web_sm-3.8.0-py3-none-any.whl",
+	sha256: "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85",
+};
+
 export const SETUP_HOME = join(homedir(), ".edge-voice");
 const UV_PATH = join(SETUP_HOME, "bin", process.platform === "win32" ? "uv.exe" : "uv");
 export const VENV_DIR = join(SETUP_HOME, "venv");
@@ -92,7 +104,7 @@ export function installServerScript(): string {
 	return path;
 }
 
-export type SetupStep = "uv" | "python" | "package" | "check";
+export type SetupStep = "uv" | "python" | "package" | "check" | "mlx";
 
 export interface SetupProgress {
 	step(step: SetupStep, state: "running" | "done"): void;
@@ -127,16 +139,69 @@ export function engineSource(key: string): { python: string; wheel?: { url: stri
 	};
 }
 
-/** Runs the whole setup. Rejects on failure or when `signal` aborts. */
-export async function setUpEngine(progress: SetupProgress, signal: AbortSignal): Promise<string> {
-	const key = `${process.platform}-${process.arch}`;
-	const source = engineSource(key);
-	const env = {
+/** Whether the faster engine (MLX) can run here: Apple silicon on macOS 14 (Darwin 23) or later. */
+export function mlxSupported(
+	platform: string = process.platform,
+	arch: string = process.arch,
+	darwinRelease: string = release(),
+): boolean {
+	return platform === "darwin" && arch === "arm64" && Number.parseInt(darwinRelease, 10) >= 23;
+}
+
+/** Whether `python` has the faster engine and its English model installed. */
+export async function mlxInstalled(python: string): Promise<boolean> {
+	if (!existsSync(python)) return false;
+	const code = await run(
+		python,
+		["-I", "-c", "import importlib.metadata as m; m.version('mlx-audio'); m.version('en_core_web_sm')"],
+		() => undefined,
+	).catch(() => 1);
+	return code === 0;
+}
+
+/** Installs the faster engine into `python`'s environment. Rejects on failure or when `signal` aborts. */
+export async function installMlx(python: string, progress: SetupProgress, signal: AbortSignal): Promise<void> {
+	await ensureUv(progress, signal);
+	progress.step("mlx", "running");
+	const model = join(SETUP_HOME, "download", SPACY_MODEL.asset);
+	await download(SPACY_MODEL.url, SPACY_MODEL.sha256, model, progress, signal);
+	await runChecked(
+		UV_PATH,
+		["pip", "install", "--python", python, ...MLX_PACKAGES, model],
+		uvEnv(),
+		progress,
+		signal,
+	);
+	await fs.rm(dirname(model), { recursive: true, force: true });
+	// Installs fine anywhere; whether the GPU is there shows only when it loads.
+	await runChecked(
+		python,
+		[
+			"-I",
+			"-c",
+			"import mlx.core as mx, mlx_audio.tts.utils, misaki.en; assert mx.metal.is_available(), 'no Metal GPU'",
+		],
+		process.env,
+		progress,
+		signal,
+	);
+	progress.step("mlx", "done");
+}
+
+function uvEnv(): NodeJS.ProcessEnv {
+	return {
 		...process.env,
 		UV_PYTHON_INSTALL_DIR: join(SETUP_HOME, "python"),
 		UV_CACHE_DIR: join(SETUP_HOME, "cache"),
 		UV_NO_PROGRESS: "1",
 	};
+}
+
+/** Runs the whole setup. Rejects on failure or when `signal` aborts. */
+export async function setUpEngine(progress: SetupProgress, signal: AbortSignal): Promise<string> {
+	const key = `${process.platform}-${process.arch}`;
+	const source = engineSource(key);
+	const env = uvEnv();
 
 	progress.step("uv", "running");
 	await ensureUv(progress, signal);
