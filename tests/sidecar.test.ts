@@ -40,6 +40,22 @@ describe("Sidecar", () => {
 		expect((await third).samples.length).toBe(5);
 	});
 
+	it("reports when it's busy synthesizing, across queued and cancelled requests", async () => {
+		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
+		const busy: boolean[] = [];
+		sidecar.onBusy = (value) => busy.push(value);
+		const cancel = new AbortController();
+		const first = sidecar.synthesize("slow first", 1);
+		const second = sidecar.synthesize("second", 1, cancel.signal);
+		cancel.abort();
+		await expect(second).rejects.toBeInstanceOf(CancelledError);
+		expect(busy).toEqual([true]);
+		await first;
+		expect(busy).toEqual([true, false]);
+		await sidecar.synthesize("again", 1);
+		expect(busy).toEqual([true, false, true, false]);
+	});
+
 	it("passes engine errors through and keeps going", async () => {
 		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
 		await expect(sidecar.synthesize("fail please", 1)).rejects.toThrow("cannot say that");

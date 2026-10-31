@@ -126,7 +126,7 @@ body.theme-dark {
 }
 
 /*
- * While a sentence is being synthesized, a glow travels around the bar's edge:
+ * While the engine synthesizes, a glow travels around the bar's edge:
  * a conic gradient turned by an animated angle, masked to a 2px ring (::before),
  * with a blurred copy behind it for the glow (::after).
  */
@@ -164,15 +164,18 @@ body.theme-dark {
 	z-index: -1;
 }
 
-.edge-voice-bar.is-loading {
+.edge-voice-bar.is-loading,
+.edge-voice-bar.is-synthesizing {
 	animation: edge-voice-orbit 1.8s linear infinite;
 }
 
-.edge-voice-bar.is-loading::before {
+.edge-voice-bar.is-loading::before,
+.edge-voice-bar.is-synthesizing::before {
 	opacity: 1;
 }
 
-.edge-voice-bar.is-loading::after {
+.edge-voice-bar.is-loading::after,
+.edge-voice-bar.is-synthesizing::after {
 	opacity: 1;
 }
 
