@@ -1,0 +1,415 @@
+/*
+ * Read-along highlight colours, all derived from two channels the plugin sets
+ * from the colour option chosen in its settings: the sentence tint and the
+ * word's deeper shade. Transparency differs by theme so text stays readable.
+ */
+body {
+	--edge-voice-base: 255, 214, 10;
+	--edge-voice-accent: 255, 128, 0;
+	--edge-voice-sentence: rgba(var(--edge-voice-base), 0.32);
+	--edge-voice-sentence-edge: rgba(var(--edge-voice-base), 0.9);
+	--edge-voice-word: rgba(var(--edge-voice-accent), 0.55);
+	--edge-voice-word-edge: rgba(var(--edge-voice-accent), 1);
+}
+
+body.theme-dark {
+	--edge-voice-sentence: rgba(var(--edge-voice-base), 0.24);
+	--edge-voice-sentence-edge: rgba(var(--edge-voice-base), 0.8);
+	--edge-voice-word: rgba(var(--edge-voice-accent), 0.5);
+}
+
+/* Colour choices in the plugin's settings: sentence tint over word shade. */
+.edge-voice-swatches {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.edge-voice-swatch {
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border-radius: 50%;
+	background: linear-gradient(135deg, var(--swatch-sentence) 50%, var(--swatch-word) 50%);
+	box-shadow: 0 0 0 1px var(--background-modifier-border);
+	cursor: pointer;
+}
+
+.edge-voice-swatch.is-selected {
+	box-shadow:
+		0 0 0 2px var(--background-primary),
+		0 0 0 4px var(--interactive-accent);
+}
+
+/* The preview in the plugin's settings. */
+.edge-voice-preview {
+	padding: 8px 12px;
+	margin-bottom: 12px;
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary-alt);
+	line-height: 1.8;
+}
+
+.edge-voice-preview .edge-voice-sentence {
+	background-color: var(--edge-voice-sentence);
+	border-bottom: 2px solid var(--edge-voice-sentence-edge);
+}
+
+.edge-voice-preview .edge-voice-word {
+	background-color: var(--edge-voice-word);
+	border-radius: 3px;
+	box-shadow: 0 0 0 1px var(--edge-voice-word-edge);
+}
+
+/* Notes: CodeMirror marks. */
+.cm-content .edge-voice-sentence {
+	background-color: var(--edge-voice-sentence);
+	border-bottom: 2px solid var(--edge-voice-sentence-edge);
+}
+
+.cm-content .edge-voice-word {
+	background-color: var(--edge-voice-word);
+	border-radius: 3px;
+	box-shadow: 0 0 0 1px var(--edge-voice-word-edge);
+}
+
+/* PDFs: boxes drawn over the page, under nothing that takes the pointer. */
+.page > .edge-voice-layer {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 3;
+}
+
+.edge-voice-layer > div {
+	position: absolute;
+	border-radius: 3px;
+	mix-blend-mode: multiply;
+}
+
+.theme-dark .edge-voice-layer > div {
+	mix-blend-mode: normal;
+}
+
+.edge-voice-layer > .edge-voice-sentence {
+	background-color: var(--edge-voice-sentence);
+	box-shadow: inset 0 -2px 0 var(--edge-voice-sentence-edge);
+}
+
+.edge-voice-layer > .edge-voice-word {
+	background-color: var(--edge-voice-word);
+	box-shadow: 0 0 0 1.5px var(--edge-voice-word-edge);
+}
+
+/* Player bar: floats above the status bar while reading. */
+.edge-voice-bar {
+	position: fixed;
+	left: 50%;
+	bottom: calc(var(--status-bar-height, 24px) + 20px);
+	transform: translateX(-50%);
+	z-index: var(--layer-popover);
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 4px 10px;
+	max-width: calc(100vw - 32px);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 999px;
+	box-shadow: var(--shadow-l);
+	font-size: var(--font-ui-small);
+	user-select: none;
+}
+
+.edge-voice-bar .edge-voice-button {
+	border-radius: 999px;
+}
+
+/* While a sentence is being prepared, a ring spins around play/pause. */
+.edge-voice-bar .edge-voice-button {
+	position: relative;
+}
+
+.edge-voice-bar.is-loading .edge-voice-button:nth-child(2)::after {
+	content: "";
+	position: absolute;
+	inset: 1px;
+	border-radius: 50%;
+	border: 2px solid transparent;
+	border-top-color: var(--interactive-accent);
+	border-right-color: var(--interactive-accent);
+	animation: edge-voice-spin 0.9s linear infinite;
+}
+
+@keyframes edge-voice-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.edge-voice-divider {
+	width: 1px;
+	height: 18px;
+	margin: 0 6px;
+	background-color: var(--background-modifier-border);
+}
+
+.edge-voice-speed {
+	min-width: 3.6em;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-variant-numeric: tabular-nums;
+	font-weight: var(--font-semibold);
+	background-color: var(--background-modifier-hover);
+	box-shadow: none;
+	cursor: pointer;
+}
+
+.edge-voice-where {
+	margin-left: 8px;
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+/* Volume: an icon with a vertical slider that pops up above it on hover or focus. */
+.edge-voice-volume {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.edge-voice-volume-popup {
+	display: none;
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	/* Transparent gap that keeps the hover alive between icon and panel. */
+	padding-bottom: 8px;
+}
+
+.edge-voice-volume:hover .edge-voice-volume-popup,
+.edge-voice-volume:focus-within .edge-voice-volume-popup,
+.edge-voice-volume.is-dragging .edge-voice-volume-popup {
+	display: block;
+}
+
+.edge-voice-volume-panel {
+	padding: 12px 14px;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+	cursor: pointer;
+	touch-action: none;
+}
+
+.edge-voice-volume-track {
+	position: relative;
+	width: 4px;
+	height: 84px;
+	border-radius: 2px;
+	background-color: var(--background-modifier-border);
+	outline: none;
+}
+
+.edge-voice-volume-fill {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	border-radius: 2px;
+	background-color: var(--interactive-accent);
+}
+
+.edge-voice-volume-thumb {
+	position: absolute;
+	left: 50%;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--background-primary);
+	transform: translate(-50%, 50%);
+}
+
+.edge-voice-volume-track:focus-visible .edge-voice-volume-thumb {
+	box-shadow:
+		0 0 0 2px var(--background-primary),
+		0 0 0 4px var(--interactive-accent);
+}
+
+/* Minimized: play/pause, speed and expand, tucked into the corner. */
+.edge-voice-bar.is-minimized {
+	left: auto;
+	right: 16px;
+	transform: none;
+	padding: 2px 4px;
+	opacity: 0.75;
+	transition: opacity 120ms ease;
+}
+
+.edge-voice-bar.is-minimized:hover {
+	opacity: 1;
+}
+
+.edge-voice-bar.is-minimized .edge-voice-full {
+	display: none;
+}
+
+.edge-voice-bar.is-minimized .edge-voice-speed {
+	min-width: 0;
+	padding: 2px 6px;
+}
+
+/* Rendered notes (Reading view, callouts and math in Live Preview). */
+::highlight(edge-voice-sentence) {
+	background-color: var(--edge-voice-sentence);
+}
+
+::highlight(edge-voice-word) {
+	background-color: var(--edge-voice-word);
+}
+
+/* One-click setup. */
+.edge-voice-setup-steps {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 12px 0;
+}
+
+.edge-voice-setup-step {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--text-muted);
+}
+
+.edge-voice-setup-step.is-running,
+.edge-voice-setup-step.is-done {
+	color: var(--text-normal);
+}
+
+.edge-voice-setup-step.is-running .edge-voice-setup-icon {
+	animation: edge-voice-spin 1s linear infinite;
+}
+
+.edge-voice-setup-step.is-done .edge-voice-setup-icon {
+	color: var(--color-green);
+}
+
+.edge-voice-setup-step.is-failed .edge-voice-setup-icon {
+	color: var(--color-red);
+}
+
+.edge-voice-setup-icon {
+	display: inline-flex;
+}
+
+.edge-voice-setup-message:not(:empty) {
+	margin: 8px 0;
+	font-weight: var(--font-semibold);
+}
+
+.edge-voice-setup-log pre {
+	max-height: 200px;
+	overflow: auto;
+	font-size: var(--font-ui-smaller);
+	white-space: pre-wrap;
+}
+
+.edge-voice-notice-button {
+	margin-top: 8px;
+}
+
+/* Status bar: an indicator, the text, and a progress bar while downloading. */
+.edge-voice-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.edge-voice-indicator {
+	position: relative;
+	display: inline-flex;
+	align-items: flex-end;
+	gap: 2px;
+	width: 12px;
+	height: 11px;
+}
+
+/* Reading: three bars dance; paused, they rest at different heights. */
+.edge-voice-eq-bar {
+	width: 2.5px;
+	height: 100%;
+	border-radius: 1px;
+	background-color: var(--interactive-accent);
+	transform-origin: bottom;
+	animation: edge-voice-eq 0.9s ease-in-out infinite;
+}
+
+.edge-voice-eq-bar:nth-child(2) {
+	animation-delay: -0.3s;
+}
+
+.edge-voice-eq-bar:nth-child(3) {
+	animation-delay: -0.6s;
+}
+
+@keyframes edge-voice-eq {
+	0%,
+	100% {
+		transform: scaleY(0.3);
+	}
+	50% {
+		transform: scaleY(1);
+	}
+}
+
+.edge-voice-status[data-state="paused"] .edge-voice-eq-bar {
+	animation-play-state: paused;
+	background-color: var(--text-muted);
+}
+
+/* Preparing or loading: the bars give way to a spinning ring. */
+.edge-voice-status[data-state="busy"] .edge-voice-eq-bar,
+.edge-voice-status[data-state="download"] .edge-voice-eq-bar {
+	display: none;
+}
+
+.edge-voice-status[data-state="busy"] .edge-voice-indicator::before,
+.edge-voice-status[data-state="download"] .edge-voice-indicator::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	border: 2px solid var(--background-modifier-border);
+	border-top-color: var(--interactive-accent);
+	animation: edge-voice-spin 0.9s linear infinite;
+}
+
+.edge-voice-progress {
+	width: 48px;
+	height: 4px;
+	overflow: hidden;
+	border-radius: 2px;
+	background-color: var(--background-modifier-border);
+}
+
+.edge-voice-progress-fill {
+	display: block;
+	height: 100%;
+	border-radius: 2px;
+	background-color: var(--interactive-accent);
+	transition: width 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.edge-voice-eq-bar,
+	.edge-voice-indicator::before,
+	.edge-voice-bar .edge-voice-button::after,
+	.edge-voice-setup-icon {
+		animation: none !important;
+	}
+}

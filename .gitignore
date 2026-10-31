@@ -1,0 +1,8 @@
+node_modules/
+main.js
+data.json
+.scratch/
+.venv/
+.pytest_cache/
+__pycache__/
+coverage/

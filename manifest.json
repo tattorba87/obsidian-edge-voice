@@ -1,0 +1,9 @@
+{
+	"id": "edge-voice",
+	"name": "Edge Voice",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.0",
+	"description": "Reads notes and PDFs aloud with on-device voices, highlighting each sentence and word as it is spoken.",
+	"author": "Steven Grima",
+	"isDesktopOnly": true
+}

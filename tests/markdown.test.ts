@@ -1,0 +1,81 @@
+import { describe, expect, it } from "vitest";
+import { MarkdownSource } from "../src/markdown";
+import type { Segment } from "../src/reader";
+
+/** A MarkdownView with just the editor calls MarkdownSource makes at construction. */
+function viewOf(doc: string) {
+	return {
+		editor: {
+			getValue: () => doc,
+			posToOffset: () => 0,
+			getCursor: () => ({ line: 0, ch: 0 }),
+			offsetToPos: (offset: number) => ({ line: doc.slice(0, offset).split("\n").length - 1, ch: 0 }),
+		},
+	} as unknown as ConstructorParameters<typeof MarkdownSource>[0];
+}
+
+async function spoken(doc: string, from = 0): Promise<string[]> {
+	const source = new MarkdownSource(viewOf(doc), () => false, from);
+	const out: string[] = [];
+	for (let segment: Segment | null = await source.next(); segment; segment = await source.next())
+		out.push(segment.text);
+	return out;
+}
+
+describe("MarkdownSource", () => {
+	it("skips what isn't read aloud and keeps what a reader sees", async () => {
+		const doc = [
+			"---",
+			"tags: [a]",
+			"---",
+			"# Heading One",
+			"Some **bold** text with a [link](https://x.com/a) and [[Page|alias]] here.",
+			"- [ ] A task item with `code` inside.",
+			"> Quoted line with #tag and ==highlight==.",
+			"```",
+			"skip me()",
+			"```",
+			"Last one, with snake_case and *italics*.",
+		].join("\n");
+		expect(await spoken(doc)).toEqual([
+			"Heading One",
+			"Some bold text with a link and alias here.",
+			"A task item with inside.",
+			"Quoted line with and highlight.",
+			"Last one, with snake case and italics.",
+		]);
+	});
+
+	it("reads hard-wrapped prose as whole sentences", async () => {
+		const doc =
+			"Nor was there much cause for fear.  Since he was certain there were\n" +
+			"no private arms in the whole principality, he was a hundred times\n" +
+			"more certain there were none.";
+		expect(await spoken(doc)).toEqual([
+			"Nor was there much cause for fear.",
+			"Since he was certain there were no private arms in the whole principality, he was a hundred times more certain there were none.",
+		]);
+	});
+
+	it("keeps headings and list items apart from the text around them", async () => {
+		expect(await spoken("## Chapter Two\n- a list item that wraps\n  onto a second line.\n- second item")).toEqual([
+			"Chapter Two",
+			"a list item that wraps onto a second line.",
+			"second item",
+		]);
+	});
+
+	it("starts at the word containing the start offset", async () => {
+		const doc = "First sentence here. Second sentence starts here.";
+		expect(await spoken(doc, doc.indexOf("cond"))).toEqual(["Second sentence starts here."]);
+	});
+
+	it("gives each segment its words, weights and partial text", async () => {
+		const source = new MarkdownSource(viewOf("Since then, it has rained every day."), () => false, 0);
+		const segment = (await source.next())!;
+		expect(segment.weights).toHaveLength(7);
+		expect(segment.pauses[1]).toBe(1);
+		expect(segment.spokenText(0, 2)).toBe("Since then,");
+		expect(segment.spokenText(2, 7)).toBe("it has rained every day.");
+	});
+});

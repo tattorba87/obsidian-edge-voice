@@ -1,0 +1,6 @@
+{
+	"useTabs": true,
+	"printWidth": 120,
+	"trailingComma": "all",
+	"overrides": [{ "files": ["*.md", "*.yml", "*.yaml"], "options": { "useTabs": false, "proseWrap": "preserve" } }]
+}

@@ -1,0 +1,62 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { dirname, join } from "path";
+import { afterEach, describe, expect, it } from "vitest";
+import { deleteItem, formatBytes, scanEngine, scanVoices } from "../src/storage";
+
+let dir: string;
+afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+/** A Moonshine cache with the given files, each `bytes` long. */
+function cache(files: Record<string, number>): string {
+	dir = mkdtempSync(join(tmpdir(), "edge-voice-"));
+	for (const [path, bytes] of Object.entries(files)) {
+		const full = join(dir, "download.moonshine.ai", "tts", path);
+		mkdirSync(dirname(full), { recursive: true });
+		writeFileSync(full, Buffer.alloc(bytes));
+	}
+	return dir;
+}
+
+describe("storage", () => {
+	it("groups downloads the way a person thinks of them, largest first", async () => {
+		const root = cache({
+			"kokoro/decoder.model.ort": 300,
+			"kokoro/voices/af_heart.bin": 10,
+			"en_us/piper-voices/en_US-lessac-medium.generator.model.ort": 100,
+			"en_us/piper-voices/en_US-lessac-medium.onnx.json": 5,
+			"en_us/piper-voices/en_US-ryan-high.upstream.weights.ort": 200,
+			"en_us/oov/model.ort": 50,
+			"zipvoice/vocoder.ort": 900,
+			"clone_asr/encoder.ort": 100,
+		});
+		const items = await scanVoices(root);
+		expect(items.map((item) => [item.label, item.bytes])).toEqual([
+			["Voice cloning models", 1000],
+			["Kokoro voices", 310],
+			["Piper voice en_US-ryan-high", 200],
+			["Piper voice en_US-lessac-medium", 105],
+			["Pronunciation data (en_us)", 50],
+		]);
+	});
+
+	it("deletes exactly one item's files", async () => {
+		const root = cache({ "kokoro/a.ort": 1, "en_us/piper-voices/en_US-amy-low.onnx.json": 1 });
+		const [kokoro] = (await scanVoices(root)).filter((item) => item.id === "kokoro");
+		await deleteItem(kokoro);
+		expect((await scanVoices(root)).map((item) => item.id)).toEqual(["piper:en_US-amy-low"]);
+	});
+
+	it("reports the engine folder, or nothing when it's absent", async () => {
+		dir = mkdtempSync(join(tmpdir(), "edge-voice-"));
+		expect(await scanEngine(join(dir, "missing"))).toBeNull();
+		writeFileSync(join(dir, "uv"), Buffer.alloc(2048));
+		expect((await scanEngine(dir))?.bytes).toBe(2048);
+	});
+
+	it("formats sizes", () => {
+		expect(formatBytes(512)).toBe("1 KB");
+		expect(formatBytes(84_000_000)).toBe("84 MB");
+		expect(formatBytes(1_250_000_000)).toBe("1.3 GB");
+	});
+});

@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v10
+      - run: npm ci
+      - name: Type-check
+        run: npm run typecheck
+      - name: Lint (Obsidian review rules)
+        run: npm run lint
+      - name: Formatting
+        run: npm run format:check
+      - name: Tests
+        run: npm test
+      - name: Python tests
+        run: npm run test:python
+      - name: Build
+        run: npm run build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: plugin
+          path: |
+            main.js
+            manifest.json
+            styles.css
+
+  # The sidecar runs on every desktop OS; its protocol and the setup paths are
+  # where platforms differ, so the tests run on Windows and macOS too.
+  test-other-platforms:
+    name: Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v10
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:python

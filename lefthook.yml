@@ -1,0 +1,29 @@
+# Git hooks (installed by `npm install` through the "prepare" script).
+# Commits stay fast: format and lint only what's staged. Pushes run the tests.
+pre-commit:
+  parallel: true
+  commands:
+    prettier:
+      glob: "*.{ts,mts,mjs,js,json,css,md,yml,yaml}"
+      exclude: ["main.js", "package-lock.json"]
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
+    eslint:
+      glob: "*.{ts,mts,mjs}"
+      run: npx eslint --fix {staged_files}
+      stage_fixed: true
+    ruff:
+      glob: "*.py"
+      # uv installs itself to ~/.local/bin, which git's hook environment may not have on PATH.
+      run: PATH="$PATH:$HOME/.local/bin" uvx ruff@0.14.3 format {staged_files} && PATH="$PATH:$HOME/.local/bin" uvx ruff@0.14.3 check --fix {staged_files}
+      stage_fixed: true
+    typecheck:
+      glob: "*.{ts,mts}"
+      run: npx tsc --noEmit
+
+pre-push:
+  commands:
+    tests:
+      run: npm test
+    python-tests:
+      run: PATH="$PATH:$HOME/.local/bin" npm run test:python
