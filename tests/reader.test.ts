@@ -1,10 +1,10 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Reader, Segment, SegmentSource } from "../src/reader";
 import { Sidecar } from "../src/sidecar";
 
 beforeAll(() => {
 	// The reader uses window's timers so pop-out windows work; tests run in node.
-	Object.assign(window, { window: { cancelAnimationFrame: () => undefined } });
+	vi.stubGlobal("window", { cancelAnimationFrame: () => undefined });
 });
 
 /** Segments that record when they're highlighted, as "+n" and "-n". */
