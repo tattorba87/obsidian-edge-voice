@@ -8,15 +8,6 @@ const STEPS: [SetupStep, string][] = [
 	["check", "Check it works"],
 ];
 
-/** The path of a file the person picked, across Electron versions. */
-function pathOf(file: File): string | undefined {
-	// Electron 32 removed File.path in favour of webUtils.getPathForFile.
-	const electron = (
-		window as unknown as { require?: (id: string) => { webUtils?: { getPathForFile(file: File): string } } }
-	).require?.("electron");
-	return electron?.webUtils?.getPathForFile(file) || (file as File & { path?: string }).path;
-}
-
 /** One-click setup of the speech engine, with progress and a log to look into. */
 export class SetupModal extends Modal {
 	private abort?: AbortController;
@@ -77,21 +68,10 @@ export class SetupModal extends Modal {
 		} else if (!this.messageEl.getText()) {
 			this.messageEl.setText(support.reason ?? "");
 		}
-		// A wheel file works everywhere, and is the only way on platforms without a package.
-		const input = this.buttons.createEl("input", { attr: { type: "file", accept: ".whl" } });
-		input.hidden = true;
-		input.addEventListener("change", () => {
-			const file = input.files?.[0];
-			const path = file && pathOf(file);
-			if (path) void this.start(path);
-		});
-		this.buttons
-			.createEl("button", { cls: support.supported ? "" : "mod-cta", text: "Install from a wheel file…" })
-			.addEventListener("click", () => input.click());
 		this.buttons.createEl("button", { text: "Cancel" }).addEventListener("click", () => this.close());
 	}
 
-	private async start(wheel?: string): Promise<void> {
+	private async start(): Promise<void> {
 		this.abort = new AbortController();
 		this.logEl.empty();
 		this.messageEl.setText("");
@@ -109,7 +89,6 @@ export class SetupModal extends Modal {
 					},
 				},
 				this.abort.signal,
-				wheel,
 			);
 			this.messageEl.setText(`Ready: speech engine ${version}. You can start reading.`);
 			this.buttons.empty();

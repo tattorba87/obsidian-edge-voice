@@ -60,3 +60,5 @@ The pre-commit hook formats and lint-fixes staged files and type-checks; the pre
 1. Move the _Unreleased_ entries in `CHANGELOG.md` under the new version.
 2. `npm version 0.2.0` (updates `package.json`, `manifest.json` and `versions.json`, commits and tags `0.2.0`).
 3. `git push --follow-tags`. The release workflow builds and attaches `main.js`, `manifest.json` and `styles.css` to a draft GitHub release; check it and publish it.
+
+**Engine wheels for macOS.** PyPI has no moonshine-voice wheel for Intel Macs, and its Apple Silicon one needs macOS 15, so setup installs wheels this repository builds instead. When moving to a new moonshine-voice version, run the _Engine wheels_ workflow (Actions → Engine wheels → Run workflow) with the moonshine tag that matches the PyPI version. It publishes a `moonshine-voice-<version>` release; copy the asset names and checksums from its notes into `ENGINE_TAG` and `ENGINE_WHEELS` in `src/setup.ts`. The repository has to be public for setup to download them.

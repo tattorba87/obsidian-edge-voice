@@ -47,6 +47,30 @@ const PYTHON_VERSION = "3.12";
 // 0.1 is the API the sidecar speaks (TextToSpeech().language().voice().load()).
 const PACKAGE = "moonshine-voice>=0.1.5,<0.2";
 
+// moonshine-voice publishes no wheel for Intel Macs, and its Apple Silicon
+// wheel needs macOS 15. The engine-wheels workflow builds both from the same
+// release for macOS 13.4 (the floor of the ONNX Runtime it bundles) and
+// attaches them to this repository's release ENGINE_TAG; their checksums are
+// pinned here, from that release's notes.
+const ENGINE_TAG = "moonshine-voice-0.1.5";
+const ENGINE_RELEASE = `https://github.com/tattorba87/obsidian-edge-voice/releases/download/${ENGINE_TAG}`;
+const ENGINE_WHEELS: Record<string, { asset: string; sha256: string }> = {
+	"darwin-x64": {
+		asset: "moonshine_voice-0.1.5-py3-none-macosx_13_0_x86_64.whl",
+		sha256: "",
+	},
+	"darwin-arm64": {
+		asset: "moonshine_voice-0.1.5-py3-none-macosx_13_0_arm64.whl",
+		sha256: "",
+	},
+};
+
+// Windows on ARM has no moonshine-voice build (nor an ONNX Runtime one bundled
+// with it), so it runs the x64 Python and package under Windows 11's emulation.
+const PYTHON_REQUEST: Record<string, string> = {
+	"win32-arm64": `cpython-${PYTHON_VERSION}-windows-x86_64-none`,
+};
+
 export const SETUP_HOME = join(homedir(), ".edge-voice");
 const UV_PATH = join(SETUP_HOME, "bin", process.platform === "win32" ? "uv.exe" : "uv");
 export const VENV_DIR = join(SETUP_HOME, "venv");
@@ -75,21 +99,9 @@ export interface SetupProgress {
 	log(line: string): void;
 }
 
-/** Whether this platform has a published moonshine-voice package. */
+/** Whether setup can install the engine on this platform. */
 export function platformSupport(): { supported: boolean; reason?: string } {
 	const key = `${process.platform}-${process.arch}`;
-	if (key === "darwin-x64") {
-		return {
-			supported: false,
-			reason: "The speech engine (Moonshine) doesn't publish a package for Intel Macs yet. Build a wheel from the moonshine repository (scripts/build-pip.sh) and choose it here.",
-		};
-	}
-	if (key === "win32-arm64") {
-		return {
-			supported: false,
-			reason: "The speech engine (Moonshine) doesn't publish a package for Windows on ARM yet.",
-		};
-	}
 	if (!UV_BUILDS[key]) return { supported: false, reason: `No setup is available for ${key}.` };
 	return { supported: true };
 }
@@ -106,12 +118,19 @@ export async function installedVersion(python: string): Promise<string | null> {
 	return code === 0 ? (lines.find((line) => /^\d/.test(line)) ?? null) : null;
 }
 
-/**
- * Runs the whole setup. `wheel` installs that file instead of the package from
- * PyPI (for platforms without a published one). Rejects on failure or when
- * `signal` aborts.
- */
-export async function setUpEngine(progress: SetupProgress, signal: AbortSignal, wheel?: string): Promise<string> {
+/** The Python uv installs on platform `key` ("darwin-x64"), and the engine wheel to download, if PyPI has none. */
+export function engineSource(key: string): { python: string; wheel?: { url: string; asset: string; sha256: string } } {
+	const build = ENGINE_WHEELS[key];
+	return {
+		python: PYTHON_REQUEST[key] ?? PYTHON_VERSION,
+		wheel: build && { ...build, url: `${ENGINE_RELEASE}/${build.asset}` },
+	};
+}
+
+/** Runs the whole setup. Rejects on failure or when `signal` aborts. */
+export async function setUpEngine(progress: SetupProgress, signal: AbortSignal): Promise<string> {
+	const key = `${process.platform}-${process.arch}`;
+	const source = engineSource(key);
 	const env = {
 		...process.env,
 		UV_PYTHON_INSTALL_DIR: join(SETUP_HOME, "python"),
@@ -124,28 +143,45 @@ export async function setUpEngine(progress: SetupProgress, signal: AbortSignal, 
 	progress.step("uv", "done");
 
 	progress.step("python", "running");
-	await runChecked(
-		UV_PATH,
-		["venv", "--python", PYTHON_VERSION, "--allow-existing", VENV_DIR],
-		env,
-		progress,
-		signal,
-	);
+	await runChecked(UV_PATH, ["venv", "--python", source.python, "--allow-existing", VENV_DIR], env, progress, signal);
 	progress.step("python", "done");
 
 	progress.step("package", "running");
-	await runChecked(
-		UV_PATH,
-		["pip", "install", "--python", VENV_PYTHON, "--upgrade", wheel ?? PACKAGE],
-		env,
-		progress,
-		signal,
-	);
+	if (source.wheel) {
+		if (!source.wheel.sha256) throw new Error(`The speech engine for ${key} hasn't been published yet.`);
+		const wheel = join(SETUP_HOME, "download", source.wheel.asset);
+		await download(source.wheel.url, source.wheel.sha256, wheel, progress, signal);
+		// Reinstall even at the same version, so the checked file is what runs.
+		await runChecked(
+			UV_PATH,
+			["pip", "install", "--python", VENV_PYTHON, "--reinstall-package", "moonshine-voice", wheel],
+			env,
+			progress,
+			signal,
+		);
+		await fs.rm(dirname(wheel), { recursive: true, force: true });
+	} else {
+		await runChecked(
+			UV_PATH,
+			["pip", "install", "--python", VENV_PYTHON, "--upgrade", PACKAGE],
+			env,
+			progress,
+			signal,
+		);
+	}
 	progress.step("package", "done");
 
 	progress.step("check", "running");
 	const version = await installedVersion(VENV_PYTHON);
 	if (!version) throw new Error("moonshine-voice was installed but can't be imported; see the log.");
+	// A package built for another processor installs fine and fails only here.
+	await runChecked(
+		VENV_PYTHON,
+		["-I", "-c", "from moonshine_voice.moonshine_api import _MoonshineLib; _MoonshineLib()"],
+		process.env,
+		progress,
+		signal,
+	);
 	progress.log(`moonshine-voice ${version} is ready.`);
 	progress.step("check", "done");
 	return version;
@@ -161,22 +197,15 @@ async function ensureUv(progress: SetupProgress, signal: AbortSignal): Promise<v
 	}
 	const build = UV_BUILDS[`${process.platform}-${process.arch}`];
 	if (!build) throw new Error(`No uv build for ${process.platform}-${process.arch}.`);
-	const url = `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${build.asset}`;
-	progress.log(`Downloading ${url}`);
-	const response = await requestUrl({ url });
-	if (signal.aborted) throw new Error("Cancelled");
-	const data = Buffer.from(response.arrayBuffer);
-	const digest = createHash("sha256").update(data).digest("hex");
-	if (digest !== build.sha256) {
-		throw new Error(`The uv download failed its checksum (got ${digest}). Nothing was installed.`);
-	}
-	progress.log("Checksum verified.");
-
 	const workDir = join(SETUP_HOME, "download");
-	await fs.rm(workDir, { recursive: true, force: true });
-	await fs.mkdir(workDir, { recursive: true });
 	const archive = join(workDir, build.asset);
-	await fs.writeFile(archive, data);
+	await download(
+		`https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${build.asset}`,
+		build.sha256,
+		archive,
+		progress,
+		signal,
+	);
 	// tar ships with macOS, Linux and Windows 10+, and reads zip as well.
 	await runChecked("tar", ["-xf", archive, "-C", workDir], process.env, progress, signal);
 	const found = await findFile(workDir, process.platform === "win32" ? "uv.exe" : "uv");
@@ -185,6 +214,29 @@ async function ensureUv(progress: SetupProgress, signal: AbortSignal): Promise<v
 	await fs.copyFile(found, UV_PATH);
 	await fs.chmod(UV_PATH, 0o755);
 	await fs.rm(workDir, { recursive: true, force: true });
+}
+
+/** Downloads `url` to `path` (in a fresh folder) if its SHA-256 is `sha256`. */
+async function download(
+	url: string,
+	sha256: string,
+	path: string,
+	progress: SetupProgress,
+	signal: AbortSignal,
+): Promise<void> {
+	progress.log(`Downloading ${url}`);
+	const response = await requestUrl({ url });
+	if (signal.aborted) throw new Error("Cancelled");
+	const data = Buffer.from(response.arrayBuffer);
+	const digest = createHash("sha256").update(data).digest("hex");
+	if (digest !== sha256) {
+		const name = url.split("/").pop();
+		throw new Error(`The download of ${name} failed its checksum (got ${digest}). Nothing was installed.`);
+	}
+	progress.log("Checksum verified.");
+	await fs.rm(dirname(path), { recursive: true, force: true });
+	await fs.mkdir(dirname(path), { recursive: true });
+	await fs.writeFile(path, data);
 }
 
 async function findFile(dir: string, name: string): Promise<string | null> {
