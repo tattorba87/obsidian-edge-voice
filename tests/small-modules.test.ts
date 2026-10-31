@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "../src/colors";
-import { customKeyProblem, DoubleTapDetector, keyLabel } from "../src/double-tap";
+import { customKeyProblem, DoubleTapDetector, keyCap, keyLabel, shortKeyLabel } from "../src/double-tap";
 import { quickStartPieces } from "../src/reader";
 import { alignWords } from "../src/rendered";
 import { wordTokens } from "../src/sentences";
@@ -190,5 +190,24 @@ describe("customKeyProblem", () => {
 		}
 		expect(press("CapsLock")).toMatch(/Caps Lock/);
 		expect(press("Escape")).toMatch(/Escape/);
+	});
+});
+
+describe("key caps", () => {
+	const mac = process.platform === "darwin";
+
+	it("splits a key into its symbol and side", () => {
+		expect(keyCap("MetaRight")).toEqual({
+			symbol: mac ? "⌘" : process.platform === "win32" ? "Win" : "Super",
+			side: "Right",
+		});
+		expect(keyCap("ControlLeft")).toEqual({ symbol: mac ? "⌃" : "Ctrl", side: "Left" });
+		expect(keyCap("F13")).toEqual({ symbol: "F13", side: null });
+	});
+
+	it("labels menu entries briefly", () => {
+		expect(shortKeyLabel("AltRight")).toBe(mac ? "Right ⌥" : "Right Alt");
+		expect(shortKeyLabel("ShiftLeft")).toBe(mac ? "Left ⇧" : "Left Shift");
+		expect(shortKeyLabel("F5")).toBe("F5");
 	});
 });

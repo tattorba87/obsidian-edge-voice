@@ -472,64 +472,101 @@ body.theme-dark {
 	}
 }
 
-/* Settings: the custom double-tap key, shown in a box as it's pressed. */
-.edge-voice-key-recorder {
+/*
+ * Settings: the custom double-tap key. One panel in the setting's box: the key as
+ * a key cap (click it, then press a key), Save and clear in a row, and a
+ * message line that always keeps its space, so nothing moves as it changes.
+ */
+.edge-voice-key-menu {
+	/* The same width whichever key is picked, so the text beside it stays put. */
+	min-width: 9em;
+}
+
+/* The panel sits inside the setting's own box, as a full-width row below. */
+.setting-item.edge-voice-key-setting {
+	flex-wrap: wrap;
+}
+
+/* Name and description share the first line with the controls, as in other settings. */
+.edge-voice-key-setting > .setting-item-info {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.edge-voice-key-setting > .setting-item-control {
+	flex: 0 0 auto;
+}
+
+.edge-voice-key-panel {
+	flex-basis: 100%;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-end;
 	gap: 6px;
-	padding: 0 0 12px;
+	margin-top: 12px;
 }
 
-.edge-voice-key-box {
-	position: relative;
+.edge-voice-key-row {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	min-width: 220px;
-	min-height: 32px;
-	padding: 4px 32px;
+	gap: 8px;
+}
+
+.edge-voice-key-capture {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 34px;
+	padding: 0 10px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	background-color: var(--background-primary-alt);
-	font-weight: var(--font-semibold);
-	cursor: text;
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	cursor: pointer;
 }
 
-.edge-voice-key-box.is-empty {
+.edge-voice-key-capture.is-empty {
 	color: var(--text-faint);
-	font-weight: normal;
 }
 
-.edge-voice-key-box.is-recording {
+.edge-voice-key-capture.is-recording {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.25);
 	outline: none;
 }
 
-.edge-voice-key-box.is-invalid {
+.edge-voice-key-capture.is-invalid {
 	border-color: var(--text-error);
+}
+
+/* A key cap, like keyboard shortcuts elsewhere in Obsidian. */
+.edge-voice-key-capture kbd {
+	min-width: 1.8em;
+	padding: 2px 7px;
+	border: 1px solid var(--background-modifier-border);
+	border-bottom-width: 2px;
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary-alt);
+	font-family: var(--font-interface);
+	font-size: var(--font-ui-medium);
+	text-align: center;
+}
+
+.edge-voice-key-capture.is-invalid kbd {
 	color: var(--text-error);
 }
 
-.edge-voice-key-clear {
-	position: absolute;
-	right: 4px;
-}
-
-.edge-voice-key-footer {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	max-width: 360px;
-	text-align: right;
+.edge-voice-key-side {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
 }
 
 .edge-voice-key-message {
+	/* One line kept even when empty. */
+	min-height: 1.4em;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 }
 
-.edge-voice-key-box.is-invalid ~ .edge-voice-key-footer .edge-voice-key-message {
+.edge-voice-key-message.is-error {
 	color: var(--text-error);
 }

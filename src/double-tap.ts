@@ -59,6 +59,25 @@ export function keyLabel(code: string): string {
 	return code.replace(/^Key/, "").replace(/^Digit/, "");
 }
 
+/**
+ * A key as a key cap: its symbol on a Mac (⌘ ⌥ ⌃ ⇧), where keyboards and menus
+ * use them, a short name elsewhere, and which side it's on, if it has two.
+ */
+export function keyCap(code: string): { symbol: string; side: "Left" | "Right" | null } {
+	const side = code.endsWith("Right") ? "Right" : code.endsWith("Left") ? "Left" : null;
+	const base = code.replace(/(Right|Left)$/, "");
+	const symbols: Record<string, string> = IS_MAC
+		? { Meta: "⌘", Alt: "⌥", Control: "⌃", Shift: "⇧" }
+		: { Meta: process.platform === "win32" ? "Win" : "Super", Alt: "Alt", Control: "Ctrl", Shift: "Shift" };
+	return { symbol: symbols[base] ?? keyLabel(code), side };
+}
+
+/** A short label for menus: "Right ⌘" on a Mac, "Right Ctrl" elsewhere, "F13". */
+export function shortKeyLabel(code: string): string {
+	const { symbol, side } = keyCap(code);
+	return side ? `${side} ${symbol}` : symbol;
+}
+
 export class DoubleTapDetector {
 	/** When the watched key went down, while it is held. */
 	private pressedAt?: number;
