@@ -126,9 +126,9 @@ body.theme-dark {
 }
 
 /*
- * While the engine synthesizes, a glow travels around the bar's edge:
- * a conic gradient turned by an animated angle, masked to a 2px ring (::before),
- * with a blurred copy behind it for the glow (::after).
+ * While the engine synthesizes, a glow travels around the bar's edge: a conic
+ * gradient turned by an animated angle, masked to a 2px ring, with a blurred
+ * copy for the halo. The colour channels are the word highlight's.
  */
 @property --edge-voice-orbit {
 	syntax: "<angle>";
@@ -136,32 +136,41 @@ body.theme-dark {
 	inherits: true;
 }
 
-.edge-voice-bar::before,
-.edge-voice-bar::after {
-	content: "";
+.edge-voice-glow {
 	position: absolute;
 	inset: -1px;
-	padding: 2px;
+	margin: 0;
 	border-radius: inherit;
-	background: conic-gradient(
-		from var(--edge-voice-orbit),
-		transparent 0turn 0.45turn,
-		var(--edge-voice-accent, var(--interactive-accent)) 0.9turn,
-		transparent 1turn
-	);
-	mask:
-		linear-gradient(#000 0 0) content-box exclude,
-		linear-gradient(#000 0 0);
 	opacity: 0;
 	transition: opacity 300ms ease;
 	pointer-events: none;
 }
 
-.edge-voice-bar::after {
+.edge-voice-glow-ring,
+.edge-voice-glow-halo {
+	position: absolute;
+	inset: 0;
+	box-sizing: border-box;
+	width: auto;
+	height: auto;
+	margin: 0;
+	padding: 2px;
+	border-radius: inherit;
+	background: conic-gradient(
+		from var(--edge-voice-orbit),
+		transparent 0turn 0.45turn,
+		rgb(var(--edge-voice-accent)) 0.9turn,
+		transparent 1turn
+	);
+	mask:
+		linear-gradient(#000 0 0) content-box exclude,
+		linear-gradient(#000 0 0);
+}
+
+.edge-voice-glow-halo {
 	inset: -3px;
 	padding: 5px;
 	filter: blur(8px);
-	z-index: -1;
 }
 
 .edge-voice-bar.is-loading,
@@ -169,13 +178,8 @@ body.theme-dark {
 	animation: edge-voice-orbit 1.8s linear infinite;
 }
 
-.edge-voice-bar.is-loading::before,
-.edge-voice-bar.is-synthesizing::before {
-	opacity: 1;
-}
-
-.edge-voice-bar.is-loading::after,
-.edge-voice-bar.is-synthesizing::after {
+.edge-voice-bar.is-loading .edge-voice-glow,
+.edge-voice-bar.is-synthesizing .edge-voice-glow {
 	opacity: 1;
 }
 

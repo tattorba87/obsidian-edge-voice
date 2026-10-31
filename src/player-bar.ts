@@ -67,6 +67,11 @@ export class PlayerBar {
 	constructor(private readonly controls: PlayerControls) {
 		this.el = document.body.createDiv({ cls: "edge-voice-bar" });
 		this.el.hidden = true;
+		// The glow is drawn by elements of its own, not ::before/::after, which
+		// themes and Obsidian style on many elements and could squash or hide.
+		const glow = this.el.createDiv({ cls: "edge-voice-glow", attr: { "aria-hidden": "true" } });
+		glow.createDiv({ cls: "edge-voice-glow-halo" });
+		glow.createDiv({ cls: "edge-voice-glow-ring" });
 
 		this.button("skip-back", "Previous sentence", () => controls.previous(), true);
 		this.playButton = this.button("pause", "Pause", () => controls.toggle());
