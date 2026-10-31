@@ -465,12 +465,15 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	private async startReading(view: FileView, source: SegmentSource): Promise<void> {
+		// The bar and its glow show at once, while the voice loads, not only once synthesis starts.
+		this.bar.update("loading");
 		if (!this.sidecar.running) {
 			try {
 				// Waits for an install under way, or starts one if the engine went missing.
 				await this.engine.ensure();
 			} catch {
 				source.dispose();
+				this.bar.update("idle");
 				return; // installEngine has said why
 			}
 		}
