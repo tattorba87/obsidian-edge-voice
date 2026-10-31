@@ -69,7 +69,7 @@ The status bar shows what's happening: a spinner while a voice loads or a senten
 
 Pick the highlight colour under Settings → Highlight colour: amber, blue, green, pink, purple, red or grey. Each sets a soft tint for the sentence and a deeper shade for the spoken word; a preview shows the result.
 
-Settings → Storage lists everything downloaded, each voice and the speech engine itself, with its size and a button to delete it. A deleted voice downloads again the next time it's used.
+Settings → Storage (folded away at the bottom, with the total beside it) lists the downloaded voices, each with its size and a button to delete it, to keep them from piling up. A deleted voice downloads again the next time it's used. The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
 
 Bind the commands you use to hotkeys under Settings → Hotkeys.
 
