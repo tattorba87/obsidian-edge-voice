@@ -1,0 +1,82 @@
+name: Engine wheels
+
+# Builds the moonshine-voice wheels PyPI doesn't carry: Intel Macs have none,
+# and the Apple Silicon one needs macOS 15. Both are built from a moonshine
+# release for macOS 13.4, the floor of the ONNX Runtime it bundles, and
+# attached to a release here (moonshine-voice-<version>) that the plugin's
+# setup downloads from. Copy the checksums from that release's notes into
+# ENGINE_WHEELS in src/setup.ts.
+on:
+  workflow_dispatch:
+    inputs:
+      moonshine-ref:
+        description: moonshine tag to build (match the PyPI version setup installs elsewhere)
+        default: v0.1.5
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: macos-15-intel
+          - arch: arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.4"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: moonshine-ai/moonshine
+          ref: ${{ inputs.moonshine-ref }}
+      # Only the LFS files a macOS build reads; the rest (Android, iOS, wasm) are hundreds of MB.
+      - run: git lfs pull --include "core/cpp-annote/**,core/moonshine-tts/**,core/third-party/onnxruntime/lib/macos/${{ matrix.arch }}/**"
+      - uses: astral-sh/setup-uv@v10.2.0 # no moving major tags after v7
+      - run: scripts/build-pip.sh
+      - name: Check the wheel installs and its library loads on this processor
+        working-directory: language-bindings/python
+        run: |
+          wheel=$(ls dist/moonshine_voice-*.whl)
+          case "$wheel" in *"_${{ matrix.arch }}.whl") ;; *) echo "Unexpected wheel: $wheel" >&2; exit 1 ;; esac
+          uv venv --python 3.12 check
+          uv pip install --python check/bin/python "$wheel"
+          check/bin/python -I -c "from moonshine_voice.moonshine_api import _MoonshineLib; _MoonshineLib()"
+          for lib in check/lib/python3.12/site-packages/moonshine_voice/*.dylib; do
+            minos=$(otool -l "$lib" | awk '/LC_BUILD_VERSION/ {f=1} f && /minos/ {print $2; exit}')
+            echo "$lib: macOS $minos"
+            [ "$(printf '%s\n' "$minos" "$MACOSX_DEPLOYMENT_TARGET" | sort -V | tail -1)" = "$MACOSX_DEPLOYMENT_TARGET" ] || exit 1
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheel-${{ matrix.arch }}
+          path: language-bindings/python/dist/moonshine_voice-*.whl
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: wheel-*
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version=$(ls moonshine_voice-*.whl | head -1 | cut -d- -f2)
+          sha256sum moonshine_voice-*.whl > SHA256SUMS
+          notes=$(printf 'moonshine-voice %s built from moonshine %s for macOS 13.4 and later.\n\n```\n%s\n```\n' \
+            "$version" "${{ inputs.moonshine-ref }}" "$(cat SHA256SUMS)")
+          # Not marked latest, so it never stands in for a plugin release.
+          gh release create "moonshine-voice-${version}" moonshine_voice-*.whl SHA256SUMS \
+            --title "moonshine-voice ${version} for macOS" --notes "$notes" --latest=false

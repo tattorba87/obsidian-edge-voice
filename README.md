@@ -20,7 +20,14 @@ Works in Obsidian desktop on macOS, Windows and Linux.
 
 Setup downloads about 100 MB into `~/.edge-voice`, once: [uv](https://docs.astral.sh/uv/) (a pinned release, checked against its published SHA-256), a private Python 3.12 that uv installs, and the [moonshine-voice](https://pypi.org/project/moonshine-voice/) package. The voice (a few hundred MB) downloads the first time you read. Nothing else is installed, nothing runs at login, and your notes never leave your computer. Delete `~/.edge-voice` to remove it all.
 
-Intel Macs and Windows on ARM have no published moonshine-voice package yet. On those, build a wheel from the [moonshine repository](https://github.com/moonshine-ai/moonshine) (`scripts/build-pip.sh`) and choose **Install from a wheel file…** in the setup window.
+| Platform                       | Needs               | Engine package                                                              |
+| ------------------------------ | ------------------- | --------------------------------------------------------------------------- |
+| macOS, Apple Silicon and Intel | macOS 13.4 or later | Built by this repository from the moonshine release (PyPI has no Intel one) |
+| Windows x64                    | Windows 10 or later | PyPI                                                                        |
+| Windows on ARM                 | Windows 11          | PyPI's x64 package, run with Windows' built-in x64 emulation                |
+| Linux x64 and ARM64            | glibc 2.34 or later | PyPI                                                                        |
+
+The macOS packages come from this repository's `moonshine-voice-*` release, built by `.github/workflows/engine-wheels.yml`, and setup checks each against a pinned SHA-256 like uv.
 
 ### Development
 
