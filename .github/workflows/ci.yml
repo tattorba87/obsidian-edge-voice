@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0 # no moving major tags after v7
       - run: npm ci
       - name: Type-check
         run: npm run typecheck
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0 # no moving major tags after v7
       - run: npm ci
       - run: npm test
       - run: npm run test:python
