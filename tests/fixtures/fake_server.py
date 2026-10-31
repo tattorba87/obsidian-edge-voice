@@ -1,7 +1,8 @@
 """A stand-in for server.py that speaks the same protocol without an engine.
 
 synth returns as many samples as the text has characters; texts starting with
-"slow" take 300 ms; "fail" errors; load reports progress first.
+"slow" take 300 ms; "fail" errors; load reports progress first, and answers
+an MLX request the way server.py does.
 """
 
 import base64
@@ -18,6 +19,12 @@ for line in sys.stdin:
     if op == "load":
         print(json.dumps({"event": "progress", "fraction": 0.5, "file": "voice"}), flush=True)
         reply = {"id": request_id, "ok": True}
+        # Like server.py: MLX takes Kokoro voices, anything else falls back.
+        if request.get("engine") == "mlx":
+            mlx = request.get("voice", "").startswith("kokoro_")
+            reply["engine"] = "mlx" if mlx else "moonshine"
+            if not mlx:
+                reply["fallback"] = "the faster engine only has Kokoro voices"
     elif op == "synth":
         text = request["text"]
         if text.startswith("slow"):

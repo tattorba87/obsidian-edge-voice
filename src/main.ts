@@ -14,7 +14,17 @@ import {
 import { highlightField, MarkdownSource } from "./markdown";
 import { PdfSource, PdfStart } from "./pdf";
 import { EngineSetup } from "./engine-setup";
-import { installedVersion, installServerScript, SETUP_HOME, setUpEngine, SetupStep, VENV_PYTHON } from "./setup";
+import {
+	installedVersion,
+	installMlx,
+	installServerScript,
+	mlxInstalled,
+	mlxSupported,
+	SETUP_HOME,
+	setUpEngine,
+	SetupStep,
+	VENV_PYTHON,
+} from "./setup";
 import { StatusIndicator, StatusKind } from "./status";
 import { deleteItem, formatBytes, scanEngine, scanVoices, StorageItem } from "./storage";
 import { SetupModal } from "./setup-modal";
@@ -40,6 +50,8 @@ interface ReaderSettings {
 	prefetch: number;
 	autoScroll: boolean;
 	preloadVoice: boolean;
+	/** On Apple silicon, run voices on the GPU with MLX (installed in the background). */
+	fasterEngine: boolean;
 	skipFootnotes: boolean;
 	pauseOnPageSwitch: boolean;
 	/** Leaving Obsidian for another app: pause, keep reading while a window shows, or keep reading. */
@@ -63,6 +75,7 @@ const DEFAULT_SETTINGS: ReaderSettings = {
 	prefetch: 2,
 	autoScroll: true,
 	preloadVoice: true,
+	fasterEngine: true,
 	skipFootnotes: true,
 	pauseOnPageSwitch: true,
 	inBackground: "visible",
@@ -122,6 +135,14 @@ export default class EdgeVoicePlugin extends Plugin {
 	/** While the settings record a custom key, the shortcut stays quiet. */
 	recordingKey = false;
 	private engine!: EngineSetup;
+	/** Installs the faster engine on Apple silicon, once the standard one works. */
+	private mlx!: EngineSetup;
+	/** Whether the faster engine is installed and can be asked for. */
+	private mlxReady = false;
+	/** Why installing the faster engine failed, for the settings. */
+	private mlxProblem?: string;
+	/** Which engine the loaded voice runs on, and why not the faster one. */
+	private engineInUse?: { engine: string; fallback?: string };
 	/** The log of the last automatic install, shown if it fails. */
 	private setupLog: string[] = [];
 	/** The page being read: playback belongs to it, and pauses when you leave it. */
@@ -153,6 +174,11 @@ export default class EdgeVoicePlugin extends Plugin {
 			(signal) => this.installEngine(signal),
 		);
 		this.register(() => this.engine.cancel());
+		this.mlx = new EngineSetup(
+			() => mlxInstalled(this.settings.pythonPath),
+			(signal) => this.installMlx(signal),
+		);
+		this.register(() => this.mlx.cancel());
 
 		this.addCommand({ id: "toggle", name: "Read aloud / pause", callback: () => this.toggle("button") });
 		this.addCommand({
@@ -255,6 +281,59 @@ export default class EdgeVoicePlugin extends Plugin {
 		} else if (this.settings.preloadVoice) {
 			void this.preloadVoice();
 		}
+		void this.prepareFasterEngine();
+	}
+
+	/**
+	 * On Apple silicon, installs the faster engine in the background once the
+	 * standard one works, and uses it from the next voice loaded: at once if
+	 * nothing is playing, never by interrupting reading. Only in the
+	 * environment setup made, not a Python someone set up themselves.
+	 */
+	private async prepareFasterEngine(): Promise<void> {
+		if (!this.settings.fasterEngine || !mlxSupported() || this.settings.pythonPath !== VENV_PYTHON) return;
+		try {
+			await this.mlx.ensure();
+		} catch (error) {
+			this.mlxProblem = (error as Error).message;
+			return;
+		}
+		this.mlxProblem = undefined;
+		this.mlxReady = true;
+		if (this.reader.state === "idle" && this.settings.preloadVoice) void this.preloadVoice();
+	}
+
+	private async installMlx(signal: AbortSignal): Promise<void> {
+		const log: string[] = [];
+		try {
+			await installMlx(
+				this.settings.pythonPath,
+				{ step: () => undefined, log: (line) => log.push(line) },
+				signal,
+			);
+		} catch (error) {
+			if (!signal.aborted) console.warn("[edge-voice] setting up the faster engine failed\n" + log.join("\n"));
+			throw error;
+		}
+	}
+
+	/** Turns the faster engine on or off; it takes effect from the next voice loaded. */
+	setFasterEngine(on: boolean): void {
+		this.settings.fasterEngine = on;
+		void this.saveSettings();
+		if (on) void this.prepareFasterEngine();
+		else if (this.reader.state === "idle" && this.settings.preloadVoice) void this.preloadVoice();
+	}
+
+	/** What the faster engine is doing, for the settings. */
+	fasterEngineStatus(): string {
+		if (!this.settings.fasterEngine) return "Off: voices run on the processor.";
+		if (this.settings.pythonPath !== VENV_PYTHON) return "Only works with the Python that Edge Voice sets up.";
+		if (this.mlx.installing) return "Setting up in the background (a few hundred MB, once).";
+		if (this.mlxProblem) return `Couldn't set it up: ${this.mlxProblem}`;
+		if (this.engineInUse?.engine === "mlx") return "On: voices run on the GPU, about twice as fast.";
+		if (this.engineInUse?.fallback) return `On, but the standard engine is speaking: ${this.engineInUse.fallback}.`;
+		return "On: used from the next voice loaded.";
 	}
 
 	private async installEngine(signal: AbortSignal): Promise<void> {
@@ -263,6 +342,7 @@ export default class EdgeVoicePlugin extends Plugin {
 			python: "installing Python",
 			package: "installing the speech engine",
 			check: "checking it works",
+			mlx: "setting up the faster engine",
 		};
 		this.setupLog = [];
 		try {
@@ -637,13 +717,20 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	private ensureVoice(): Promise<void> {
-		const key = `${this.settings.language}/${this.settings.voice}`;
+		const engine = this.mlxReady && this.settings.fasterEngine ? "mlx" : undefined;
+		const key = `${this.settings.language}/${this.settings.voice}/${engine ?? "moonshine"}`;
 		if (this.voice?.key === key && this.sidecar.running) return this.voice.ready;
 		this.status.show("busy", "Loading voice");
-		const ready = this.sidecar.load(this.settings.language, this.settings.voice).catch((error: Error) => {
-			if (this.voice?.ready === ready) this.voice = undefined;
-			throw error;
-		});
+		const ready = this.sidecar
+			.load(this.settings.language, this.settings.voice, engine)
+			.then((loaded) => {
+				this.engineInUse = loaded;
+				if (loaded.fallback) console.warn("[edge-voice] the standard engine is speaking:", loaded.fallback);
+			})
+			.catch((error: Error) => {
+				if (this.voice?.ready === ready) this.voice = undefined;
+				throw error;
+			});
 		this.voice = { key, ready };
 		return ready;
 	}
@@ -760,6 +847,18 @@ class ReaderSettingTab extends PluginSettingTab {
 				button.toggleClass("mod-cta", !version);
 			}
 		});
+
+		if (mlxSupported()) {
+			const faster = new Setting(containerEl)
+				.setName("Faster voice engine")
+				.setDesc(this.plugin.fasterEngineStatus());
+			faster.addToggle((toggle) =>
+				toggle.setValue(settings.fasterEngine).onChange((value) => {
+					this.plugin.setFasterEngine(value);
+					faster.setDesc(this.plugin.fasterEngineStatus());
+				}),
+			);
+		}
 
 		new Setting(containerEl)
 			.setName("Python interpreter")

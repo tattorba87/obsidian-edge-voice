@@ -42,7 +42,7 @@ The pre-commit hook formats and lint-fixes staged files and type-checks; the pre
 
 **Behaviour**
 
-- Nothing leaves the computer except the documented downloads: uv (pinned, checksummed), Python and the engine package during setup, and voice files on first use. Don't add network calls or telemetry.
+- Nothing leaves the computer except the documented downloads: uv (pinned, checksummed), Python and the engine package during setup, and voice files on first use; on Apple silicon also the faster engine's packages (pinned), spaCy's English model (pinned, checksummed) and its Kokoro voice files from Hugging Face, with Hugging Face's telemetry off. Don't add network calls or telemetry.
 - `server.py` ships inside `main.js` (Obsidian installs only `main.js`, `manifest.json` and `styles.css`). Keep it to the standard library plus the engine package, and keep its JSON-lines protocol backward compatible within a minor version. Document new requests in its docstring.
 - Text normalization rules (`src/normalize.ts`) must be checked against the engine's pronunciation before they're added. Add a test with the written form and the spoken form.
 - The engine is replaceable: keep engine specifics in `server.py` and `src/setup.ts`, out of the reader, sources and UI.
