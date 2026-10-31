@@ -1197,6 +1197,11 @@ class ReaderSettingTab extends PluginSettingTab {
 			refresh();
 		});
 		clear.addEventListener("click", () => {
+			// A key pressed but not saved is only discarded; the saved one stays.
+			if (pending) {
+				rest();
+				return;
+			}
 			const wasActive = settings.doubleTapKey === settings.doubleTapCustomKey;
 			settings.doubleTapCustomKey = null;
 			if (wasActive) settings.doubleTapKey = DEFAULT_DOUBLE_TAP_KEY;
