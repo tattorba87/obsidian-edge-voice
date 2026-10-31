@@ -159,6 +159,12 @@ export class MarkdownSource implements SegmentSource {
 				if (scroll) scrollToRange(range);
 				return;
 			}
+			if (this.view.getMode() === "preview") {
+				// Reading view shows no editor text, so a highlight there would be
+				// invisible; until the sentence renders, keep what's shown, minus the last sentence.
+				if (word < 0) RenderedHighlight.clear();
+				return;
+			}
 			RenderedHighlight.clear();
 			this.dispatch(word >= 0 ? { sentence, word: words[word] } : { sentence }, scroll);
 		};

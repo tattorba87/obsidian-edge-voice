@@ -125,7 +125,7 @@ export default class EdgeVoicePlugin extends Plugin {
 	/** The log of the last automatic install, shown if it fails. */
 	private setupLog: string[] = [];
 	/** The page being read: playback belongs to it, and pauses when you leave it. */
-	private target?: { view: FileView; path: string | undefined };
+	private target?: { view: FileView; path: string | undefined; mode?: string };
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -414,6 +414,19 @@ export default class EdgeVoicePlugin extends Plugin {
 				if (this.target && this.target.view.file?.path !== this.target.path) pause();
 			}),
 		);
+		// Switching the page being read between Reading view and editing: its
+		// highlight is drawn again in the new mode, and scrolled to.
+		this.registerEvent(
+			workspace.on("layout-change", () => {
+				const target = this.target;
+				if (!target || !(target.view instanceof MarkdownView)) return;
+				const mode = target.view.getMode();
+				if (mode === target.mode) return;
+				target.mode = mode;
+				// A moment for the new mode to render before placing the highlight in it.
+				window.setTimeout(() => this.reader.refreshHighlight(), 100);
+			}),
+		);
 		// Leaving Obsidian: no Obsidian window has focus any more ("pause"), or
 		// none is on screen, being minimized, hidden or covered ("visible").
 		// Checked a moment later, since focus passes between windows through a blur.
@@ -533,7 +546,7 @@ export default class EdgeVoicePlugin extends Plugin {
 			return;
 		}
 		this.reader.start(source);
-		this.target = { view, path: view.file?.path };
+		this.target = { view, path: view.file?.path, mode: view instanceof MarkdownView ? view.getMode() : undefined };
 	}
 
 	private addMenuItems(menu: Menu, view: FileView, source: () => SegmentSource): void {

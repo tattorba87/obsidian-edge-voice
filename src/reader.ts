@@ -105,6 +105,11 @@ export class Reader {
 		void this.run(++this.generation);
 	}
 
+	/** Draws the current sentence's highlight again, e.g. after its page switched between Reading view and editing. */
+	refreshHighlight(): void {
+		void this.current?.highlight();
+	}
+
 	/** Applies a new volume (0 to 1) at once, mid-sentence included. */
 	setVolume(volume: number): void {
 		if (this.gain && this.context) this.gain.gain.setTargetAtTime(volume, this.context.currentTime, 0.02);
