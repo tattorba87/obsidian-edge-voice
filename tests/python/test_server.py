@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -14,8 +15,8 @@ STUB = Path(__file__).resolve().parent / "stub"
 
 
 class Server:
-    def __init__(self):
-        env = {**os.environ, "PYTHONPATH": str(STUB)}
+    def __init__(self, **env_extra):
+        env = {**os.environ, "PYTHONPATH": str(STUB), **env_extra}
         self.proc = subprocess.Popen(
             [sys.executable, "-u", str(ROOT / "server.py")],
             stdin=subprocess.PIPE,
@@ -98,3 +99,45 @@ def test_a_garbled_line_gets_an_error_and_the_server_carries_on(server):
     assert server.read()["error"].startswith("JSONDecodeError")
     server.request(op="paths")
     assert server.read()["ok"] is True
+
+
+def loaded(server, **body):
+    request_id = server.request(op="load", **body)
+    while True:
+        reply = server.read()
+        if reply.get("id") == request_id:
+            return reply
+
+
+def synth_samples(server):
+    server.request(op="synth", text="Hello there.", speed=1.0)
+    audio = base64.b64decode(server.read()["audio"])
+    return struct.unpack(f"<{len(audio) // 4}f", audio)
+
+
+def test_mlx_speaks_kokoro_voices(server):
+    reply = loaded(server, language="en_us", voice="kokoro_af_heart", engine="mlx")
+    assert reply == {"id": reply["id"], "ok": True, "engine": "mlx"}
+    samples = synth_samples(server)
+    assert samples and set(samples) == {0.75}
+
+
+def test_mlx_falls_back_to_moonshine_for_piper_voices(server):
+    reply = loaded(server, language="en_us", voice="piper_en_US-lessac-medium", engine="mlx")
+    assert reply["ok"] is True and reply["engine"] == "moonshine"
+    assert "Kokoro" in reply["fallback"]
+    assert set(synth_samples(server)) == {0.25}
+
+
+def test_mlx_falls_back_to_moonshine_when_it_cannot_load():
+    server = Server(MLX_STUB_FAIL="1")
+    assert server.read() == {"event": "ready"}
+    reply = loaded(server, language="en_us", voice="kokoro_af_heart", engine="mlx")
+    assert reply["engine"] == "moonshine" and "no Metal GPU" in reply["fallback"]
+    assert set(synth_samples(server)) == {0.25}
+    server.close()
+
+
+def test_load_without_an_engine_replies_as_before(server):
+    reply = loaded(server, language="en_us", voice="kokoro_af_heart")
+    assert reply == {"id": reply["id"], "ok": True}

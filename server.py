@@ -18,6 +18,16 @@ line on stdin, one reply per request on stdout, in order:
 
 A failed request gets {"id": n, "error": "..."}. While a voice downloads, the
 server also emits {"event": "progress", "fraction": 0.4, "file": "..."}.
+
+On Apple silicon, "load" can ask for Kokoro on MLX (the GPU, via mlx-audio):
+
+  {"id": 5, "op": "load", "language": "en_us", "voice": "kokoro_am_santa", "engine": "mlx"}
+  -> {"id": 5, "ok": true, "engine": "mlx"}
+
+When MLX can't take the voice (Piper voices, other languages) or fails to
+load, the voice loads with moonshine-voice instead and the reply says why:
+  -> {"id": 5, "ok": true, "engine": "moonshine", "fallback": "..."}
+A "load" without "engine" uses moonshine-voice and replies as above.
 """
 
 import array
@@ -25,6 +35,42 @@ import base64
 import json
 import os
 import sys
+from pathlib import Path
+
+# MLX's Kokoro weights in the Hugging Face cache (mlx-community/Kokoro-82M-bf16).
+MLX_WEIGHTS = "mlx-community/Kokoro-82M-bf16"
+
+
+class MlxVoice:
+    """Kokoro on MLX, behind the same synthesize/close calls as moonshine-voice."""
+
+    def __init__(self, voice: str):
+        # Downloads go next to this script (~/.edge-voice), so deleting that
+        # folder removes them, and Hugging Face sends no telemetry.
+        os.environ.setdefault("HF_HOME", str(Path(__file__).resolve().parent / "hf"))
+        os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+        from mlx_audio.tts.utils import load_model
+
+        self.voice = voice.removeprefix("kokoro_")
+        self.model = load_model(MLX_WEIGHTS)
+
+    def synthesize(self, text, speed=None):
+        samples = []
+        for result in self.model.generate(text, voice=self.voice, speed=speed or 1.0, lang_code="a"):
+            samples.extend(result.audio.tolist())
+        return samples, self.model.sample_rate
+
+    def close(self):
+        pass
+
+
+def mlx_refusal(language: str, voice: str):
+    """Why MLX can't speak this voice, or None if it can."""
+    if language != "en_us":
+        return "the faster engine only speaks English"
+    if not voice.startswith("kokoro_"):
+        return "the faster engine only has Kokoro voices"
+    return None
 
 
 def main() -> None:
@@ -55,19 +101,39 @@ def main() -> None:
             request_id = request.get("id")
             op = request.get("op")
             if op == "load":
-                # Open the new voice first, so a bad choice keeps the old one.
-                candidate = TextToSpeech().language(request.get("language") or "en_us")
-                if request.get("voice"):
-                    candidate.voice(request["voice"])
-                candidate.on_progress(on_progress)
-                candidate.load()
-                # ONNX Runtime's first run is slow; pay for it here, not on
-                # the first sentence someone is waiting to hear.
-                candidate.synthesize("Ready.")
+                language = request.get("language") or "en_us"
+                voice = request.get("voice") or ""
+                engine = request.get("engine")
+                candidate = None
+                fallback = None
+                if engine == "mlx":
+                    fallback = mlx_refusal(language, voice)
+                    if fallback is None:
+                        try:
+                            candidate = MlxVoice(voice)
+                            candidate.synthesize("Ready.")
+                        except Exception as error:  # Any MLX trouble: Moonshine speaks instead.
+                            candidate = None
+                            fallback = f"the faster engine failed to load ({type(error).__name__}: {error})"
+                if candidate is None:
+                    # Open the new voice first, so a bad choice keeps the old one.
+                    candidate = TextToSpeech().language(language)
+                    if voice:
+                        candidate.voice(voice)
+                    candidate.on_progress(on_progress)
+                    candidate.load()
+                    # ONNX Runtime's first run is slow; pay for it here, not on
+                    # the first sentence someone is waiting to hear.
+                    candidate.synthesize("Ready.")
                 if tts is not None:
                     tts.close()
                 tts = candidate
-                send({"id": request_id, "ok": True})
+                reply = {"id": request_id, "ok": True}
+                if engine is not None:
+                    reply["engine"] = "moonshine" if fallback else engine
+                    if fallback:
+                        reply["fallback"] = fallback
+                send(reply)
             elif op == "synth":
                 if tts is None:
                     raise RuntimeError("no voice loaded")
