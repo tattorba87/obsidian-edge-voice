@@ -61,7 +61,7 @@ Reading belongs to the page it started on.
 
 When reading starts, a player bar floats above the status bar: previous / play-pause / next / stop, the speed with − and + buttons (click the speed for presets from 0.75× to 2.5×), and a speaker icon with a vertical volume slider that pops up on hover (click the icon to mute, or scroll over it). A new speed is heard from the next sentence; volume changes at once. While a sentence is being synthesized, a glow runs around the bar's edge. The ⌄ button shrinks the bar to a small pill in the corner, and _Show player controls_ in settings turns it off.
 
-The status bar shows what's happening: a spinner while a voice loads or a sentence is prepared (with a progress bar while a voice downloads), moving bars while reading, and resting bars while paused, with the page position and speed. Click it for the speed presets.
+The status bar shows what's happening: a spinner while a voice loads (with a progress bar while a voice downloads), "Synthesizing" while the next sentence is prepared (the player bar glows; the spinner appears only when the bar is turned off), moving bars while reading, and resting bars while paused, with the page position and speed. Click it for the speed presets.
 
 ### Look and storage
 

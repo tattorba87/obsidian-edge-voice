@@ -421,6 +421,10 @@ body.theme-dark {
 }
 
 /* Preparing or loading: the bars give way to a spinning ring. */
+.edge-voice-status[data-state="text"] .edge-voice-indicator {
+	display: none;
+}
+
 .edge-voice-status[data-state="busy"] .edge-voice-eq-bar,
 .edge-voice-status[data-state="download"] .edge-voice-eq-bar {
 	display: none;
