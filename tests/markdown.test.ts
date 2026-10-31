@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MarkdownSource } from "../src/markdown";
+import { MarkdownSource, sectionLines } from "../src/markdown";
 import type { Segment } from "../src/reader";
 
 /** A MarkdownView with just the editor calls MarkdownSource makes at construction. */
@@ -77,5 +77,19 @@ describe("MarkdownSource", () => {
 		expect(segment.pauses[1]).toBe(1);
 		expect(segment.spokenText(0, 2)).toBe("Since then,");
 		expect(segment.spokenText(2, 7)).toBe("it has rained every day.");
+	});
+});
+
+describe("sectionLines", () => {
+	const el = {} as HTMLElement;
+
+	it("reads Reading view sections as Obsidian keeps them now, by start and end position", () => {
+		expect(sectionLines([{ el, start: { line: 18 }, end: { line: 20 } }])).toEqual([
+			{ el, lineStart: 18, lineEnd: 20 },
+		]);
+	});
+
+	it("reads them as older Obsidian versions kept them, and skips any without lines", () => {
+		expect(sectionLines([{ el, lineStart: 3, lineEnd: 4 }, { el }])).toEqual([{ el, lineStart: 3, lineEnd: 4 }]);
 	});
 });
