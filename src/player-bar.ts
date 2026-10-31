@@ -161,7 +161,8 @@ export class PlayerBar {
 
 	update(state: ReaderState, detail?: string): void {
 		if (state === "idle") this.heard = false;
-		if (state === "playing") this.heard = true;
+		// Shown from the first synthesis on, so its glow says reading has started.
+		if (state === "playing" || state === "loading") this.heard = true;
 		this.el.hidden = !this.heard || !this.enabled;
 		const playing = state === "playing" || state === "loading";
 		setIcon(this.playButton, playing ? "pause" : "play");

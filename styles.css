@@ -125,20 +125,61 @@ body.theme-dark {
 	border-radius: 999px;
 }
 
-/* While a sentence is being prepared, a ring spins around play/pause. */
-.edge-voice-bar .edge-voice-button {
-	position: relative;
+/*
+ * While a sentence is being synthesized, a glow travels around the bar's edge:
+ * a conic gradient turned by an animated angle, masked to a 2px ring (::before),
+ * with a blurred copy behind it for the glow (::after).
+ */
+@property --edge-voice-orbit {
+	syntax: "<angle>";
+	initial-value: 0deg;
+	inherits: true;
 }
 
-.edge-voice-bar.is-loading .edge-voice-button:nth-child(2)::after {
+.edge-voice-bar::before,
+.edge-voice-bar::after {
 	content: "";
 	position: absolute;
-	inset: 1px;
-	border-radius: 50%;
-	border: 2px solid transparent;
-	border-top-color: var(--interactive-accent);
-	border-right-color: var(--interactive-accent);
-	animation: edge-voice-spin 0.9s linear infinite;
+	inset: -1px;
+	padding: 2px;
+	border-radius: inherit;
+	background: conic-gradient(
+		from var(--edge-voice-orbit),
+		transparent 0turn 0.45turn,
+		var(--edge-voice-accent, var(--interactive-accent)) 0.9turn,
+		transparent 1turn
+	);
+	mask:
+		linear-gradient(#000 0 0) content-box exclude,
+		linear-gradient(#000 0 0);
+	opacity: 0;
+	transition: opacity 300ms ease;
+	pointer-events: none;
+}
+
+.edge-voice-bar::after {
+	inset: -3px;
+	padding: 5px;
+	filter: blur(8px);
+	z-index: -1;
+}
+
+.edge-voice-bar.is-loading {
+	animation: edge-voice-orbit 1.8s linear infinite;
+}
+
+.edge-voice-bar.is-loading::before {
+	opacity: 1;
+}
+
+.edge-voice-bar.is-loading::after {
+	opacity: 1;
+}
+
+@keyframes edge-voice-orbit {
+	to {
+		--edge-voice-orbit: 360deg;
+	}
 }
 
 @keyframes edge-voice-spin {
@@ -408,7 +449,7 @@ body.theme-dark {
 @media (prefers-reduced-motion: reduce) {
 	.edge-voice-eq-bar,
 	.edge-voice-indicator::before,
-	.edge-voice-bar .edge-voice-button::after,
+	.edge-voice-bar,
 	.edge-voice-setup-icon {
 		animation: none !important;
 	}
