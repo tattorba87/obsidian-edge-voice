@@ -26,8 +26,6 @@ export class CancelledError extends Error {
 export class Sidecar {
 	onProgress?: (fraction: number, file: string) => void;
 	onExit?: (message: string) => void;
-	/** Called when synthesis starts (true) and when nothing is left to synthesize (false). */
-	onBusy?: (busy: boolean) => void;
 
 	private proc?: ChildProcessWithoutNullStreams;
 	private ready?: Promise<void>;
@@ -35,8 +33,6 @@ export class Sidecar {
 	private pending = new Map<number, Pending>();
 	private waiting: { id: number; body: Record<string, unknown> }[] = [];
 	private inFlight?: number;
-	/** Synthesis requests sent or waiting, which is what "busy" means. */
-	private synthesizing = 0;
 	private stdoutBuffer = "";
 	private stderrTail: string[] = [];
 
@@ -141,13 +137,7 @@ export class Sidecar {
 	}
 
 	async synthesize(text: string, speed: number, signal?: AbortSignal): Promise<Synthesis> {
-		if (this.synthesizing++ === 0) this.onBusy?.(true);
-		let reply: Record<string, unknown>;
-		try {
-			reply = await this.request({ op: "synth", text, speed }, signal);
-		} finally {
-			if (--this.synthesizing === 0) this.onBusy?.(false);
-		}
+		const reply = await this.request({ op: "synth", text, speed }, signal);
 		const bytes = Buffer.from(reply.audio as string, "base64");
 		// Copy into a fresh buffer: Buffer slices can sit at unaligned offsets.
 		const samples = new Float32Array(bytes.byteLength / 4);
