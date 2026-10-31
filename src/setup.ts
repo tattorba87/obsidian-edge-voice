@@ -4,6 +4,12 @@ import { existsSync, mkdirSync, promises as fs, readFileSync, writeFileSync } fr
 import { homedir, release } from "os";
 import { dirname, join } from "path";
 import { requestUrl } from "obsidian";
+import lockDarwinArm64Mlx from "../locks/darwin-arm64-mlx.txt";
+import lockDarwinArm64 from "../locks/darwin-arm64.txt";
+import lockDarwinX64 from "../locks/darwin-x64.txt";
+import lockLinuxArm64 from "../locks/linux-arm64.txt";
+import lockLinuxX64 from "../locks/linux-x64.txt";
+import lockWin32X64 from "../locks/win32-x64.txt";
 import serverSource from "../server.py";
 
 /**
@@ -45,7 +51,21 @@ const UV_BUILDS: Record<string, { asset: string; sha256: string }> = {
 
 const PYTHON_VERSION = "3.12";
 // 0.1 is the API the sidecar speaks (TextToSpeech().language().voice().load()).
-const PACKAGE = "moonshine-voice>=0.1.5,<0.2";
+// scripts/lock-engine.sh locks this version and everything it needs.
+export const PACKAGE = "moonshine-voice==0.1.5";
+
+// Every package the engine installs, at exact versions with their hashes
+// (scripts/lock-engine.sh). uv installs them with --require-hashes, so a
+// changed or substituted package fails to install instead of running.
+// Windows on ARM runs the x64 Python, so it uses the x64 lock.
+export const LOCKS: Record<string, string> = {
+	"darwin-arm64": lockDarwinArm64,
+	"darwin-x64": lockDarwinX64,
+	"linux-x64": lockLinuxX64,
+	"linux-arm64": lockLinuxArm64,
+	"win32-x64": lockWin32X64,
+	"win32-arm64": lockWin32X64,
+};
 
 // moonshine-voice publishes no wheel for Intel Macs, and its Apple Silicon
 // wheel needs macOS 15. The engine-wheels workflow builds both from the same
@@ -74,9 +94,10 @@ const PYTHON_REQUEST: Record<string, string> = {
 // On Apple silicon with macOS 14 or later (MLX's floor), Kokoro can run on
 // the GPU through MLX, about twice as fast as Moonshine on the CPU in the
 // engine benchmark (scripts/bench_engines.py). It goes into the same
-// environment, after the engine. misaki needs spaCy's English model, which is
-// downloaded and checked here, so spaCy never fetches it itself.
-const MLX_PACKAGES = ["mlx-audio==0.5.9", "misaki[en]==0.9.4"];
+// environment, after the engine, from its own lock. misaki needs spaCy's
+// English model, which is downloaded and checked here, so spaCy never fetches
+// it itself.
+export const MLX_PACKAGES = ["mlx-audio==0.5.9", "misaki[en]==0.9.4"];
 const SPACY_MODEL = {
 	url: "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
 	asset: "en_core_web_sm-3.8.0-py3-none-any.whl",
@@ -188,7 +209,17 @@ export async function installMlx(
 	await download(SPACY_MODEL.url, SPACY_MODEL.sha256, model, progress, signal);
 	await runChecked(
 		UV_PATH,
-		["pip", "install", "--python", python, ...MLX_PACKAGES, model],
+		[
+			"pip",
+			"install",
+			"--python",
+			python,
+			"--require-hashes",
+			"--find-links",
+			dirname(model),
+			"-r",
+			await writeLock("darwin-arm64-mlx", lockDarwinArm64Mlx),
+		],
 		uvEnv(),
 		progress,
 		signal,
@@ -275,6 +306,14 @@ function sidecarRequest(
 	});
 }
 
+/** Writes a lock where uv can read it, and returns its path. */
+async function writeLock(name: string, lock: string): Promise<string> {
+	const path = join(SETUP_HOME, "locks", `${name}.txt`);
+	await fs.mkdir(dirname(path), { recursive: true });
+	await fs.writeFile(path, lock);
+	return path;
+}
+
 function uvEnv(): NodeJS.ProcessEnv {
 	return {
 		...process.env,
@@ -299,27 +338,25 @@ export async function setUpEngine(progress: SetupProgress, signal: AbortSignal):
 	progress.step("python", "done");
 
 	progress.step("package", "running");
+	const lock = LOCKS[key];
+	if (!lock) throw new Error(`No setup is available for ${key}.`);
+	const install = ["pip", "install", "--python", VENV_PYTHON, "--require-hashes", "-r", await writeLock(key, lock)];
 	if (source.wheel) {
 		if (!source.wheel.sha256) throw new Error(`The speech engine for ${key} hasn't been published yet.`);
 		const wheel = join(SETUP_HOME, "download", source.wheel.asset);
 		await download(source.wheel.url, source.wheel.sha256, wheel, progress, signal);
-		// Reinstall even at the same version, so the checked file is what runs.
+		// The lock names this wheel by its hash; reinstall even at the same
+		// version, so the checked file is what runs.
 		await runChecked(
 			UV_PATH,
-			["pip", "install", "--python", VENV_PYTHON, "--reinstall-package", "moonshine-voice", wheel],
+			[...install, "--find-links", dirname(wheel), "--reinstall-package", "moonshine-voice"],
 			env,
 			progress,
 			signal,
 		);
 		await fs.rm(dirname(wheel), { recursive: true, force: true });
 	} else {
-		await runChecked(
-			UV_PATH,
-			["pip", "install", "--python", VENV_PYTHON, "--upgrade", PACKAGE],
-			env,
-			progress,
-			signal,
-		);
+		await runChecked(UV_PATH, install, env, progress, signal);
 	}
 	progress.step("package", "done");
 
