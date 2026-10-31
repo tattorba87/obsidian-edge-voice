@@ -35,7 +35,9 @@ import {
 	DEFAULT_DOUBLE_TAP_KEY,
 	DOUBLE_TAP_PRESETS,
 	DoubleTapDetector,
+	keyCap,
 	keyLabel,
+	shortKeyLabel,
 } from "./double-tap";
 import { Reader, ReaderState, SegmentSource } from "./reader";
 import { Sidecar } from "./sidecar";
@@ -1051,7 +1053,16 @@ class ReaderSettingTab extends PluginSettingTab {
 			.setDesc(
 				"Double-tap a key to start reading, and again to pause or resume. Works while Obsidian is the active app.",
 			);
-		const recorder = containerEl.createDiv({ cls: "edge-voice-key-recorder" });
+		// Custom: a panel inside the setting's own box, with the key, Save and clear in a row
+		// and a message line below that always keeps its space, so nothing shifts.
+		setting.settingEl.addClass("edge-voice-key-setting");
+		const panel = setting.settingEl.createDiv({ cls: "edge-voice-key-panel" });
+		const row = panel.createDiv({ cls: "edge-voice-key-row" });
+		const capture = row.createDiv({ cls: "edge-voice-key-capture", attr: { tabindex: "0", role: "button" } });
+		const confirm = row.createEl("button", { cls: "mod-cta", text: "Save" });
+		const clear = row.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Clear the custom key" } });
+		setIcon(clear, "x");
+		const message = panel.createDiv({ cls: "edge-voice-key-message" });
 		const chime = new Setting(containerEl)
 			.setName("Chime on double tap")
 			.setDesc("A short chime, rising when reading starts or resumes and falling when it pauses.")
@@ -1063,103 +1074,95 @@ class ReaderSettingTab extends PluginSettingTab {
 			);
 
 		let dropdown!: DropdownComponent;
-		const customLabel = () =>
-			settings.doubleTapCustomKey ? `Custom: ${keyLabel(settings.doubleTapCustomKey)}` : "Custom…";
-		const refresh = () => {
-			const custom = !isPreset(settings.doubleTapKey);
-			dropdown.selectEl.querySelector(`option[value="${CUSTOM}"]`)?.setText(customLabel());
-			dropdown.setValue(custom ? CUSTOM : settings.doubleTapKey);
-			dropdown.setDisabled(!settings.doubleTapEnabled);
-			chime.setDisabled(!settings.doubleTapEnabled);
-			recorder.hidden = !settings.doubleTapEnabled || dropdown.getValue() !== CUSTOM;
-		};
-
-		// The box: shows the saved custom key, or the key being pressed and why it can't be used.
-		const box = recorder.createDiv({ cls: "edge-voice-key-box", attr: { tabindex: "0", role: "textbox" } });
-		const keyText = box.createSpan({ cls: "edge-voice-key-text" });
-		const clear = box.createEl("button", {
-			cls: "edge-voice-key-clear clickable-icon",
-			attr: { "aria-label": "Clear" },
-		});
-		setIcon(clear, "x-circle");
-		const footer = recorder.createDiv({ cls: "edge-voice-key-footer" });
-		const message = footer.createSpan({ cls: "edge-voice-key-message" });
-		const confirm = footer.createEl("button", { cls: "mod-cta", text: "Use this key" });
 		let pending: string | null = null;
 
-		const showBox = () => {
-			const saved = settings.doubleTapCustomKey;
-			keyText.setText(pending ? keyLabel(pending) : saved ? keyLabel(saved) : "Click here, then press a key");
-			box.toggleClass("is-empty", !pending && !saved);
-			confirm.hidden = !pending;
-			clear.hidden = !pending && !saved;
+		/** Draws `code` as a key cap (⌘ and "Right"), or the placeholder. */
+		const showKey = (code: string | null) => {
+			capture.empty();
+			capture.toggleClass("is-empty", !code);
+			if (!code) {
+				capture.createSpan({ text: "Click to record a key" });
+				capture.setAttr("aria-label", "Record a custom key");
+				return;
+			}
+			const { symbol, side } = keyCap(code);
+			capture.createEl("kbd", { text: symbol });
+			if (side) capture.createSpan({ cls: "edge-voice-key-side", text: side });
+			capture.setAttr("aria-label", `${keyLabel(code)}; click to change`);
 		};
-		const stopRecording = () => {
-			this.plugin.recordingKey = false;
-			box.removeClass("is-recording");
+		const say = (text: string, error = false) => {
+			message.setText(text);
+			message.toggleClass("is-error", error);
+		};
+		/** The resting state: the saved custom key, or the placeholder. */
+		const rest = () => {
+			pending = null;
+			const saved = settings.doubleTapCustomKey;
+			showKey(saved);
+			capture.removeClass("is-invalid");
+			confirm.disabled = true;
+			clear.disabled = !saved;
+			say(saved ? `Double-tap ${keyLabel(saved)} to read.` : "Click the key above, then press the one you want.");
+		};
+		const refresh = () => {
+			dropdown.setValue(isPreset(settings.doubleTapKey) ? settings.doubleTapKey : CUSTOM);
+			dropdown.setDisabled(!settings.doubleTapEnabled);
+			chime.setDisabled(!settings.doubleTapEnabled);
+			panel.hidden = !settings.doubleTapEnabled || dropdown.getValue() !== CUSTOM;
 		};
 
-		box.addEventListener("focus", () => {
+		capture.addEventListener("focus", () => {
 			this.plugin.recordingKey = true;
-			box.addClass("is-recording");
-			if (!pending) {
-				keyText.setText("Press a key…");
-				message.setText("");
-			}
+			capture.addClass("is-recording");
+			if (!pending) say("Press a key. Esc cancels.");
 		});
-		box.addEventListener("blur", () => {
-			stopRecording();
-			if (!pending) showBox();
+		capture.addEventListener("blur", () => {
+			this.plugin.recordingKey = false;
+			capture.removeClass("is-recording");
+			if (!pending) rest();
 		});
-		box.addEventListener("keydown", (event) => {
+		capture.addEventListener("keydown", (event) => {
 			if (event.code === "Tab") return; // still moves focus
 			event.preventDefault();
 			event.stopPropagation();
 			if (event.repeat) return;
 			if (event.code === "Escape") {
 				pending = null;
-				message.setText("");
-				box.blur();
+				capture.blur();
 				return;
 			}
 			const problem = customKeyProblem(event);
-			box.toggleClass("is-invalid", problem !== null);
+			showKey(event.code);
+			capture.toggleClass("is-invalid", problem !== null);
 			if (problem) {
 				pending = null;
-				keyText.setText(keyLabel(event.code));
-				message.setText(problem);
-				confirm.hidden = true;
+				confirm.disabled = true;
+				say(problem, true);
 				return;
 			}
 			pending = event.code;
-			message.setText(
+			confirm.disabled = false;
+			clear.disabled = false;
+			say(
 				isPreset(event.code)
-					? `${keyLabel(event.code)} is also in the menu above.`
-					: "Double-tap it to test after saving.",
+					? `${keyLabel(event.code)} is also in the menu. Save to use it.`
+					: `Save to use ${keyLabel(event.code)}.`,
 			);
-			showBox();
 		});
 		confirm.addEventListener("click", () => {
 			if (!pending) return;
 			settings.doubleTapCustomKey = pending;
 			settings.doubleTapKey = pending;
-			pending = null;
-			message.setText("Saved.");
-			box.removeClass("is-invalid");
 			save();
-			showBox();
+			rest();
 			refresh();
 		});
-		clear.addEventListener("click", (event) => {
-			event.stopPropagation();
-			pending = null;
+		clear.addEventListener("click", () => {
 			const wasActive = settings.doubleTapKey === settings.doubleTapCustomKey;
 			settings.doubleTapCustomKey = null;
 			if (wasActive) settings.doubleTapKey = DEFAULT_DOUBLE_TAP_KEY;
-			message.setText("");
-			box.removeClass("is-invalid");
 			save();
-			showBox();
+			rest();
 			refresh();
 		});
 
@@ -1172,21 +1175,19 @@ class ReaderSettingTab extends PluginSettingTab {
 		);
 		setting.addDropdown((component) => {
 			dropdown = component;
-			for (const code of DOUBLE_TAP_PRESETS) dropdown.addOption(code, keyLabel(code));
-			dropdown.addOption(CUSTOM, customLabel());
+			dropdown.selectEl.addClass("edge-voice-key-menu");
+			for (const code of DOUBLE_TAP_PRESETS) dropdown.addOption(code, shortKeyLabel(code));
+			dropdown.addOption(CUSTOM, "Custom");
 			dropdown.onChange((value) => {
-				pending = null;
-				message.setText("");
-				box.removeClass("is-invalid");
+				rest();
 				if (value === CUSTOM) {
-					// The saved custom key comes back; with none yet, the box waits for one.
+					// The saved custom key comes back; with none yet, the panel waits for one.
 					if (settings.doubleTapCustomKey) {
 						settings.doubleTapKey = settings.doubleTapCustomKey;
 						save();
 					}
-					showBox();
-					recorder.hidden = false;
-					if (!settings.doubleTapCustomKey) box.focus();
+					panel.hidden = false;
+					if (!settings.doubleTapCustomKey) capture.focus();
 					return;
 				}
 				settings.doubleTapKey = value;
@@ -1194,7 +1195,7 @@ class ReaderSettingTab extends PluginSettingTab {
 				refresh();
 			});
 		});
-		showBox();
+		rest();
 		refresh();
 	}
 
