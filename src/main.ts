@@ -309,8 +309,11 @@ export default class EdgeVoicePlugin extends Plugin {
 	private async installMlx(signal: AbortSignal): Promise<void> {
 		const log: string[] = [];
 		try {
+			// Its files download with it, so switching to it later doesn't wait on them.
+			const voice = this.settings.voice.startsWith("kokoro_") ? this.settings.voice : DEFAULT_SETTINGS.voice;
 			await installMlx(
 				this.settings.pythonPath,
+				voice,
 				{ step: () => undefined, log: (line) => log.push(line) },
 				signal,
 			);
@@ -584,6 +587,9 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.stop();
 		this.sidecar.stop();
 		this.voice = undefined;
+		// Without its files, the faster engine would download them on the next press
+		// of play; the standard one speaks until they're fetched again at start-up.
+		if (items.some((item) => item.id === "mlx")) this.mlxReady = false;
 		for (const item of items) await deleteItem(item);
 		const freed = items.reduce((sum, item) => sum + item.bytes, 0);
 		new Notice(`Freed ${formatBytes(freed)}.`);
