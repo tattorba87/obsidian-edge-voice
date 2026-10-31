@@ -15,7 +15,7 @@ The plugin starts `server.py` in a private Python environment that has `moonshin
 
 Works in Obsidian desktop on macOS, Windows and Linux.
 
-Install and enable the plugin. That's all: it sets up its speech engine in the background, with progress in the status bar, then downloads the default voice (Kokoro, `kokoro_am_santa`) and tells you when it's ready to read. Press play before then and reading starts as soon as it is. If setup fails, a notice offers the log and a way to try again.
+Install and enable the plugin. That's all: it sets up its speech engine in the background, with progress in the status bar, then downloads the default voice (Kokoro, `kokoro_af_bella`) and tells you when it's ready to read. Press play before then and reading starts as soon as it is. If setup fails, a notice offers the log and a way to try again.
 
 Setup downloads about 100 MB into `~/.edge-voice`, once: [uv](https://docs.astral.sh/uv/) (a pinned release, checked against its published SHA-256), a private Python 3.12 that uv installs, and the [moonshine-voice](https://pypi.org/project/moonshine-voice/) package. Every package is installed from a lock with exact versions and hashes, so nothing changed or substituted can be installed. The voice adds a few hundred MB. Nothing else is installed, nothing runs at login, and your notes never leave your computer. Delete `~/.edge-voice` to remove it all.
 
@@ -75,7 +75,7 @@ Bind the commands you use to hotkeys under Settings → Hotkeys.
 
 ## Voices
 
-Kokoro voices (`kokoro_*`, the default is `kokoro_am_santa`) sound the most natural and synthesize about twice as fast as they play, even on a 2020 Intel i5. Piper voices (`piper_*`) are faster still, so reading starts sooner. Pick one under Settings → Edge Voice → Voice; the list marks downloaded voices with ✓.
+Kokoro voices (`kokoro_*`, the default is `kokoro_af_bella`) sound the most natural and synthesize about twice as fast as they play, even on a 2020 Intel i5. Piper voices (`piper_*`) are faster still, so reading starts sooner. Pick one under Settings → Edge Voice → Voice; the list marks downloaded voices with ✓.
 
 ## Limits
 
