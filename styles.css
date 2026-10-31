@@ -183,13 +183,13 @@ body.theme-dark {
 	filter: blur(6px);
 }
 
-.edge-voice-bar.is-loading {
+.edge-voice-bar.edge-voice-synthesizing {
 	/* Only the glow outlines the bar then; the border would show as a grey line beside it. */
 	border-color: transparent;
 	animation: edge-voice-orbit 1.8s linear infinite;
 }
 
-.edge-voice-bar.is-loading .edge-voice-glow {
+.edge-voice-bar.edge-voice-synthesizing .edge-voice-glow {
 	opacity: 1;
 }
 

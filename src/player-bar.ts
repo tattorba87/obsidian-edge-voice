@@ -172,7 +172,8 @@ export class PlayerBar {
 		const playing = state === "playing" || state === "loading";
 		setIcon(this.playButton, playing ? "pause" : "play");
 		this.playButton.setAttribute("aria-label", playing ? "Pause" : "Resume");
-		this.el.toggleClass("is-loading", state === "loading");
+		// Not "is-loading": Obsidian draws its own progress bar on any element with that class.
+		this.el.toggleClass("edge-voice-synthesizing", state === "loading");
 		if (detail) this.whereEl.setText(detail);
 	}
 
