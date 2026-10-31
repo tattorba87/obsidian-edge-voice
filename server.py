@@ -37,22 +37,39 @@ import os
 import sys
 from pathlib import Path
 
-# MLX's Kokoro weights in the Hugging Face cache (mlx-community/Kokoro-82M-bf16).
+# Kokoro for MLX on Hugging Face (the model and its voices, as .safetensors),
+# pinned to one commit so what users download can't change under them.
 MLX_WEIGHTS = "mlx-community/Kokoro-82M-bf16"
+MLX_REVISION = "a71e4d38b236d968966a2002c4c895dbd12b1c3c"
+
+
+def private_hugging_face() -> None:
+    """Keeps Hugging Face downloads in ~/.edge-voice, anonymous and without telemetry.
+
+    Set before huggingface_hub is imported, since it reads these then. HF_HOME
+    is forced, not defaulted: one set for other tools would put the files where
+    deleting ~/.edge-voice doesn't reach. Tokens are dropped, so nothing ties the
+    downloads to anyone's account.
+    """
+    os.environ["HF_HOME"] = str(Path(__file__).resolve().parent / "hf")
+    os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+    os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+    os.environ.pop("HF_TOKEN", None)
+    os.environ.pop("HUGGING_FACE_HUB_TOKEN", None)
 
 
 class MlxVoice:
     """Kokoro on MLX, behind the same synthesize/close calls as moonshine-voice."""
 
     def __init__(self, voice: str):
-        # Downloads go next to this script (~/.edge-voice), so deleting that
-        # folder removes them, and Hugging Face sends no telemetry.
-        os.environ.setdefault("HF_HOME", str(Path(__file__).resolve().parent / "hf"))
-        os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+        private_hugging_face()
+        from huggingface_hub import hf_hub_download
         from mlx_audio.tts.utils import load_model
 
-        self.voice = voice.removeprefix("kokoro_")
-        self.model = load_model(MLX_WEIGHTS)
+        # The voice file at the pinned commit, given to mlx-audio by path.
+        name = voice.removeprefix("kokoro_")
+        self.voice = hf_hub_download(MLX_WEIGHTS, f"voices/{name}.safetensors", revision=MLX_REVISION)
+        self.model = load_model(MLX_WEIGHTS, revision=MLX_REVISION)
 
     def synthesize(self, text, speed=None):
         samples = []
