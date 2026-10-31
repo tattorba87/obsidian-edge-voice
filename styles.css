@@ -158,21 +158,29 @@ body.theme-dark {
 	margin: 0;
 	padding: 2px;
 	border-radius: inherit;
+	/* A short head that fades through transparent orange, never transparent black, which would grey it. */
 	background: conic-gradient(
 		from var(--edge-voice-orbit),
-		transparent 0turn 0.45turn,
+		rgba(var(--edge-voice-accent), 0) 0turn 0.62turn,
 		rgb(var(--edge-voice-accent)) 0.9turn,
-		transparent 1turn
+		rgba(var(--edge-voice-accent), 0) 1turn
 	);
 	mask:
 		linear-gradient(#000 0 0) content-box exclude,
 		linear-gradient(#000 0 0);
 }
 
+/* The halo follows only the bright head, so nothing faint spreads over the page. */
 .edge-voice-glow-halo {
 	inset: -3px;
 	padding: 5px;
-	filter: blur(8px);
+	background: conic-gradient(
+		from var(--edge-voice-orbit),
+		rgba(var(--edge-voice-accent), 0) 0turn 0.78turn,
+		rgba(var(--edge-voice-accent), 0.85) 0.9turn,
+		rgba(var(--edge-voice-accent), 0) 1turn
+	);
+	filter: blur(6px);
 }
 
 .edge-voice-bar.is-loading {
