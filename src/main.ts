@@ -18,7 +18,14 @@ import { installedVersion, installServerScript, SETUP_HOME, setUpEngine, SetupSt
 import { StatusIndicator, StatusKind } from "./status";
 import { deleteItem, formatBytes, scanEngine, scanVoices, StorageItem } from "./storage";
 import { SetupModal } from "./setup-modal";
-import { DEFAULT_DOUBLE_TAP_KEY, DOUBLE_TAP_KEYS, DoubleTapDetector, keyLabel } from "./double-tap";
+import { playChime } from "./chime";
+import {
+	customKeyProblem,
+	DEFAULT_DOUBLE_TAP_KEY,
+	DOUBLE_TAP_PRESETS,
+	DoubleTapDetector,
+	keyLabel,
+} from "./double-tap";
 import { Reader, ReaderState, SegmentSource } from "./reader";
 import { Sidecar } from "./sidecar";
 import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "./colors";
@@ -36,6 +43,9 @@ interface ReaderSettings {
 	keepReadingInBackground: boolean;
 	doubleTapEnabled: boolean;
 	doubleTapKey: string;
+	/** The one key recorded under "Custom…", kept while a preset is chosen. */
+	doubleTapCustomKey: string | null;
+	doubleTapChime: boolean;
 	volume: number;
 	showPlayer: boolean;
 	highlightTheme: string;
@@ -54,6 +64,8 @@ const DEFAULT_SETTINGS: ReaderSettings = {
 	keepReadingInBackground: false,
 	doubleTapEnabled: false,
 	doubleTapKey: DEFAULT_DOUBLE_TAP_KEY,
+	doubleTapCustomKey: null,
+	doubleTapChime: true,
 	volume: 1,
 	showPlayer: true,
 	highlightTheme: DEFAULT_HIGHLIGHT_THEME,
@@ -103,6 +115,8 @@ export default class EdgeVoicePlugin extends Plugin {
 		},
 	};
 	private menuRequest?: MenuRequest;
+	/** While the settings record a custom key, the shortcut stays quiet. */
+	recordingKey = false;
 	private engine!: EngineSetup;
 	/** The log of the last automatic install, shown if it fails. */
 	private setupLog: string[] = [];
@@ -184,6 +198,11 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	async loadSettings(): Promise<void> {
 		this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<ReaderSettings> | null) };
+		// A key recorded before there was one custom slot becomes the custom key.
+		const { doubleTapKey, doubleTapCustomKey } = this.settings;
+		if (!doubleTapCustomKey && !DOUBLE_TAP_PRESETS.includes(doubleTapKey)) {
+			this.settings.doubleTapCustomKey = doubleTapKey;
+		}
 	}
 
 	async saveSettings(): Promise<void> {
@@ -328,6 +347,12 @@ export default class EdgeVoicePlugin extends Plugin {
 		}
 	}
 
+	/** Whether a double tap now starts or resumes reading, rather than pausing or stopping it (see toggle). */
+	private toggleStartsReading(): boolean {
+		const state = this.reader.state;
+		return state === "idle" || (state === "paused" && this.onTargetPage());
+	}
+
 	/** Stops reading the target page and forgets it. */
 	private stop(): void {
 		this.reader.stop();
@@ -404,8 +429,11 @@ export default class EdgeVoicePlugin extends Plugin {
 	/** Double-tapping the chosen key reads aloud, pauses and resumes, in every Obsidian window. */
 	private registerDoubleTap(): void {
 		const detector = new DoubleTapDetector(
-			() => (this.settings.doubleTapEnabled ? this.settings.doubleTapKey : null),
-			() => this.toggle("double-tap"),
+			() => (this.settings.doubleTapEnabled && !this.recordingKey ? this.settings.doubleTapKey : null),
+			() => {
+				if (this.settings.doubleTapChime) playChime(this.toggleStartsReading() ? "up" : "down");
+				this.toggle("double-tap");
+			},
 		);
 		const watch = (win: Window) => {
 			this.registerDomEvent(win, "keydown", (event) => detector.keydown(event), { capture: true });
@@ -818,53 +846,7 @@ class ReaderSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		const doubleTap = new Setting(containerEl)
-			.setName("Double-tap shortcut")
-			.setDesc(
-				"Double-tap a key to start reading, and again to pause or resume. Works while Obsidian is the active app. " +
-					"Pick a key you don't double-tap for anything else.",
-			);
-		let keyDropdown: DropdownComponent | undefined;
-		const showKey = (code: string) => {
-			if (!keyDropdown) return;
-			if (![...keyDropdown.selectEl.options].some((option) => option.value === code)) {
-				keyDropdown.addOption(code, keyLabel(code));
-			}
-			keyDropdown.setValue(code);
-		};
-		doubleTap.addToggle((toggle) =>
-			toggle.setValue(settings.doubleTapEnabled).onChange((value) => {
-				settings.doubleTapEnabled = value;
-				keyDropdown?.setDisabled(!value);
-				void this.plugin.saveSettings();
-			}),
-		);
-		doubleTap.addDropdown((dropdown) => {
-			keyDropdown = dropdown;
-			for (const code of DOUBLE_TAP_KEYS) dropdown.addOption(code, keyLabel(code));
-			showKey(settings.doubleTapKey);
-			dropdown.setDisabled(!settings.doubleTapEnabled);
-			dropdown.onChange((value) => {
-				settings.doubleTapKey = value;
-				void this.plugin.saveSettings();
-			});
-		});
-		doubleTap.addButton((button) =>
-			button.setButtonText("Record key").onClick(() => {
-				button.setButtonText("Press a key…");
-				const record = (event: KeyboardEvent) => {
-					event.preventDefault();
-					event.stopPropagation();
-					window.removeEventListener("keydown", record, true);
-					button.setButtonText("Record key");
-					if (event.code === "Escape") return;
-					settings.doubleTapKey = event.code;
-					showKey(event.code);
-					void this.plugin.saveSettings();
-				};
-				window.addEventListener("keydown", record, true);
-			}),
-		);
+		this.doubleTapSettings(containerEl);
 
 		new Setting(containerEl)
 			.setName("Keep reading after switching pages or leaving Obsidian")
@@ -900,6 +882,170 @@ class ReaderSettingTab extends PluginSettingTab {
 					void this.showStorage(storage);
 				}),
 			);
+	}
+
+	/**
+	 * The double-tap shortcut: on or off, a menu of three good keys or
+	 * "Custom…", and the chime. Custom opens a box that shows the key being
+	 * pressed, refuses keys that type or already do something, and saves only
+	 * when confirmed; there is one custom key, replaced each time.
+	 */
+	private doubleTapSettings(containerEl: HTMLElement): void {
+		const settings = this.plugin.settings;
+		const CUSTOM = "custom";
+		const isPreset = (code: string) => DOUBLE_TAP_PRESETS.includes(code);
+		const save = () => void this.plugin.saveSettings();
+
+		const setting = new Setting(containerEl)
+			.setName("Double-tap shortcut")
+			.setDesc(
+				"Double-tap a key to start reading, and again to pause or resume. Works while Obsidian is the active app.",
+			);
+		const recorder = containerEl.createDiv({ cls: "edge-voice-key-recorder" });
+		const chime = new Setting(containerEl)
+			.setName("Chime on double tap")
+			.setDesc("A short chime, rising when reading starts or resumes and falling when it pauses.")
+			.addToggle((toggle) =>
+				toggle.setValue(settings.doubleTapChime).onChange((value) => {
+					settings.doubleTapChime = value;
+					save();
+				}),
+			);
+
+		let dropdown!: DropdownComponent;
+		const customLabel = () =>
+			settings.doubleTapCustomKey ? `Custom: ${keyLabel(settings.doubleTapCustomKey)}` : "Custom…";
+		const refresh = () => {
+			const custom = !isPreset(settings.doubleTapKey);
+			dropdown.selectEl.querySelector(`option[value="${CUSTOM}"]`)?.setText(customLabel());
+			dropdown.setValue(custom ? CUSTOM : settings.doubleTapKey);
+			dropdown.setDisabled(!settings.doubleTapEnabled);
+			chime.setDisabled(!settings.doubleTapEnabled);
+			recorder.hidden = !settings.doubleTapEnabled || dropdown.getValue() !== CUSTOM;
+		};
+
+		// The box: shows the saved custom key, or the key being pressed and why it can't be used.
+		const box = recorder.createDiv({ cls: "edge-voice-key-box", attr: { tabindex: "0", role: "textbox" } });
+		const keyText = box.createSpan({ cls: "edge-voice-key-text" });
+		const clear = box.createEl("button", {
+			cls: "edge-voice-key-clear clickable-icon",
+			attr: { "aria-label": "Clear" },
+		});
+		setIcon(clear, "x-circle");
+		const footer = recorder.createDiv({ cls: "edge-voice-key-footer" });
+		const message = footer.createSpan({ cls: "edge-voice-key-message" });
+		const confirm = footer.createEl("button", { cls: "mod-cta", text: "Use this key" });
+		let pending: string | null = null;
+
+		const showBox = () => {
+			const saved = settings.doubleTapCustomKey;
+			keyText.setText(pending ? keyLabel(pending) : saved ? keyLabel(saved) : "Click here, then press a key");
+			box.toggleClass("is-empty", !pending && !saved);
+			confirm.hidden = !pending;
+			clear.hidden = !pending && !saved;
+		};
+		const stopRecording = () => {
+			this.plugin.recordingKey = false;
+			box.removeClass("is-recording");
+		};
+
+		box.addEventListener("focus", () => {
+			this.plugin.recordingKey = true;
+			box.addClass("is-recording");
+			if (!pending) {
+				keyText.setText("Press a key…");
+				message.setText("");
+			}
+		});
+		box.addEventListener("blur", () => {
+			stopRecording();
+			if (!pending) showBox();
+		});
+		box.addEventListener("keydown", (event) => {
+			if (event.code === "Tab") return; // still moves focus
+			event.preventDefault();
+			event.stopPropagation();
+			if (event.repeat) return;
+			if (event.code === "Escape") {
+				pending = null;
+				message.setText("");
+				box.blur();
+				return;
+			}
+			const problem = customKeyProblem(event);
+			box.toggleClass("is-invalid", problem !== null);
+			if (problem) {
+				pending = null;
+				keyText.setText(keyLabel(event.code));
+				message.setText(problem);
+				confirm.hidden = true;
+				return;
+			}
+			pending = event.code;
+			message.setText(
+				isPreset(event.code)
+					? `${keyLabel(event.code)} is also in the menu above.`
+					: "Double-tap it to test after saving.",
+			);
+			showBox();
+		});
+		confirm.addEventListener("click", () => {
+			if (!pending) return;
+			settings.doubleTapCustomKey = pending;
+			settings.doubleTapKey = pending;
+			pending = null;
+			message.setText("Saved.");
+			box.removeClass("is-invalid");
+			save();
+			showBox();
+			refresh();
+		});
+		clear.addEventListener("click", (event) => {
+			event.stopPropagation();
+			pending = null;
+			const wasActive = settings.doubleTapKey === settings.doubleTapCustomKey;
+			settings.doubleTapCustomKey = null;
+			if (wasActive) settings.doubleTapKey = DEFAULT_DOUBLE_TAP_KEY;
+			message.setText("");
+			box.removeClass("is-invalid");
+			save();
+			showBox();
+			refresh();
+		});
+
+		setting.addToggle((toggle) =>
+			toggle.setValue(settings.doubleTapEnabled).onChange((value) => {
+				settings.doubleTapEnabled = value;
+				save();
+				refresh();
+			}),
+		);
+		setting.addDropdown((component) => {
+			dropdown = component;
+			for (const code of DOUBLE_TAP_PRESETS) dropdown.addOption(code, keyLabel(code));
+			dropdown.addOption(CUSTOM, customLabel());
+			dropdown.onChange((value) => {
+				pending = null;
+				message.setText("");
+				box.removeClass("is-invalid");
+				if (value === CUSTOM) {
+					// The saved custom key comes back; with none yet, the box waits for one.
+					if (settings.doubleTapCustomKey) {
+						settings.doubleTapKey = settings.doubleTapCustomKey;
+						save();
+					}
+					showBox();
+					recorder.hidden = false;
+					if (!settings.doubleTapCustomKey) box.focus();
+					return;
+				}
+				settings.doubleTapKey = value;
+				save();
+				refresh();
+			});
+		});
+		showBox();
+		refresh();
 	}
 
 	/** Lists downloads with their sizes and a Delete button each (click twice to confirm). */

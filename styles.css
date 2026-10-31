@@ -454,3 +454,65 @@ body.theme-dark {
 		animation: none !important;
 	}
 }
+
+/* Settings: the custom double-tap key, shown in a box as it's pressed. */
+.edge-voice-key-recorder {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6px;
+	padding: 0 0 12px;
+}
+
+.edge-voice-key-box {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 220px;
+	min-height: 32px;
+	padding: 4px 32px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary-alt);
+	font-weight: var(--font-semibold);
+	cursor: text;
+}
+
+.edge-voice-key-box.is-empty {
+	color: var(--text-faint);
+	font-weight: normal;
+}
+
+.edge-voice-key-box.is-recording {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.25);
+	outline: none;
+}
+
+.edge-voice-key-box.is-invalid {
+	border-color: var(--text-error);
+	color: var(--text-error);
+}
+
+.edge-voice-key-clear {
+	position: absolute;
+	right: 4px;
+}
+
+.edge-voice-key-footer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	max-width: 360px;
+	text-align: right;
+}
+
+.edge-voice-key-message {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.edge-voice-key-box.is-invalid ~ .edge-voice-key-footer .edge-voice-key-message {
+	color: var(--text-error);
+}
