@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "../src/colors";
-import { DoubleTapDetector, keyLabel } from "../src/double-tap";
+import { customKeyProblem, DoubleTapDetector, keyLabel } from "../src/double-tap";
 import { quickStartPieces } from "../src/reader";
 import { alignWords } from "../src/rendered";
 import { wordTokens } from "../src/sentences";
@@ -161,5 +161,34 @@ describe("highlight themes", () => {
 
 	it("falls back to the first theme for an unknown id", () => {
 		expect(highlightTheme("nope")).toBe(HIGHLIGHT_THEMES[0]);
+	});
+});
+
+describe("customKeyProblem", () => {
+	const press = (code: string, held: Partial<Record<"metaKey" | "altKey" | "ctrlKey" | "shiftKey", boolean>> = {}) =>
+		customKeyProblem({ code, metaKey: false, altKey: false, ctrlKey: false, shiftKey: false, ...held });
+
+	it("accepts a modifier key on its own, even though its own flag is set", () => {
+		expect(press("AltRight", { altKey: true })).toBeNull();
+		expect(press("ControlLeft", { ctrlKey: true })).toBeNull();
+	});
+
+	it("accepts function keys", () => {
+		expect(press("F5")).toBeNull();
+		expect(press("F13")).toBeNull();
+		expect(press("F24")).toBeNull();
+	});
+
+	it("refuses combinations", () => {
+		expect(press("ShiftLeft", { metaKey: true, shiftKey: true })).toMatch(/combination/);
+		expect(press("F5", { ctrlKey: true })).toMatch(/combination/);
+	});
+
+	it("refuses keys that type, move the cursor or already do something", () => {
+		for (const code of ["KeyA", "Digit1", "Space", "Enter", "Tab", "Backspace", "ArrowUp", "F25"]) {
+			expect(press(code)).toMatch(/types or moves/);
+		}
+		expect(press("CapsLock")).toMatch(/Caps Lock/);
+		expect(press("Escape")).toMatch(/Escape/);
 	});
 });

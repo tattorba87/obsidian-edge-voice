@@ -54,7 +54,7 @@ Reading belongs to the page it started on.
 - **Play** on the page that was paused resumes it. On any other page it starts reading that page.
 - **Stop** ends reading.
 
-**Double-tap shortcut** (off by default): under Settings → Double-tap shortcut, turn it on and pick a key (Right Command on a Mac and Right Ctrl elsewhere by default), or record any key. Double-tap to start; double-tap again to pause, and again to resume. Paused on a different page, a double tap stops instead, and the next one starts on the page you're on. It works while Obsidian is the active app; a plugin can't listen for keys system-wide.
+**Double-tap shortcut** (off by default): under Settings → Double-tap shortcut, turn it on and pick Right Command (Right Ctrl outside a Mac), Right Option (Alt) or Right Shift, or choose _Custom…_ and press the key you want: the box shows it before you save, and only a single modifier or function key is accepted. A soft chime confirms each double tap, rising to play and falling to pause; turn it off under _Chime on double tap_. Double-tap to start; double-tap again to pause, and again to resume. Paused on a different page, a double tap stops instead, and the next one starts on the page you're on. It works while Obsidian is the active app; a plugin can't listen for keys system-wide.
 
 ### Player bar and status bar
 

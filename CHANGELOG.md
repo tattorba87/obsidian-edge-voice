@@ -12,7 +12,7 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - Right-click _Start text-to-speech here_ in the editor, Reading view and PDFs.
 - Reading follows its page: switching pages or apps pauses it, unless a setting says to keep going.
 - Player bar with skip, speed and volume, which can be minimized or turned off; animated status-bar indicator.
-- Double-tap shortcut to start, pause and resume.
+- Double-tap shortcut to start, pause and resume, with a chime that can be turned off, a choice of three keys or one custom key.
 - Text normalization for technical writing: units, percentages, ranges, acronyms, model names, ordinals, decades and citations.
 - PDFs skip margin stamps, page numbers, running headers and footers, and footnotes.
 - Seven highlight colour themes.
