@@ -11,6 +11,7 @@ import {
 	Setting,
 	setIcon,
 } from "obsidian";
+import { join } from "path";
 import { highlightField, MarkdownSource } from "./markdown";
 import { PdfSource, PdfStart } from "./pdf";
 import { EngineSetup } from "./engine-setup";
@@ -26,7 +27,7 @@ import {
 	VENV_PYTHON,
 } from "./setup";
 import { StatusIndicator, StatusKind } from "./status";
-import { deleteItem, formatBytes, scanEngine, scanVoices, StorageItem } from "./storage";
+import { deleteItem, formatBytes, scanMlxVoices, scanVoices, StorageItem } from "./storage";
 import { SetupModal } from "./setup-modal";
 import { InBackground, pausesInBackground } from "./background";
 import { playChime } from "./chime";
@@ -558,16 +559,19 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on("window-open", (_workspaceWindow, win) => watch(win)));
 	}
 
-	/** What the engine has downloaded, and the engine itself, for the Storage settings. */
-	async storageItems(): Promise<{ voices: StorageItem[]; engine: StorageItem | null }> {
-		const engine = await scanEngine(SETUP_HOME);
+	/**
+	 * The voices downloaded, for the Storage settings: the engine's and the
+	 * faster engine's. Only voices: the engine itself isn't offered for deleting.
+	 */
+	async storageItems(): Promise<StorageItem[]> {
 		let voices: StorageItem[] = [];
 		try {
 			voices = await scanVoices(await this.sidecar.cacheDir());
 		} catch {
 			// No working engine: then there's nothing it downloaded to list either.
 		}
-		return { voices, engine };
+		const mlx = await scanMlxVoices(join(SETUP_HOME, "hf"));
+		return (mlx ? [...voices, mlx] : voices).sort((a, b) => b.bytes - a.bytes);
 	}
 
 	/** Deletes downloads, stopping reading and the engine first so no file is in use. */
@@ -826,8 +830,24 @@ class ReaderSettingTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
-	/** Whether Advanced is open, kept when the page is drawn again. */
-	private advancedOpen = false;
+	/** Which folded sections are open, kept when the page is drawn again. */
+	private open = new Set<string>();
+
+	/** A section folded away under a heading with a hint beside it, closed unless opened. */
+	private fold(
+		parentEl: HTMLElement,
+		title: string,
+		hint: string,
+		id: string,
+	): { details: HTMLDetailsElement; body: HTMLElement; hint: HTMLElement } {
+		const details = parentEl.createEl("details", { cls: "edge-voice-fold" });
+		details.open = this.open.has(id);
+		details.addEventListener("toggle", () => (details.open ? this.open.add(id) : this.open.delete(id)));
+		const summary = details.createEl("summary");
+		summary.createSpan({ cls: "edge-voice-fold-title", text: title });
+		const hintEl = summary.createSpan({ cls: "setting-item-description", text: hint });
+		return { details, body: details.createDiv(), hint: hintEl };
+	}
 
 	display(): void {
 		const { containerEl } = this;
@@ -971,10 +991,8 @@ class ReaderSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl).setName("Storage").setHeading();
-		const storage = containerEl.createDiv();
-		storage.createDiv({ cls: "setting-item-description", text: "Checking downloads…" });
-		void this.showStorage(storage);
+		const storage = this.fold(containerEl, "Storage", "Checking downloads…", "storage");
+		void this.showStorage(storage.body, storage.hint);
 
 		this.advancedSettings(containerEl);
 	}
@@ -986,16 +1004,12 @@ class ReaderSettingTab extends PluginSettingTab {
 	 */
 	private advancedSettings(parentEl: HTMLElement): void {
 		const settings = this.plugin.settings;
-		const details = parentEl.createEl("details", { cls: "edge-voice-advanced" });
-		details.open = this.advancedOpen;
-		details.addEventListener("toggle", () => (this.advancedOpen = details.open));
-		const summary = details.createEl("summary");
-		summary.createSpan({ cls: "edge-voice-advanced-title", text: "Advanced" });
-		summary.createSpan({
-			cls: "setting-item-description",
-			text: "Rarely needed: the speech engine and how it runs.",
-		});
-		const containerEl = details.createDiv({ cls: "edge-voice-advanced-body" });
+		const { details, body: containerEl } = this.fold(
+			parentEl,
+			"Advanced",
+			"Rarely needed: the speech engine and how it runs.",
+			"advanced",
+		);
 
 		const engine = new Setting(containerEl).setName("Voice engine").setDesc("Checking…");
 		engine.addButton((button) =>
@@ -1225,9 +1239,12 @@ class ReaderSettingTab extends PluginSettingTab {
 	}
 
 	/** Lists downloads with their sizes and a Delete button each (click twice to confirm). */
-	private async showStorage(el: HTMLElement): Promise<void> {
-		const { voices, engine } = await this.plugin.storageItems();
+	/** Lists downloaded voices with their sizes and a Delete button each (click twice to confirm). */
+	private async showStorage(el: HTMLElement, hint: HTMLElement): Promise<void> {
+		const voices = await this.plugin.storageItems();
 		el.empty();
+		const total = voices.reduce((sum, item) => sum + item.bytes, 0);
+		hint.setText(voices.length > 0 ? `${formatBytes(total)} of voices downloaded.` : "No voices downloaded.");
 		const deleteButton = (setting: Setting, items: StorageItem[], label = "Delete") =>
 			setting.addButton((button) => {
 				let armed = false;
@@ -1241,31 +1258,22 @@ class ReaderSettingTab extends PluginSettingTab {
 					}
 					button.setDisabled(true);
 					await this.plugin.deleteStorage(items);
-					void this.showStorage(el);
+					void this.showStorage(el, hint);
 				});
 			});
 
-		if (voices.length === 0 && !engine) {
-			el.createDiv({ cls: "setting-item-description", text: "Nothing downloaded." });
+		if (voices.length === 0) {
+			el.createDiv({ cls: "setting-item-description", text: "Nothing downloaded yet." });
 			return;
 		}
-		if (voices.length > 0) {
-			const total = voices.reduce((sum, item) => sum + item.bytes, 0);
-			const all = new Setting(el)
-				.setName("Downloaded voices")
-				.setDesc(`${formatBytes(total)} in all. A deleted voice downloads again the next time it's used.`);
-			if (voices.length > 1) deleteButton(all, voices, "Delete all voices");
-		}
+		const all = new Setting(el)
+			.setName("Downloaded voices")
+			.setDesc(`${formatBytes(total)} in all. A deleted voice downloads again the next time it's used.`);
+		if (voices.length > 1) deleteButton(all, voices, "Delete all voices");
 		for (const item of voices) {
 			deleteButton(
 				new Setting(el).setName(item.label).setDesc(`${formatBytes(item.bytes)} · ${item.description}`),
 				[item],
-			);
-		}
-		if (engine) {
-			deleteButton(
-				new Setting(el).setName(engine.label).setDesc(`${formatBytes(engine.bytes)} · ${engine.description}`),
-				[engine],
 			);
 		}
 	}

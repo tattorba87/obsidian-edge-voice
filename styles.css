@@ -571,13 +571,13 @@ body.theme-dark {
 	color: var(--text-error);
 }
 
-/* Settings: "Advanced", folded away at the bottom, opened by clicking its heading. */
-.edge-voice-advanced {
+/* Settings: sections folded away (Storage, Advanced), opened by clicking their heading. */
+.edge-voice-fold {
 	margin-top: 24px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.edge-voice-advanced > summary {
+.edge-voice-fold > summary {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: baseline;
@@ -587,15 +587,15 @@ body.theme-dark {
 	list-style: none;
 }
 
-.edge-voice-advanced > summary::-webkit-details-marker {
+.edge-voice-fold > summary::-webkit-details-marker {
 	display: none;
 }
 
-.edge-voice-advanced-title {
+.edge-voice-fold-title {
 	font-weight: var(--font-semibold);
 }
 
-.edge-voice-advanced-title::before {
+.edge-voice-fold-title::before {
 	content: "›";
 	display: inline-block;
 	width: 1em;
@@ -603,6 +603,6 @@ body.theme-dark {
 	transition: transform 150ms ease;
 }
 
-.edge-voice-advanced[open] .edge-voice-advanced-title::before {
+.edge-voice-fold[open] .edge-voice-fold-title::before {
 	transform: rotate(90deg);
 }
