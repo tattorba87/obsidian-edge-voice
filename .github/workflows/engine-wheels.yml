@@ -77,11 +77,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          # Through the environment, never pasted into the script, so the input can't run as shell.
+          MOONSHINE_REF: ${{ inputs.moonshine-ref }}
         run: |
           version=$(ls moonshine_voice-*.whl | head -1 | cut -d- -f2)
           sha256sum moonshine_voice-*.whl > SHA256SUMS
           notes=$(printf 'moonshine-voice %s built from moonshine %s for macOS 13.4 and later.\n\n```\n%s\n```\n' \
-            "$version" "${{ inputs.moonshine-ref }}" "$(cat SHA256SUMS)")
+            "$version" "$MOONSHINE_REF" "$(cat SHA256SUMS)")
           # Not marked latest, so it never stands in for a plugin release.
           gh release create "moonshine-voice-${version}" moonshine_voice-*.whl SHA256SUMS \
             --title "moonshine-voice ${version} for macOS" --notes "$notes" --latest=false
