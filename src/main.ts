@@ -626,7 +626,7 @@ export default class EdgeVoicePlugin extends Plugin {
 		const speed = ` · ${formatSpeed(this.settings.speed)}`;
 		const shown: Record<ReaderState, [StatusKind, string]> = {
 			idle: ["hidden", ""],
-			loading: ["busy", `Preparing${where}${speed}`],
+			loading: ["busy", `Synthesizing${where}${speed}`],
 			playing: ["playing", `Reading${where}${speed}`],
 			paused: ["paused", `Paused${where}${speed}`],
 		};
