@@ -576,6 +576,11 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	/** Deletes downloads, stopping reading and the engine first so no file is in use. */
 	async deleteStorage(items: StorageItem[]): Promise<void> {
+		// An install writes into the same folder; deleting under it would break it.
+		if (this.installing) {
+			new Notice("Edge Voice is setting up its voice engine. Try again when it's done.");
+			return;
+		}
 		this.stop();
 		this.sidecar.stop();
 		this.voice = undefined;
@@ -589,12 +594,20 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	/**
+	 * Whether either install is running. They share ~/.edge-voice (its
+	 * download folder and the environment), so nothing else may change it then.
+	 */
+	private get installing(): boolean {
+		return this.engine.installing || this.mlx.installing;
+	}
+
+	/**
 	 * Opens the setup window, to reinstall or to retry a failed install (shown
 	 * with `failed`); when it succeeds, the plugin switches to the new engine.
 	 */
 	openSetup(onReady?: () => void, failed?: { log: string[]; message: string }): void {
-		if (this.engine.installing) {
-			new Notice("Edge Voice is setting up its voice engine; see the status bar.");
+		if (this.installing) {
+			new Notice("Edge Voice is setting up its voice engine. Try again when it's done.");
 			return;
 		}
 		new SetupModal(
