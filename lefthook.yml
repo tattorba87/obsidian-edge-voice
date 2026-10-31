@@ -17,6 +17,9 @@ pre-commit:
       # uv installs itself to ~/.local/bin, which git's hook environment may not have on PATH.
       run: PATH="$PATH:$HOME/.local/bin" uvx ruff@0.14.3 format {staged_files} && PATH="$PATH:$HOME/.local/bin" uvx ruff@0.14.3 check --fix {staged_files}
       stage_fixed: true
+    secrets:
+      # Installed separately (see CONTRIBUTING.md); CI scans the whole history as well.
+      run: command -v gitleaks >/dev/null || { echo "Install gitleaks to commit (see CONTRIBUTING.md)." >&2; exit 1; }; gitleaks git --pre-commit --staged --redact --no-banner
     typecheck:
       glob: "*.{ts,mts}"
       run: bunx tsc --noEmit
