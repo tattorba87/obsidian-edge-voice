@@ -1,0 +1,82 @@
+name: MLX engine
+
+# The faster engine only runs on Apple silicon, so the unit tests use a stub.
+# This runs the real thing: it installs what setup installs (versions and
+# checksums read from src/setup.ts, so they can't drift), then has server.py
+# load a Kokoro voice with MLX and speak, and fails if it fell back to
+# Moonshine or made no audio.
+on:
+  pull_request:
+    paths:
+      - server.py
+      - src/setup.ts
+      - .github/workflows/mlx-engine.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mlx:
+    name: Speak with MLX on Apple silicon
+    runs-on: macos-15
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0 # no moving major tags after v7
+      - name: Read what setup installs
+        run: |
+          python3 -I - <<'EOF' >> "$GITHUB_ENV"
+          import re
+          src = open("src/setup.ts").read()
+          engine_wheels = src[src.index("const ENGINE_WHEELS"):]
+          wheel = re.search(r'"darwin-arm64": \{\s*asset: "([^"]+)",\s*sha256: "([0-9a-f]{64})"', engine_wheels)
+          packages = re.search(r"const MLX_PACKAGES = \[(.*?)\];", src, re.S).group(1)
+          model = re.search(r'const SPACY_MODEL = \{\s*url: "([^"]+)",\s*asset: "([^"]+)",\s*sha256: "([0-9a-f]{64})"', src)
+          print(f"WHEEL={wheel.group(1)}\nWHEEL_SHA256={wheel.group(2)}")
+          print("MLX_PACKAGES=" + " ".join(re.findall(r'"([^"]+)"', packages)))
+          print(f"MODEL_URL={model.group(1)}\nMODEL={model.group(2)}\nMODEL_SHA256={model.group(3)}")
+          EOF
+      - name: Install as setup does
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .mlx
+          gh release download moonshine-voice-0.1.5 -p "$WHEEL" -D .mlx
+          echo "$WHEEL_SHA256  .mlx/$WHEEL" | shasum -a 256 -c -
+          curl -sSLf -o ".mlx/$MODEL" "$MODEL_URL"
+          echo "$MODEL_SHA256  .mlx/$MODEL" | shasum -a 256 -c -
+          uv venv -q --python 3.12 .mlx/venv
+          # No pip in the environment, as in setup: spaCy can't fetch its model itself.
+          # shellcheck disable=SC2086
+          uv pip install --python .mlx/venv/bin/python ".mlx/$WHEEL" $MLX_PACKAGES ".mlx/$MODEL"
+      - name: Load a voice with MLX and speak
+        run: |
+          mkdir -p .mlx/home && cp server.py .mlx/home/
+          python3 -I - <<'EOF'
+          import base64, json, subprocess, time
+          proc = subprocess.Popen([".mlx/venv/bin/python", "-I", ".mlx/home/server.py"],
+                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+          def ask(**body):
+              proc.stdin.write(json.dumps(body) + "\n"); proc.stdin.flush()
+              while True:
+                  reply = json.loads(proc.stdout.readline())
+                  if reply.get("id") == body["id"]:
+                      return reply
+          assert json.loads(proc.stdout.readline()) == {"event": "ready"}
+          start = time.perf_counter()
+          loaded = ask(id=1, op="load", language="en_us", voice="kokoro_am_santa", engine="mlx")
+          print("load:", loaded, f"{time.perf_counter() - start:.1f} s")
+          assert loaded.get("ok") and loaded.get("engine") == "mlx", loaded
+          start = time.perf_counter()
+          spoken = ask(id=2, op="synth", text="The faster engine is speaking on the GPU.", speed=1.0)
+          seconds = len(base64.b64decode(spoken["audio"])) / 4 / spoken["sampleRate"]
+          print(f"synth: {seconds:.2f} s of audio in {time.perf_counter() - start:.2f} s")
+          assert seconds > 1, spoken
+          proc.stdin.close(); proc.wait(timeout=30)
+          EOF
+      - name: Downloads stayed in the engine's folder
+        run: |
+          du -sh .mlx/home/hf
+          test -d .mlx/home/hf
