@@ -5,8 +5,8 @@ These rules apply to everyone working in this repository, people and coding agen
 ## Setup
 
 ```bash
-npm install          # also installs the git hooks (lefthook)
-npm run dev          # rebuild main.js on every change
+bun install          # also installs the git hooks (lefthook)
+bun run dev          # rebuild main.js on every change
 ```
 
 Link the folder into a test vault (`ln -s "$PWD" <vault>/.obsidian/plugins/edge-voice`), enable **Edge Voice**, and use its one-click setup for the speech engine. The Python checks need [uv](https://docs.astral.sh/uv/).
@@ -15,14 +15,16 @@ Link the folder into a test vault (`ln -s "$PWD" <vault>/.obsidian/plugins/edge-
 
 | Command                | What it does                                                                     |
 | ---------------------- | -------------------------------------------------------------------------------- |
-| `npm run check`        | Everything below; CI runs the same                                               |
-| `npm run typecheck`    | TypeScript, including tests                                                      |
-| `npm run lint`         | ESLint with Obsidian's community-review rules (`eslint-plugin-obsidianmd`)       |
-| `npm run format`       | Prettier for TypeScript, CSS, JSON and Markdown; ruff for Python                 |
-| `npm run format:check` | The same, checking only                                                          |
-| `npm test`             | Vitest: text processing, PDF reading (generated PDFs), sidecar protocol, storage |
-| `npm run test:python`  | pytest: `server.py` against a stub engine                                        |
-| `npm run build`        | Type-check and bundle `main.js`                                                  |
+| `bun run check`        | Everything below; CI runs the same                                               |
+| `bun run typecheck`    | TypeScript, including tests                                                      |
+| `bun run lint`         | ESLint with Obsidian's community-review rules (`eslint-plugin-obsidianmd`)       |
+| `bun run format`       | Prettier for TypeScript, CSS, JSON and Markdown; ruff for Python                 |
+| `bun run format:check` | The same, checking only                                                          |
+| `bun run test`         | Vitest: text processing, PDF reading (generated PDFs), sidecar protocol, storage |
+| `bun run test:python`  | pytest: `server.py` against a stub engine                                        |
+| `bun run build`        | Type-check and bundle `main.js`                                                  |
+
+Use `bun run test`, not `bun test`: the latter is Bun's own test runner, not Vitest.
 
 The pre-commit hook formats and lint-fixes staged files and type-checks; the pre-push hook runs both test suites. Don't skip them (`--no-verify`) except to commit work in progress on a branch of your own.
 
@@ -58,7 +60,7 @@ The pre-commit hook formats and lint-fixes staged files and type-checks; the pre
 ## Releases
 
 1. Move the _Unreleased_ entries in `CHANGELOG.md` under the new version.
-2. `npm version 0.2.0` (updates `package.json`, `manifest.json` and `versions.json`, commits and tags `0.2.0`).
+2. `bun run release 0.2.0` (updates `package.json`, `manifest.json` and `versions.json`, commits and tags `0.2.0`).
 3. `git push --follow-tags`. The release workflow builds and attaches `main.js`, `manifest.json` and `styles.css` to a draft GitHub release; check it and publish it.
 
 **Engine wheels for macOS.** PyPI has no moonshine-voice wheel for Intel Macs, and its Apple Silicon one needs macOS 15, so setup installs wheels this repository builds instead. When moving to a new moonshine-voice version, run the _Engine wheels_ workflow (Actions → Engine wheels → Run workflow) with the moonshine tag that matches the PyPI version. It publishes a `moonshine-voice-<version>` release; copy the asset names and checksums from its notes into `ENGINE_TAG` and `ENGINE_WHEELS` in `src/setup.ts`. The repository has to be public for setup to download them.
