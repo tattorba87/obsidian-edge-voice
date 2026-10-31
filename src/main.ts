@@ -73,7 +73,7 @@ interface ReaderSettings {
 const DEFAULT_SETTINGS: ReaderSettings = {
 	pythonPath: VENV_PYTHON,
 	language: "en_us",
-	voice: "kokoro_am_santa",
+	voice: "kokoro_af_bella",
 	speed: 1.0,
 	prefetch: 2,
 	autoScroll: true,
