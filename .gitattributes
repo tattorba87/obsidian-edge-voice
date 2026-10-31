@@ -1,0 +1,2 @@
+# The engine locks ship inside main.js; keep them byte-identical whichever system builds it.
+locks/*.txt text eol=lf

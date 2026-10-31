@@ -84,7 +84,7 @@ describe("setup", () => {
 			const lock = LOCKS[key];
 			// The version setup asks for is the one locked: bump one, run scripts/lock-engine.sh.
 			expect(lock, key).toContain(`${PACKAGE} \\`);
-			const packages = lock.split("\n").filter((line) => /^[a-z0-9]/.test(line));
+			const packages = lock.split(/\r?\n/).filter((line) => /^[a-z0-9]/.test(line));
 			expect(packages.length, key).toBeGreaterThan(5);
 			for (const line of packages) expect(line, `${key}: ${line}`).toMatch(/==\S+ \\$/);
 			expect(lock.split("--hash=sha256:").length - 1, key).toBeGreaterThanOrEqual(packages.length);
