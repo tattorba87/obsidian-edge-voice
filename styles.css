@@ -126,9 +126,10 @@ body.theme-dark {
 }
 
 /*
- * While the engine synthesizes, a glow travels around the bar's edge: a conic
- * gradient turned by an animated angle, masked to a 2px ring, with a blurred
- * copy for the halo. The colour channels are the word highlight's.
+ * While reading waits for synthesis, alongside the status bar's spinner, a
+ * glow travels around the bar's edge: a conic gradient turned by an animated
+ * angle, masked to a 2px ring, with a blurred copy for the halo. The colour
+ * channels are the word highlight's.
  */
 @property --edge-voice-orbit {
 	syntax: "<angle>";
@@ -173,13 +174,11 @@ body.theme-dark {
 	filter: blur(8px);
 }
 
-.edge-voice-bar.is-loading,
-.edge-voice-bar.is-synthesizing {
+.edge-voice-bar.is-loading {
 	animation: edge-voice-orbit 1.8s linear infinite;
 }
 
-.edge-voice-bar.is-loading .edge-voice-glow,
-.edge-voice-bar.is-synthesizing .edge-voice-glow {
+.edge-voice-bar.is-loading .edge-voice-glow {
 	opacity: 1;
 }
 

@@ -327,7 +327,6 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.sidecar = new Sidecar(this.settings.pythonPath, installServerScript());
 		this.sidecar.onProgress = (fraction) =>
 			this.status.show("download", `Downloading voice ${Math.round(fraction * 100)}%`, fraction);
-		this.sidecar.onBusy = (busy) => this.bar.setSynthesizing(busy);
 		this.sidecar.onExit = (message) => {
 			this.voice = undefined;
 			console.warn("[edge-voice]", message);
