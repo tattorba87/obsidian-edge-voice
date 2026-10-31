@@ -1,5 +1,5 @@
-/** What the status-bar indicator shows; "text" is the line alone, when the player bar's glow shows the engine at work. */
-export type StatusKind = "hidden" | "busy" | "download" | "playing" | "paused" | "text";
+/** What the status-bar indicator shows. */
+export type StatusKind = "hidden" | "busy" | "download" | "playing" | "paused";
 
 /**
  * The status-bar item: an animated indicator and a line of text. A spinner
