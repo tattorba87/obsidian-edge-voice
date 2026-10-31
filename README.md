@@ -42,7 +42,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md): setup, the checks (`bun run check`), the
 | Read aloud / pause                        | Also the ribbon button and the player bar's play button (see below)                                            |
 | Read from current position                | Starts again from the selection, or from the top of what's in view                                             |
 | Next / Previous sentence                  | Skip around while reading                                                                                      |
-| Read faster / Read slower                 | 0.1× steps, from 0.5× to 2.5×                                                                                  |
+| Read faster / Read slower                 | Between 1×, 1.5× and 2×                                                                                        |
 | Stop reading                              | Stops and clears the highlight                                                                                 |
 | Show or hide player controls              | Toggles the floating player bar                                                                                |
 
@@ -61,7 +61,7 @@ Reading belongs to the page it started on.
 
 ### Player bar and status bar
 
-When reading starts, a player bar floats above the status bar: previous / play-pause / next / stop, the speed with − and + buttons (click the speed for presets from 0.75× to 2.5×), and a speaker icon with a vertical volume slider that pops up on hover (click the icon to mute, or scroll over it). A new speed is heard from the next sentence; volume changes at once. While a sentence is being synthesized, a glow runs around the bar's edge. The ⌄ button shrinks the bar to a small pill in the corner, and _Show player controls_ in settings turns it off.
+When reading starts, a player bar floats above the status bar: previous / play-pause / next / stop, the speed with − and + buttons (1×, 1.5× or 2×; click the speed to pick one), and a speaker icon with a vertical volume slider that pops up on hover (click the icon to mute, or scroll over it). A new speed is heard from the next sentence; volume changes at once. While a sentence is being synthesized, a glow runs around the bar's edge. The ⌄ button shrinks the bar to a small pill in the corner, and _Show player controls_ in settings turns it off.
 
 The status bar shows what's happening: a spinner while a voice loads or a sentence is prepared (with a progress bar while a voice downloads), moving bars while reading, and resting bars while paused, with the page position and speed. Click it for the speed presets.
 

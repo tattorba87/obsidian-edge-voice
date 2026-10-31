@@ -1,10 +1,21 @@
 import { Menu, setIcon } from "obsidian";
 import { ReaderState } from "./reader";
 
-export const MIN_SPEED = 0.5;
-export const MAX_SPEED = 2.5;
-export const SPEED_STEP = 0.1;
-const SPEED_PRESETS = [0.75, 1, 1.25, 1.5, 1.75, 2, 2.5];
+/** The reading speeds on offer: few, so picking one takes no thought. */
+export const SPEEDS = [1, 1.5, 2];
+
+/** The offered speed nearest `speed`, e.g. for one saved when finer speeds were offered. */
+export function nearestSpeed(speed: number): number {
+	return SPEEDS.reduce((best, candidate) =>
+		Math.abs(candidate - speed) < Math.abs(best - speed) ? candidate : best,
+	);
+}
+
+/** The next offered speed up (1) or down (-1) from `speed`, staying at the ends. */
+export function stepSpeed(speed: number, direction: 1 | -1): number {
+	const index = SPEEDS.indexOf(nearestSpeed(speed));
+	return SPEEDS[Math.min(SPEEDS.length - 1, Math.max(0, index + direction))];
+}
 
 export interface PlayerControls {
 	toggle(): void;
@@ -20,16 +31,16 @@ export interface PlayerControls {
 	setVolume(volume: number, final: boolean): void;
 }
 
-/** "1×", "1.25×". */
+/** "1×", "1.5×". */
 export function formatSpeed(speed: number): string {
 	return `${Number(speed.toFixed(2))}×`;
 }
 
-/** Opens the speed presets under `anchor`, or at the mouse event. */
+/** Opens the speeds on offer at the mouse event. */
 export function showSpeedMenu(controls: PlayerControls, at: MouseEvent): void {
 	const menu = new Menu();
 	const current = controls.speed();
-	for (const preset of SPEED_PRESETS) {
+	for (const preset of SPEEDS) {
 		menu.addItem((item) =>
 			item
 				.setTitle(formatSpeed(preset))
@@ -78,13 +89,13 @@ export class PlayerBar {
 
 		this.el.createDiv({ cls: "edge-voice-divider edge-voice-full" });
 
-		this.button("minus", "Slower", () => controls.setSpeed(controls.speed() - SPEED_STEP), true);
+		this.button("minus", "Slower", () => controls.setSpeed(stepSpeed(controls.speed(), -1)), true);
 		this.speedButton = this.el.createEl("button", {
 			cls: "edge-voice-speed",
 			attr: { "aria-label": "Playback speed" },
 		});
 		this.speedButton.addEventListener("click", (event) => showSpeedMenu(controls, event));
-		this.button("plus", "Faster", () => controls.setSpeed(controls.speed() + SPEED_STEP), true);
+		this.button("plus", "Faster", () => controls.setSpeed(stepSpeed(controls.speed(), 1)), true);
 
 		// Volume: just an icon; a vertical slider pops up above it on hover or
 		// focus. Not shown when the bar is minimized.

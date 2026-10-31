@@ -43,7 +43,7 @@ import {
 import { Reader, ReaderState, SegmentSource } from "./reader";
 import { Sidecar } from "./sidecar";
 import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "./colors";
-import { formatSpeed, MAX_SPEED, MIN_SPEED, PlayerBar, PlayerControls, showSpeedMenu, SPEED_STEP } from "./player-bar";
+import { formatSpeed, nearestSpeed, PlayerBar, PlayerControls, showSpeedMenu, SPEEDS, stepSpeed } from "./player-bar";
 
 interface ReaderSettings {
 	pythonPath: string;
@@ -195,12 +195,12 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.addCommand({
 			id: "faster",
 			name: "Read faster",
-			callback: () => this.setSpeed(this.settings.speed + SPEED_STEP),
+			callback: () => this.setSpeed(stepSpeed(this.settings.speed, 1)),
 		});
 		this.addCommand({
 			id: "slower",
 			name: "Read slower",
-			callback: () => this.setSpeed(this.settings.speed - SPEED_STEP),
+			callback: () => this.setSpeed(stepSpeed(this.settings.speed, -1)),
 		});
 		this.addCommand({
 			id: "toggle-player",
@@ -231,6 +231,8 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	async loadSettings(): Promise<void> {
 		this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<ReaderSettings> | null) };
+		// Finer speeds were offered before; keep the closest of the ones offered now.
+		this.settings.speed = nearestSpeed(this.settings.speed);
 		// One setting used to cover both switching pages and leaving Obsidian.
 		const old = this.settings as ReaderSettings & { keepReadingInBackground?: boolean };
 		if (old.keepReadingInBackground) {
@@ -781,7 +783,7 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	/** Sets the reading speed; it is heard from the next sentence on. */
 	setSpeed(value: number): void {
-		const speed = Math.round(Math.min(MAX_SPEED, Math.max(MIN_SPEED, value)) * 20) / 20;
+		const speed = nearestSpeed(value);
 		this.settings.speed = speed;
 		void this.saveSettings();
 		this.reader.invalidateAudio();
@@ -904,12 +906,11 @@ class ReaderSettingTab extends PluginSettingTab {
 			.setDesc(
 				"Also adjustable while reading, from the player bar, the status bar or the commands to read faster and slower.",
 			)
-			.addSlider((slider) =>
-				slider
-					.setLimits(MIN_SPEED, MAX_SPEED, 0.05)
-					.setValue(settings.speed)
-					.onChange((value) => this.plugin.setSpeed(value)),
-			);
+			.addDropdown((dropdown) => {
+				for (const speed of SPEEDS) dropdown.addOption(String(speed), formatSpeed(speed));
+				dropdown.setValue(String(nearestSpeed(settings.speed)));
+				dropdown.onChange((value) => this.plugin.setSpeed(Number(value)));
+			});
 
 		const colorSetting = new Setting(containerEl)
 			.setName("Highlight colour")
