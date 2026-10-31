@@ -119,6 +119,7 @@ body.theme-dark {
 	box-shadow: var(--shadow-l);
 	font-size: var(--font-ui-small);
 	user-select: none;
+	transition: border-color 300ms ease;
 }
 
 .edge-voice-bar .edge-voice-button {
@@ -175,6 +176,8 @@ body.theme-dark {
 }
 
 .edge-voice-bar.is-loading {
+	/* Only the glow outlines the bar then; the border would show as a grey line beside it. */
+	border-color: transparent;
 	animation: edge-voice-orbit 1.8s linear infinite;
 }
 
