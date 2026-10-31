@@ -57,6 +57,8 @@ export class PlayerBar {
 	private readonly volumeThumb: HTMLElement;
 	/** The volume to go back to when unmuting. */
 	private unmutedVolume = 1;
+	/** Ends the glow a moment after synthesis stops, so it doesn't flicker between sentences. */
+	private glowOff?: number;
 	/** Whether audio has started since reading began; the bar waits for it. */
 	private heard = false;
 	/** Off when the person has turned the bar off in settings. */
@@ -180,7 +182,15 @@ export class PlayerBar {
 		this.speedButton.setText(formatSpeed(speed));
 	}
 
+	/** Glows while the engine synthesizes, which carries on ahead of what's playing. */
+	setSynthesizing(busy: boolean): void {
+		window.clearTimeout(this.glowOff);
+		if (busy) this.el.addClass("is-synthesizing");
+		else this.glowOff = window.setTimeout(() => this.el.removeClass("is-synthesizing"), 400);
+	}
+
 	destroy(): void {
+		window.clearTimeout(this.glowOff);
 		this.el.remove();
 	}
 
