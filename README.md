@@ -15,10 +15,9 @@ The plugin starts `server.py` in a private Python environment that has `moonshin
 
 Works in Obsidian desktop on macOS, Windows and Linux.
 
-1. Install and enable the plugin.
-2. Click **Set up now** in the notice that appears (or Settings → Edge Voice → Voice engine → **Set up**).
+Install and enable the plugin. That's all: it sets up its speech engine in the background, with progress in the status bar, then downloads the default voice (Kokoro) and tells you when it's ready to read. Press play before then and reading starts as soon as it is. If setup fails, a notice offers the log and a way to try again.
 
-Setup downloads about 100 MB into `~/.edge-voice`, once: [uv](https://docs.astral.sh/uv/) (a pinned release, checked against its published SHA-256), a private Python 3.12 that uv installs, and the [moonshine-voice](https://pypi.org/project/moonshine-voice/) package. The voice (a few hundred MB) downloads the first time you read. Nothing else is installed, nothing runs at login, and your notes never leave your computer. Delete `~/.edge-voice` to remove it all.
+Setup downloads about 100 MB into `~/.edge-voice`, once: [uv](https://docs.astral.sh/uv/) (a pinned release, checked against its published SHA-256), a private Python 3.12 that uv installs, and the [moonshine-voice](https://pypi.org/project/moonshine-voice/) package. The voice adds a few hundred MB. Nothing else is installed, nothing runs at login, and your notes never leave your computer. Delete `~/.edge-voice` to remove it all.
 
 | Platform                       | Needs               | Engine package                                                              |
 | ------------------------------ | ------------------- | --------------------------------------------------------------------------- |

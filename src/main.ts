@@ -13,7 +13,8 @@ import {
 } from "obsidian";
 import { highlightField, MarkdownSource } from "./markdown";
 import { PdfSource, PdfStart } from "./pdf";
-import { installedVersion, installServerScript, SETUP_HOME, VENV_PYTHON } from "./setup";
+import { EngineSetup } from "./engine-setup";
+import { installedVersion, installServerScript, SETUP_HOME, setUpEngine, SetupStep, VENV_PYTHON } from "./setup";
 import { StatusIndicator, StatusKind } from "./status";
 import { deleteItem, formatBytes, scanEngine, scanVoices, StorageItem } from "./storage";
 import { SetupModal } from "./setup-modal";
@@ -102,6 +103,9 @@ export default class EdgeVoicePlugin extends Plugin {
 		},
 	};
 	private menuRequest?: MenuRequest;
+	private engine!: EngineSetup;
+	/** The log of the last automatic install, shown if it fails. */
+	private setupLog: string[] = [];
 	/** The page being read: playback belongs to it, and pauses when you leave it. */
 	private target?: { view: FileView; path: string | undefined };
 
@@ -126,6 +130,11 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.register(() => this.bar.destroy());
 		this.ribbonEl = this.addRibbonIcon("audio-lines", "Read aloud", () => this.toggle("button"));
 		this.showState("idle");
+		this.engine = new EngineSetup(
+			async () => (await installedVersion(this.settings.pythonPath)) !== null,
+			(signal) => this.installEngine(signal),
+		);
+		this.register(() => this.engine.cancel());
 
 		this.addCommand({ id: "toggle", name: "Read aloud / pause", callback: () => this.toggle("button") });
 		this.addCommand({
@@ -165,14 +174,7 @@ export default class EdgeVoicePlugin extends Plugin {
 
 		this.addSettingTab(new ReaderSettingTab(this.app, this));
 
-		// Load the voice in the background so the first read starts at once.
-		this.app.workspace.onLayoutReady(async () => {
-			if (!(await installedVersion(this.settings.pythonPath))) {
-				this.offerSetup("Edge Voice needs a one-time setup before it can read aloud.");
-				return;
-			}
-			if (this.settings.preloadVoice) void this.preloadVoice();
-		});
+		this.app.workspace.onLayoutReady(() => void this.prepareEngine());
 	}
 
 	onunload(): void {
@@ -202,6 +204,72 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.reader.stop();
 		this.voice = undefined;
 		if (this.settings.preloadVoice) void this.preloadVoice();
+	}
+
+	/**
+	 * Installs the engine if it's missing and downloads the voice, in the
+	 * background, so the first read starts at once.
+	 */
+	private async prepareEngine(): Promise<void> {
+		let result: "ready" | "installed";
+		try {
+			result = await this.engine.ensure();
+		} catch {
+			return; // installEngine has said why
+		}
+		if (result === "installed") {
+			await this.preloadVoice();
+			new Notice("Edge Voice is ready. Right-click in a note or PDF to start reading.", 10000);
+			// The voice stays downloaded; this only frees the memory it holds.
+			if (!this.settings.preloadVoice) this.restartSidecar();
+		} else if (this.settings.preloadVoice) {
+			void this.preloadVoice();
+		}
+	}
+
+	private async installEngine(signal: AbortSignal): Promise<void> {
+		const steps: Record<SetupStep, string> = {
+			uv: "downloading the installer",
+			python: "installing Python",
+			package: "installing the speech engine",
+			check: "checking it works",
+		};
+		this.setupLog = [];
+		try {
+			await setUpEngine(
+				{
+					step: (step, state) => {
+						if (state === "running") this.status.show("busy", `Setting up Edge Voice: ${steps[step]}`);
+					},
+					log: (line) => this.setupLog.push(line),
+				},
+				signal,
+			);
+		} catch (error) {
+			if (!signal.aborted) this.setupFailed((error as Error).message);
+			throw error;
+		} finally {
+			if (this.reader.state === "idle") this.status.show("hidden");
+		}
+		this.settings.pythonPath = VENV_PYTHON;
+		await this.saveSettings();
+		this.restartSidecar();
+	}
+
+	/** A notice that stays until dismissed, with a button that shows the log and can try again. */
+	private setupFailed(message: string): void {
+		const notice = new Notice(
+			createFragment((fragment) => {
+				fragment.createDiv({ text: `Edge Voice couldn't set up its voice engine: ${message}` });
+				fragment
+					.createEl("button", { text: "Show details", cls: "mod-cta edge-voice-notice-button" })
+					.addEventListener("click", () => {
+						notice.hide();
+						this.openSetup(undefined, { log: this.setupLog, message });
+					});
+			}),
+			0,
+		);
 	}
 
 	private async preloadVoice(): Promise<void> {
@@ -370,38 +438,41 @@ export default class EdgeVoicePlugin extends Plugin {
 		new Notice(`Freed ${formatBytes(freed)}.`);
 	}
 
-	/** Opens the one-click setup; when it succeeds, the plugin switches to the new engine. */
-	openSetup(onReady?: () => void): void {
-		new SetupModal(this.app, (python) => {
-			this.settings.pythonPath = python;
-			void this.saveSettings();
-			this.restartSidecar();
-			if (this.settings.preloadVoice) void this.preloadVoice();
-			onReady?.();
-		}).open();
+	get engineInstalling(): boolean {
+		return this.engine.installing;
 	}
 
-	/** A notice that stays until dismissed, with a button that opens the setup. */
-	private offerSetup(message: string): void {
-		const notice = new Notice(
-			createFragment((fragment) => {
-				fragment.createDiv({ text: message });
-				fragment
-					.createEl("button", { text: "Set up now", cls: "mod-cta edge-voice-notice-button" })
-					.addEventListener("click", () => {
-						notice.hide();
-						this.openSetup();
-					});
-			}),
-			0,
-		);
+	/**
+	 * Opens the setup window, to reinstall or to retry a failed install (shown
+	 * with `failed`); when it succeeds, the plugin switches to the new engine.
+	 */
+	openSetup(onReady?: () => void, failed?: { log: string[]; message: string }): void {
+		if (this.engine.installing) {
+			new Notice("Edge Voice is setting up its voice engine; see the status bar.");
+			return;
+		}
+		new SetupModal(
+			this.app,
+			(python) => {
+				this.settings.pythonPath = python;
+				void this.saveSettings();
+				this.restartSidecar();
+				if (this.settings.preloadVoice) void this.preloadVoice();
+				onReady?.();
+			},
+			failed,
+		).open();
 	}
 
 	private async startReading(view: FileView, source: SegmentSource): Promise<void> {
-		if (!this.sidecar.running && !(await installedVersion(this.settings.pythonPath))) {
-			source.dispose();
-			this.offerSetup("The voice engine isn't set up yet.");
-			return;
+		if (!this.sidecar.running) {
+			try {
+				// Waits for an install under way, or starts one if the engine went missing.
+				await this.engine.ensure();
+			} catch {
+				source.dispose();
+				return; // installEngine has said why
+			}
 		}
 		try {
 			await this.ensureVoice();
@@ -616,7 +687,9 @@ class ReaderSettingTab extends PluginSettingTab {
 			engine.setDesc(
 				version
 					? `Ready: speech engine (moonshine-voice ${version}).`
-					: "Not set up yet. Downloads about 100 MB, once.",
+					: this.plugin.engineInstalling
+						? "Setting up; see the status bar."
+						: "Not set up. Downloads about 100 MB, once.",
 			);
 			const button = engine.controlEl.querySelector("button");
 			if (button) {
