@@ -1,0 +1,138 @@
+name: Engine benchmark
+
+# Measures whether MLX (Kokoro on the GPU, via mlx-audio) is faster than
+# Moonshine (Kokoro on ONNX Runtime, CPU) on Apple silicon, before building it
+# into the plugin. Both engines run on the same runner with the same sentences
+# and voice, three times over; the job summary has the table, and the
+# artifacts have the raw numbers and WAV files to compare by ear. The runners
+# are virtual machines: the summary says whether MLX could use Metal at all.
+on:
+  workflow_dispatch:
+    inputs:
+      repeats:
+        description: Runs of each sentence (the median is kept)
+        default: "5"
+  # Also when the benchmark itself changes, so a PR shows its results.
+  pull_request:
+    paths:
+      - scripts/bench_engines.py
+      - .github/workflows/engine-bench.yml
+
+permissions:
+  contents: read
+
+env:
+  MLX_AUDIO: mlx-audio==0.5.9
+  MISAKI: misaki[en]==0.9.4
+  HF_HUB_DISABLE_TELEMETRY: "1"
+  REPEATS: ${{ inputs.repeats || '5' }}
+
+jobs:
+  apple-silicon:
+    name: Apple silicon (Moonshine and MLX)
+    runs-on: macos-15
+    env:
+      # From src/setup.ts (ENGINE_WHEELS), the release the plugin installs on Macs.
+      WHEEL: moonshine_voice-0.1.5-py3-none-macosx_13_0_arm64.whl
+      WHEEL_SHA256: 5328a49f62ff4670dada9a0bb7f950994a3ba0b2d47898a7049f540d79afbafd
+      HF_HOME: ${{ github.workspace }}/.bench/hf
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0 # no moving major tags after v7
+      - name: Install Moonshine
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download moonshine-voice-0.1.5 -p "$WHEEL" -D .bench
+          echo "$WHEEL_SHA256  .bench/$WHEEL" | shasum -a 256 -c -
+          uv venv -q --python 3.12 .bench/moonshine
+          uv pip install -q --python .bench/moonshine/bin/python ".bench/$WHEEL"
+          echo "MOONSHINE_CACHE=$(.bench/moonshine/bin/python -I -c 'from moonshine_voice.download_file import get_cache_dir; print(get_cache_dir())')" >> "$GITHUB_ENV"
+      - name: Install MLX
+        # --seed adds pip, which spaCy uses if it downloads its English model at first use.
+        run: |
+          uv venv -q --seed --python 3.12 .bench/mlx
+          uv pip install --python .bench/mlx/bin/python "$MLX_AUDIO" "$MISAKI"
+      - name: Installed sizes
+        run: |
+          {
+            echo "## Installed sizes"
+            echo
+            echo "| Environment | Size |"
+            echo "| --- | --- |"
+            for env in moonshine mlx; do echo "| $env | $(du -sh .bench/$env | cut -f1) |"; done
+            echo
+            echo "<details><summary>MLX packages</summary>"
+            echo
+            echo '```'
+            uv pip list --python .bench/mlx/bin/python
+            echo '```'
+            echo "</details>"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/cache@v5.1.0
+        with:
+          path: |
+            ${{ env.MOONSHINE_CACHE }}
+            ${{ env.HF_HOME }}
+          key: engine-bench-voices-arm64-v1
+      - name: Benchmark, three runs
+        run: |
+          mkdir -p results
+          for run in 1 2 3; do
+            .bench/moonshine/bin/python -I scripts/bench_engines.py measure --engine moonshine \
+              --repeats "$REPEATS" --out "results/moonshine-$run.json" --wavs results/wavs
+            .bench/mlx/bin/python -I scripts/bench_engines.py measure --engine mlx \
+              --repeats "$REPEATS" --out "results/mlx-$run.json" --wavs results/wavs
+          done
+          python3 -I scripts/bench_engines.py report results/moonshine-*.json results/mlx-*.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Disk used by downloads
+        if: always()
+        run: |
+          {
+            echo "## Downloaded files"
+            echo
+            echo "| Where | Size |"
+            echo "| --- | --- |"
+            echo "| Moonshine voice cache | $(du -sh "$MOONSHINE_CACHE" 2>/dev/null | cut -f1) |"
+            echo "| Hugging Face cache (MLX weights and voices) | $(du -sh "$HF_HOME" 2>/dev/null | cut -f1) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: engine-bench-apple-silicon
+          path: results
+
+  intel:
+    name: Intel reference (Moonshine)
+    runs-on: macos-15-intel
+    env:
+      WHEEL: moonshine_voice-0.1.5-py3-none-macosx_13_0_x86_64.whl
+      WHEEL_SHA256: a3a5d827cbb31339808ba0cba0f0082bd26550f0a6a2d5577fc8bf65f382ad23
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0 # no moving major tags after v7
+      - name: Install Moonshine
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download moonshine-voice-0.1.5 -p "$WHEEL" -D .bench
+          echo "$WHEEL_SHA256  .bench/$WHEEL" | shasum -a 256 -c -
+          uv venv -q --python 3.12 .bench/moonshine
+          uv pip install -q --python .bench/moonshine/bin/python ".bench/$WHEEL"
+          echo "MOONSHINE_CACHE=$(.bench/moonshine/bin/python -I -c 'from moonshine_voice.download_file import get_cache_dir; print(get_cache_dir())')" >> "$GITHUB_ENV"
+      - uses: actions/cache@v5.1.0
+        with:
+          path: ${{ env.MOONSHINE_CACHE }}
+          key: engine-bench-voices-x64-v1
+      - name: Benchmark
+        run: |
+          mkdir -p results
+          .bench/moonshine/bin/python -I scripts/bench_engines.py measure --engine moonshine \
+            --repeats "$REPEATS" --out results/moonshine.json
+          python3 -I scripts/bench_engines.py report results/moonshine.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: engine-bench-intel
+          path: results
