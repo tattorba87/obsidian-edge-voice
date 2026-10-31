@@ -9,7 +9,7 @@ bun install          # also installs the git hooks (lefthook)
 bun run dev          # rebuild main.js on every change
 ```
 
-Link the folder into a test vault (`ln -s "$PWD" <vault>/.obsidian/plugins/edge-voice`), enable **Edge Voice**, and use its one-click setup for the speech engine. The Python checks need [uv](https://docs.astral.sh/uv/).
+Link the folder into a test vault (`ln -s "$PWD" <vault>/.obsidian/plugins/edge-voice`), enable **Edge Voice**, and use its one-click setup for the speech engine. The Python checks need [uv](https://docs.astral.sh/uv/), and commits need [gitleaks](https://github.com/gitleaks/gitleaks) (`brew install gitleaks`, or a release binary), which the pre-commit hook runs on what's staged.
 
 ## Checks
 
@@ -38,6 +38,7 @@ The pre-commit hook formats and lint-fixes staged files and type-checks; the pre
 - Comments say why, not what. Match the density of the code around them.
 - UI text is in sentence case, plain English, and names no internals the reader doesn't need.
 - Use `window.setTimeout` and similar so pop-out windows work; register listeners and events through the plugin (`registerDomEvent`, `registerEvent`) so they're removed on unload.
+- No secrets in the repository: no tokens, keys or passwords, not even in tests. gitleaks checks each commit, and CI scans the whole history. If it flags something that isn't a secret, add it to a `.gitleaksignore` with the reason in the commit message.
 
 **Behaviour**
 
