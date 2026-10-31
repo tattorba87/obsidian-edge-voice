@@ -10,7 +10,7 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - Sets up its speech engine and downloads the default voice by itself when first enabled, with nothing to install beforehand, on macOS (Apple Silicon and Intel, 13.4 or later), Windows (x64 and ARM) and Linux.
 - Highlighting in Source mode, Live Preview (including rendered callouts and math) and Reading view, and over PDF pages.
 - Right-click _Start text-to-speech here_ in the editor, Reading view and PDFs.
-- Reading follows its page: switching pages or apps pauses it, unless a setting says to keep going.
+- Reading follows its page: switching pages pauses it, and so does hiding Obsidian behind other apps. Each has its own setting; in the background it can also pause as soon as you switch apps, or keep reading.
 - Player bar with skip, speed and volume, which can be minimized or turned off; animated status-bar indicator.
 - Double-tap shortcut to start, pause and resume, with a chime that can be turned off, a choice of three keys or one custom key.
 - Text normalization for technical writing: units, percentages, ranges, acronyms, model names, ordinals, decades and citations.
