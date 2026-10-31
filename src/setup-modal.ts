@@ -20,6 +20,8 @@ export class SetupModal extends Modal {
 	constructor(
 		app: App,
 		private readonly onReady: (python: string) => void,
+		/** A failed automatic install, whose log and error to show. */
+		private readonly failed?: { log: string[]; message: string },
 	) {
 		super(app);
 	}
@@ -32,8 +34,8 @@ export class SetupModal extends Modal {
 		contentEl.createEl("p", {
 			text:
 				"Edge Voice speaks with an engine that runs on your computer. Setting it up downloads about 100 MB " +
-				`into ${SETUP_HOME}: the uv installer, Python and the speech engine (Moonshine). The voice itself (a few ` +
-				"hundred MB) downloads the first time you read. Your notes never leave your computer.",
+				`into ${SETUP_HOME}: the uv installer, Python and the speech engine (Moonshine). Your notes never ` +
+				"leave your computer.",
 		});
 
 		const steps = contentEl.createDiv({ cls: "edge-voice-setup-steps" });
@@ -50,6 +52,11 @@ export class SetupModal extends Modal {
 		this.logEl = this.detailsEl.createEl("pre");
 
 		this.buttons = contentEl.createDiv({ cls: "modal-button-container" });
+		if (this.failed) {
+			this.messageEl.setText(`Setup failed: ${this.failed.message}`);
+			this.logEl.setText(this.failed.log.join("\n"));
+			this.detailsEl.open = true;
+		}
 		this.showStartButtons();
 	}
 
@@ -63,7 +70,7 @@ export class SetupModal extends Modal {
 		const support = platformSupport();
 		if (support.supported) {
 			this.buttons
-				.createEl("button", { cls: "mod-cta", text: "Set up" })
+				.createEl("button", { cls: "mod-cta", text: this.messageEl.getText() ? "Try again" : "Set up" })
 				.addEventListener("click", () => void this.start());
 		} else if (!this.messageEl.getText()) {
 			this.messageEl.setText(support.reason ?? "");
