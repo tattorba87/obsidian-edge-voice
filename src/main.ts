@@ -677,8 +677,7 @@ export default class EdgeVoicePlugin extends Plugin {
 		const speed = ` · ${formatSpeed(this.settings.speed)}`;
 		const shown: Record<ReaderState, [StatusKind, string]> = {
 			idle: ["hidden", ""],
-			// The player bar's glow says it's synthesizing; the spinner is only for when the bar is off.
-			loading: [this.settings.showPlayer ? "text" : "busy", `Synthesizing${where}${speed}`],
+			loading: ["busy", `Synthesizing${where}${speed}`],
 			playing: ["playing", `Reading${where}${speed}`],
 			paused: ["paused", `Paused${where}${speed}`],
 		};
