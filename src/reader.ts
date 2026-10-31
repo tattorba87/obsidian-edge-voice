@@ -144,6 +144,14 @@ export class Reader {
 					return;
 				}
 				if (this._state !== "paused") this.setState("loading", segment.label);
+				// Highlighted before its audio is ready, so a skip shows at once where it landed.
+				this.current = segment;
+				await segment.highlight();
+				if (!live()) {
+					// A newer run may have highlighted this same segment; leave that one be.
+					if (this.current !== segment) segment.unhighlight();
+					return;
+				}
 				// Nothing prepared means someone is waiting on this sentence:
 				// speak its opening clause first rather than the whole thing.
 				const pieces = this.audio.has(this.index) ? null : quickStartPieces(segment);
@@ -153,12 +161,7 @@ export class Reader {
 				for (let piece = 0; piece < ranges.length; piece++) {
 					const synthesis = await syntheses[piece];
 					if (!live()) return;
-					if (piece === 0) {
-						this.current = segment;
-						await segment.highlight();
-						if (!live()) return;
-						if (this._state !== "paused") this.setState("playing", segment.label);
-					}
+					if (piece === 0 && this._state !== "paused") this.setState("playing", segment.label);
 					const finished = this.play(synthesis);
 					this.trackWords(segment, synthesis, generation, ranges[piece]);
 					await finished;
