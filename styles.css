@@ -570,3 +570,39 @@ body.theme-dark {
 .edge-voice-key-message.is-error {
 	color: var(--text-error);
 }
+
+/* Settings: "Advanced", folded away at the bottom, opened by clicking its heading. */
+.edge-voice-advanced {
+	margin-top: 24px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.edge-voice-advanced > summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 12px;
+	padding: 16px 0 12px;
+	cursor: pointer;
+	list-style: none;
+}
+
+.edge-voice-advanced > summary::-webkit-details-marker {
+	display: none;
+}
+
+.edge-voice-advanced-title {
+	font-weight: var(--font-semibold);
+}
+
+.edge-voice-advanced-title::before {
+	content: "›";
+	display: inline-block;
+	width: 1em;
+	color: var(--text-muted);
+	transition: transform 150ms ease;
+}
+
+.edge-voice-advanced[open] .edge-voice-advanced-title::before {
+	transform: rotate(90deg);
+}

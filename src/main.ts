@@ -826,59 +826,13 @@ class ReaderSettingTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
+	/** Whether Advanced is open, kept when the page is drawn again. */
+	private advancedOpen = false;
+
 	display(): void {
 		const { containerEl } = this;
 		const settings = this.plugin.settings;
 		containerEl.empty();
-
-		const engine = new Setting(containerEl).setName("Voice engine").setDesc("Checking…");
-		engine.addButton((button) =>
-			button.setButtonText("Set up").onClick(() => this.plugin.openSetup(() => this.display())),
-		);
-		void installedVersion(settings.pythonPath).then((version) => {
-			engine.setDesc(
-				version
-					? `Ready: speech engine (moonshine-voice ${version}).`
-					: this.plugin.engineInstalling
-						? "Setting up; see the status bar."
-						: "Not set up. Downloads about 100 MB, once.",
-			);
-			const button = engine.controlEl.querySelector("button");
-			if (button) {
-				button.setText(version ? "Reinstall" : "Set up");
-				button.toggleClass("mod-cta", !version);
-			}
-		});
-
-		if (mlxSupported()) {
-			const faster = new Setting(containerEl)
-				.setName("Faster voice engine")
-				.setDesc(this.plugin.fasterEngineStatus());
-			faster.addToggle((toggle) =>
-				toggle.setValue(settings.fasterEngine).onChange((value) => {
-					this.plugin.setFasterEngine(value);
-					faster.setDesc(this.plugin.fasterEngineStatus());
-				}),
-			);
-		}
-
-		new Setting(containerEl)
-			.setName("Python interpreter")
-			.setDesc(
-				"Advanced: the Python the engine runs in. Set up fills this in; change it only to use a Python you set up yourself.",
-			)
-			.addText((text) =>
-				text.setValue(settings.pythonPath).onChange((value) => {
-					settings.pythonPath = value.trim();
-					void this.plugin.saveSettings();
-				}),
-			)
-			.addButton((button) =>
-				button.setButtonText("Restart").onClick(() => {
-					this.plugin.restartSidecar();
-					this.display();
-				}),
-			);
 
 		const voiceSetting = new Setting(containerEl)
 			.setName("Voice")
@@ -916,19 +870,6 @@ class ReaderSettingTab extends PluginSettingTab {
 					.setLimits(MIN_SPEED, MAX_SPEED, 0.05)
 					.setValue(settings.speed)
 					.onChange((value) => this.plugin.setSpeed(value)),
-			);
-
-		new Setting(containerEl)
-			.setName("Sentences to prepare ahead")
-			.setDesc("More smooths over slow sentences; fewer reacts faster to skips and speed changes.")
-			.addSlider((slider) =>
-				slider
-					.setLimits(1, 4, 1)
-					.setValue(settings.prefetch)
-					.onChange((value) => {
-						settings.prefetch = value;
-						void this.plugin.saveSettings();
-					}),
 			);
 
 		const colorSetting = new Setting(containerEl)
@@ -1027,12 +968,96 @@ class ReaderSettingTab extends PluginSettingTab {
 				toggle.setValue(settings.autoScroll).onChange((value) => {
 					settings.autoScroll = value;
 					void this.plugin.saveSettings();
-
-					new Setting(containerEl).setName("Storage").setHeading();
-					const storage = containerEl.createDiv();
-					storage.createDiv({ cls: "setting-item-description", text: "Checking downloads…" });
-					void this.showStorage(storage);
 				}),
+			);
+
+		new Setting(containerEl).setName("Storage").setHeading();
+		const storage = containerEl.createDiv();
+		storage.createDiv({ cls: "setting-item-description", text: "Checking downloads…" });
+		void this.showStorage(storage);
+
+		this.advancedSettings(containerEl);
+	}
+
+	/**
+	 * Settings almost nobody needs, folded away at the bottom: the engine, the
+	 * Python it runs in, the faster engine and how far ahead to prepare. It
+	 * opens by itself when the engine isn't set up, so Set up can be found.
+	 */
+	private advancedSettings(parentEl: HTMLElement): void {
+		const settings = this.plugin.settings;
+		const details = parentEl.createEl("details", { cls: "edge-voice-advanced" });
+		details.open = this.advancedOpen;
+		details.addEventListener("toggle", () => (this.advancedOpen = details.open));
+		const summary = details.createEl("summary");
+		summary.createSpan({ cls: "edge-voice-advanced-title", text: "Advanced" });
+		summary.createSpan({
+			cls: "setting-item-description",
+			text: "Rarely needed: the speech engine and how it runs.",
+		});
+		const containerEl = details.createDiv({ cls: "edge-voice-advanced-body" });
+
+		const engine = new Setting(containerEl).setName("Voice engine").setDesc("Checking…");
+		engine.addButton((button) =>
+			button.setButtonText("Set up").onClick(() => this.plugin.openSetup(() => this.display())),
+		);
+		void installedVersion(settings.pythonPath).then((version) => {
+			engine.setDesc(
+				version
+					? `Ready: speech engine (moonshine-voice ${version}).`
+					: this.plugin.engineInstalling
+						? "Setting up; see the status bar."
+						: "Not set up. Downloads about 100 MB, once.",
+			);
+			if (!version && !this.plugin.engineInstalling) details.open = true;
+			const button = engine.controlEl.querySelector("button");
+			if (button) {
+				button.setText(version ? "Reinstall" : "Set up");
+				button.toggleClass("mod-cta", !version);
+			}
+		});
+
+		if (mlxSupported()) {
+			const faster = new Setting(containerEl)
+				.setName("Faster voice engine")
+				.setDesc(this.plugin.fasterEngineStatus());
+			faster.addToggle((toggle) =>
+				toggle.setValue(settings.fasterEngine).onChange((value) => {
+					this.plugin.setFasterEngine(value);
+					faster.setDesc(this.plugin.fasterEngineStatus());
+				}),
+			);
+		}
+
+		new Setting(containerEl)
+			.setName("Python interpreter")
+			.setDesc(
+				"The Python the engine runs in. Set up fills this in; change it only to use a Python you set up yourself.",
+			)
+			.addText((text) =>
+				text.setValue(settings.pythonPath).onChange((value) => {
+					settings.pythonPath = value.trim();
+					void this.plugin.saveSettings();
+				}),
+			)
+			.addButton((button) =>
+				button.setButtonText("Restart").onClick(() => {
+					this.plugin.restartSidecar();
+					this.display();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName("Sentences to prepare ahead")
+			.setDesc("More smooths over slow sentences; fewer reacts faster to skips and speed changes.")
+			.addSlider((slider) =>
+				slider
+					.setLimits(1, 4, 1)
+					.setValue(settings.prefetch)
+					.onChange((value) => {
+						settings.prefetch = value;
+						void this.plugin.saveSettings();
+					}),
 			);
 	}
 
