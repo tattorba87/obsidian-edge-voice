@@ -31,7 +31,7 @@ The macOS packages come from this repository's `moonshine-voice-*` release, buil
 
 ### Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md): setup, the checks (`npm run check`), the rules, and how releases are made. `scripts/setup-python.sh` and `scripts/setup-python.ps1` set up the speech engine from a terminal.
+See [CONTRIBUTING.md](CONTRIBUTING.md): setup, the checks (`bun run check`), the rules, and how releases are made. `scripts/setup-python.sh` and `scripts/setup-python.ps1` set up the speech engine from a terminal.
 
 ## Use
 
