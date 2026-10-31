@@ -30,6 +30,11 @@ jobs:
     runs-on: ${{ matrix.runner }}
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.4"
+      # The wheel is tagged with the higher of the target above and the macOS the
+      # build's Python was made for; the runner's Homebrew Python says 15. uv's own
+      # Python builds are made for older macOS, so the tag follows the target.
+      UV_PYTHON: "3.12"
+      UV_PYTHON_PREFERENCE: only-managed
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,7 +48,7 @@ jobs:
         working-directory: language-bindings/python
         run: |
           wheel=$(ls dist/moonshine_voice-*.whl)
-          case "$wheel" in *"_${{ matrix.arch }}.whl") ;; *) echo "Unexpected wheel: $wheel" >&2; exit 1 ;; esac
+          case "$wheel" in *"-macosx_13_0_${{ matrix.arch }}.whl") ;; *) echo "Unexpected wheel: $wheel" >&2; exit 1 ;; esac
           uv venv --python 3.12 check
           uv pip install --python check/bin/python "$wheel"
           check/bin/python -I -c "from moonshine_voice.moonshine_api import _MoonshineLib; _MoonshineLib()"
