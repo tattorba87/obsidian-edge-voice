@@ -50,7 +50,8 @@ Reading starts from the selected text if there is any, otherwise from the top of
 
 Reading belongs to the page it started on.
 
-- Switch to another page, or to another app, and it **pauses**. Turn on _Keep reading after switching pages or leaving Obsidian_ to let it carry on. Opening the sidebars doesn't count as switching.
+- Switch to another page and it **pauses**; turn off _Pause when switching pages_ to let it carry on. Opening the sidebars doesn't count as switching.
+- Switch to another app and it **keeps reading while Obsidian is visible**: it pauses only once every Obsidian window is minimized, hidden or covered. _When Obsidian is in the background_ can make it pause as soon as you switch apps, or always keep reading.
 - **Play** on the page that was paused resumes it. On any other page it starts reading that page.
 - **Stop** ends reading.
 

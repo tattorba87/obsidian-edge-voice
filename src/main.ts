@@ -18,6 +18,7 @@ import { installedVersion, installServerScript, SETUP_HOME, setUpEngine, SetupSt
 import { StatusIndicator, StatusKind } from "./status";
 import { deleteItem, formatBytes, scanEngine, scanVoices, StorageItem } from "./storage";
 import { SetupModal } from "./setup-modal";
+import { InBackground, pausesInBackground } from "./background";
 import { playChime } from "./chime";
 import {
 	customKeyProblem,
@@ -40,7 +41,9 @@ interface ReaderSettings {
 	autoScroll: boolean;
 	preloadVoice: boolean;
 	skipFootnotes: boolean;
-	keepReadingInBackground: boolean;
+	pauseOnPageSwitch: boolean;
+	/** Leaving Obsidian for another app: pause, keep reading while a window shows, or keep reading. */
+	inBackground: InBackground;
 	doubleTapEnabled: boolean;
 	doubleTapKey: string;
 	/** The one key recorded under "Custom…", kept while a preset is chosen. */
@@ -61,7 +64,8 @@ const DEFAULT_SETTINGS: ReaderSettings = {
 	autoScroll: true,
 	preloadVoice: true,
 	skipFootnotes: true,
-	keepReadingInBackground: false,
+	pauseOnPageSwitch: true,
+	inBackground: "visible",
 	doubleTapEnabled: false,
 	doubleTapKey: DEFAULT_DOUBLE_TAP_KEY,
 	doubleTapCustomKey: null,
@@ -198,6 +202,13 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	async loadSettings(): Promise<void> {
 		this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<ReaderSettings> | null) };
+		// One setting used to cover both switching pages and leaving Obsidian.
+		const old = this.settings as ReaderSettings & { keepReadingInBackground?: boolean };
+		if (old.keepReadingInBackground) {
+			this.settings.pauseOnPageSwitch = false;
+			this.settings.inBackground = "always";
+		}
+		delete old.keepReadingInBackground;
 		// A key recorded before there was one custom slot becomes the custom key.
 		const { doubleTapKey, doubleTapCustomKey } = this.settings;
 		if (!doubleTapCustomKey && !DOUBLE_TAP_PRESETS.includes(doubleTapKey)) {
@@ -385,12 +396,12 @@ export default class EdgeVoicePlugin extends Plugin {
 	 */
 	private registerAutoPause(): void {
 		const pause = () => {
-			if (this.settings.keepReadingInBackground) return;
 			if (this.reader.state === "playing" || this.reader.state === "loading") this.reader.pause();
 		};
 		const workspace = this.app.workspace;
 		this.registerEvent(
 			workspace.on("active-leaf-change", (leaf) => {
+				if (!this.settings.pauseOnPageSwitch) return;
 				if (!leaf || !this.target || leaf.view === this.target.view) return;
 				const root = leaf.getRoot();
 				if (root === workspace.leftSplit || root === workspace.rightSplit) return;
@@ -399,19 +410,27 @@ export default class EdgeVoicePlugin extends Plugin {
 		);
 		this.registerEvent(
 			workspace.on("file-open", () => {
+				if (!this.settings.pauseOnPageSwitch) return;
 				if (this.target && this.target.view.file?.path !== this.target.path) pause();
 			}),
 		);
-		// Leaving Obsidian: no Obsidian window has focus any more. Checked a
-		// moment later, since focus passes between windows through a blur.
+		// Leaving Obsidian: no Obsidian window has focus any more ("pause"), or
+		// none is on screen, being minimized, hidden or covered ("visible").
+		// Checked a moment later, since focus passes between windows through a blur.
 		const windows = new Set<Window>([window]);
+		const check = () => {
+			const open = [...windows]
+				.filter((win) => !win.closed)
+				.map((win) => ({
+					focused: win.document.hasFocus(),
+					hidden: win.document.visibilityState === "hidden",
+				}));
+			if (pausesInBackground(this.settings.inBackground, open)) pause();
+		};
 		const watch = (win: Window) => {
 			windows.add(win);
-			this.registerDomEvent(win, "blur", () => {
-				window.setTimeout(() => {
-					if (![...windows].some((candidate) => !candidate.closed && candidate.document.hasFocus())) pause();
-				}, 150);
-			});
+			this.registerDomEvent(win, "blur", () => window.setTimeout(check, 150));
+			this.registerDomEvent(win.document, "visibilitychange", () => window.setTimeout(check, 150));
 		};
 		watch(window);
 		this.registerEvent(workspace.on("window-open", (_workspaceWindow, win) => watch(win)));
@@ -849,13 +868,32 @@ class ReaderSettingTab extends PluginSettingTab {
 		this.doubleTapSettings(containerEl);
 
 		new Setting(containerEl)
-			.setName("Keep reading after switching pages or leaving Obsidian")
-			.setDesc("Off: reading pauses when you switch to another page or app, and resumes from where it stopped.")
+			.setName("Pause when switching pages")
+			.setDesc("Reading pauses when you open another page, and resumes where it stopped. Sidebars don't count.")
 			.addToggle((toggle) =>
-				toggle.setValue(settings.keepReadingInBackground).onChange((value) => {
-					settings.keepReadingInBackground = value;
+				toggle.setValue(settings.pauseOnPageSwitch).onChange((value) => {
+					settings.pauseOnPageSwitch = value;
 					void this.plugin.saveSettings();
 				}),
+			);
+
+		new Setting(containerEl)
+			.setName("When Obsidian is in the background")
+			.setDesc(
+				"While you use another app. Visible means an Obsidian window is still on screen, not minimized, hidden or covered.",
+			)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						pause: "Pause",
+						visible: "Keep reading while visible",
+						always: "Keep reading",
+					})
+					.setValue(settings.inBackground)
+					.onChange((value) => {
+						settings.inBackground = value as InBackground;
+						void this.plugin.saveSettings();
+					}),
 			);
 
 		new Setting(containerEl)
