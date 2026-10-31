@@ -57,11 +57,11 @@ const ENGINE_RELEASE = `https://github.com/tattorba87/obsidian-edge-voice/releas
 const ENGINE_WHEELS: Record<string, { asset: string; sha256: string }> = {
 	"darwin-x64": {
 		asset: "moonshine_voice-0.1.5-py3-none-macosx_13_0_x86_64.whl",
-		sha256: "",
+		sha256: "a3a5d827cbb31339808ba0cba0f0082bd26550f0a6a2d5577fc8bf65f382ad23",
 	},
 	"darwin-arm64": {
 		asset: "moonshine_voice-0.1.5-py3-none-macosx_13_0_arm64.whl",
-		sha256: "",
+		sha256: "5328a49f62ff4670dada9a0bb7f950994a3ba0b2d47898a7049f540d79afbafd",
 	},
 };
 

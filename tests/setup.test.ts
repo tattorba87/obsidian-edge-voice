@@ -35,6 +35,9 @@ describe("setup", () => {
 			/\/releases\/download\/moonshine-voice-[^/]+\/.*_x86_64\.whl$/,
 		);
 		expect(engineSource("darwin-arm64").wheel?.url).toMatch(/_arm64\.whl$/);
+		for (const key of ["darwin-x64", "darwin-arm64"]) {
+			expect(engineSource(key).wheel?.sha256).toMatch(/^[0-9a-f]{64}$/);
+		}
 	});
 
 	it("runs the x64 engine on Windows on ARM", () => {
