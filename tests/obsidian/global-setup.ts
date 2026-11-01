@@ -29,10 +29,7 @@ export async function setup(): Promise<() => Promise<void>> {
 		// About as long as Kokoro takes to say it, so a sentence stays highlighted long enough to look at.
 		EDGE_VOICE_FAKE_SECONDS_PER_CHAR: "0.06",
 	});
-	for (let waited = 0; sandbox.eval("!!app.plugins.plugins['edge-voice']") !== "true"; waited += 250) {
-		if (waited > 30000) throw new Error("Edge Voice didn't load in the sandbox within 30 seconds.");
-		await new Promise((done) => setTimeout(done, 250));
-	}
+	await sandbox.waitForPlugin("edge-voice");
 
 	return async () => {
 		sandbox.cli("dev:screenshot", `path=${join(sandbox.paths.root, "last.png")}`);
