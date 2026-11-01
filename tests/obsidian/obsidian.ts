@@ -54,3 +54,39 @@ export function openNote(path: string, mode: "source" | "preview"): void {
 		await new Promise((done) => setTimeout(done, 300));
 	`);
 }
+
+/** Stops any reading and opens `path` (a PDF, say) in its usual view, waiting `settle` ms for it to render. */
+export function openFile(path: string, settle = 1500): void {
+	run(`
+		app.commands.executeCommandById("edge-voice:stop");
+		const file = app.vault.getAbstractFileByPath(${JSON.stringify(path)});
+		await app.workspace.getMostRecentLeaf().openFile(file);
+		await new Promise((done) => setTimeout(done, ${settle}));
+	`);
+}
+
+/** Runs a command of the plugin's, e.g. "read-from-here" or "next". */
+export function command(id: string): void {
+	run(`app.commands.executeCommandById(${JSON.stringify(`edge-voice:${id}`)});`);
+}
+
+/** The text under the sentence highlight in the open note: CodeMirror marks in the editor, CSS highlights in Reading view. */
+export const HIGHLIGHTED = `
+	const marks = [...document.querySelectorAll(".workspace-leaf.mod-active .cm-content .edge-voice-sentence")];
+	const highlight = CSS.highlights.get("edge-voice-sentence");
+	const rendered = highlight ? [...highlight].map((range) => range.toString()).join(" ") : "";
+	return marks.map((mark) => mark.textContent).join("") || rendered;
+`;
+
+/** The words of `text`, lower-cased, for comparing rendered text with what the voice was asked to say. */
+export const words = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? [];
+
+/** Polls `read` until it returns something, for up to `ms`. */
+export async function until<T>(read: () => T, ms = 10000): Promise<T | undefined> {
+	for (let waited = 0; waited < ms; waited += 200) {
+		const value = read();
+		if (value) return value;
+		await new Promise((done) => setTimeout(done, 200));
+	}
+	return undefined;
+}

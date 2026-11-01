@@ -1,40 +1,24 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { errors, openNote, run, spoken } from "./obsidian";
+import { command, errors, HIGHLIGHTED, openNote, run, spoken, until, words } from "./obsidian";
 
-/** The words of `text`, lower-cased, for comparing rendered text with what the voice was asked to say. */
-const words = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? [];
+afterEach(() => command("stop"));
 
-/** Polls `read` inside Obsidian until it returns something, for up to `ms`. */
-async function until(read: () => string, ms = 10000): Promise<string> {
-	for (let waited = 0; waited < ms; waited += 200) {
-		const value = read();
-		if (value) return value;
-		await new Promise((done) => setTimeout(done, 200));
-	}
-	return "";
+/** Starts reading `path` in `mode` and returns the first highlighted text. */
+async function startReading(mode: "source" | "preview"): Promise<string> {
+	openNote("A long note.md", mode);
+	spoken(true);
+	command("read-from-here");
+	return (await until(() => run<string>(HIGHLIGHTED))) ?? "";
 }
 
-afterEach(() => {
-	run(`app.commands.executeCommandById("edge-voice:stop");`);
-});
-
-describe("Edge Voice in Obsidian", () => {
+describe("Reading notes in Obsidian", () => {
 	it("loads without errors", () => {
 		expect(run<boolean>(`return !!app.plugins.plugins["edge-voice"];`)).toBe(true);
 		expect(errors()).toEqual([]);
 	});
 
 	it("highlights the sentence being read in Reading view", async () => {
-		openNote("A long note.md", "preview");
-		spoken(true);
-		run(`app.commands.executeCommandById("edge-voice:read-from-here");`);
-		// Rendered text is highlighted with the CSS Custom Highlight API, so read the ranges back.
-		const highlighted = await until(() =>
-			run<string>(`
-				const highlight = CSS.highlights.get("edge-voice-sentence");
-				return highlight ? [...highlight].map((range) => range.toString()).join(" ") : "";
-			`),
-		);
+		const highlighted = await startReading("preview");
 		expect(highlighted).not.toBe("");
 		// The highlight is on the sentence the voice was asked to say.
 		expect(words(highlighted).slice(0, 4)).toEqual(words(spoken()[0] ?? "").slice(0, 4));
@@ -42,18 +26,34 @@ describe("Edge Voice in Obsidian", () => {
 	});
 
 	it("highlights the sentence being read in Live Preview", async () => {
-		openNote("A long note.md", "source");
-		spoken(true);
-		run(`app.commands.executeCommandById("edge-voice:read-from-here");`);
-		// Editor text is highlighted with CodeMirror marks.
-		const highlighted = await until(() =>
-			run<string>(`
-				const marks = [...document.querySelectorAll(".workspace-leaf.mod-active .cm-content .edge-voice-sentence")];
-				return marks.map((mark) => mark.textContent).join("");
-			`),
-		);
+		const highlighted = await startReading("source");
 		expect(highlighted).not.toBe("");
 		expect(words(highlighted).slice(0, 4)).toEqual(words(spoken()[0] ?? "").slice(0, 4));
+		expect(errors()).toEqual([]);
+	});
+
+	it("keeps the highlight when switching to Live Preview and back mid-sentence", async () => {
+		const before = await startReading("preview");
+		for (const mode of ["source", "preview"]) {
+			run(`
+				const view = app.workspace.getMostRecentLeaf().view;
+				await view.setState({ ...view.getState(), mode: ${JSON.stringify(mode)} }, { history: false });
+			`);
+			const after = (await until(() => run<string>(HIGHLIGHTED), 3000)) ?? "";
+			expect(words(after).slice(0, 4)).toEqual(words(before).slice(0, 4));
+		}
+		expect(errors()).toEqual([]);
+	});
+
+	it("moves the highlight at once on a skip, before the voice is ready", async () => {
+		const first = await startReading("source");
+		command("next");
+		// Well inside the fake voice's 0.3 s of synthesis.
+		const next = await until(() => {
+			const now = run<string>(HIGHLIGHTED);
+			return now && words(now).join(" ") !== words(first).join(" ") ? now : "";
+		}, 250);
+		expect(next).toBeTruthy();
 		expect(errors()).toEqual([]);
 	});
 });
