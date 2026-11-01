@@ -205,6 +205,29 @@ export class Sandbox {
 		throw new SandboxError("the sandbox Obsidian didn't answer within a minute.");
 	}
 
+	/**
+	 * Waits until plugin `id` is loaded and Obsidian has settled. Turning
+	 * restricted mode off reloads the window, and while it reloads the CLI's
+	 * commands are gone, so a marker set in the window must survive a moment
+	 * between two checks.
+	 */
+	async waitForPlugin(id: string, timeout = 60000): Promise<void> {
+		const probe = `(() => {
+			const steady = window.sandboxMark === true;
+			window.sandboxMark = true;
+			return steady && !!app.plugins.plugins[${JSON.stringify(id)}];
+		})()`;
+		for (let waited = 0; waited <= timeout; waited += 500) {
+			try {
+				if (this.eval(probe) === "true") return;
+			} catch {
+				// The window is still loading.
+			}
+			await wait(500);
+		}
+		throw new SandboxError(`${id} didn't load in the sandbox within ${timeout / 1000} seconds.`);
+	}
+
 	/** Closes the sandbox Obsidian, if it's running, and waits until it has gone. */
 	async close(): Promise<void> {
 		const pid = this.runningPid();
