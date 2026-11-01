@@ -3,3 +3,4 @@ bun.lock
 node_modules/
 .scratch/
 coverage/
+.sandbox/

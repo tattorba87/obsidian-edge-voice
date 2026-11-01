@@ -13,6 +13,9 @@
 		"test": "vitest run",
 		"test:python": "uv run --with pytest==8.4.2 pytest",
 		"check": "bun run typecheck && bun run lint && bun run format:check && bun run test && bun run test:python",
+		"sandbox": "bun scripts/sandbox/main.ts",
+		"sandbox:reset": "bun scripts/sandbox/main.ts reset",
+		"sandbox:errors": "bun scripts/sandbox/main.ts errors",
 		"release": "bun scripts/version-bump.mjs",
 		"prepare": "lefthook install || true"
 	},
