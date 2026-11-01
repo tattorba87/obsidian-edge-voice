@@ -9,6 +9,8 @@ bun install          # also installs the git hooks (lefthook)
 bun run sandbox      # build, open the sandbox, and reload the plugin on every change
 ```
 
+Use the Bun version pinned in `package.json` (`packageManager`). Install Obsidian locally to use the macOS sandbox and real Obsidian tests.
+
 The Python checks need [uv](https://docs.astral.sh/uv/), and commits need [gitleaks](https://github.com/gitleaks/gitleaks) (`brew install gitleaks`, or a release binary), which the pre-commit hook runs on what's staged.
 
 ### The sandbox
@@ -29,7 +31,7 @@ The sandbox lives in `.sandbox/` (gitignored): its own Obsidian profile, its own
 
 | Command                 | What it does                                                                                   |
 | ----------------------- | ---------------------------------------------------------------------------------------------- |
-| `bun run check`         | Everything below; CI runs the same                                                             |
+| `bun run check`         | Type-check, lint, format check, Vitest and pytest; excludes build and real Obsidian            |
 | `bun run typecheck`     | TypeScript, including tests                                                                    |
 | `bun run lint`          | ESLint with Obsidian's community-review rules (`eslint-plugin-obsidianmd`)                     |
 | `bun run format`        | Prettier for TypeScript, CSS, JSON and Markdown; ruff for Python                               |
@@ -39,6 +41,8 @@ The sandbox lives in `.sandbox/` (gitignored): its own Obsidian profile, its own
 | `bun run build`         | Type-check and bundle `main.js`                                                                |
 | `bun run test:obsidian` | The tests against real Obsidian (opens a test Obsidian for a few seconds; not part of `check`) |
 
+`bun run check` does not run `bun run format`, `bun run build` or `bun run test:obsidian`. CI runs the same checks plus a production build; secret scanning runs in a separate job. Run `bun run build` for changes to shipped code, bundling or dependencies.
+
 Use `bun run test`, not `bun test`: the latter is Bun's own test runner, not Vitest.
 
 The pre-commit hook formats and lint-fixes staged files and type-checks; the pre-push hook runs both test suites. Don't skip them (`--no-verify`) except to commit work in progress on a branch of your own.
@@ -47,7 +51,7 @@ The pre-commit hook formats and lint-fixes staged files and type-checks; the pre
 
 Four layers, each catching what the one before can't:
 
-1. **`bun run check`** (also run by the hooks and CI): the text rules, PDF reading, the sidecar protocol, setup's choices, `server.py` against a stub engine, and behaviour: playback on a fake clock with a fake voice (`tests/support/playback.ts`), what play/pause does (`src/controls.ts`), and the player bar in a fake page (`tests/support/obsidian-dom.ts`). New behaviour gets a test here; a fix gets a test that failed before it.
+1. **`bun run check`** (run in CI; hooks run subsets): the text rules, PDF reading, the sidecar protocol, setup's choices, `server.py` against a stub engine, and behaviour: playback on a fake clock with a fake voice (`tests/support/playback.ts`), what play/pause does (`src/controls.ts`), and the player bar in a fake page (`tests/support/obsidian-dom.ts`). New behaviour gets a test here; a fix gets a test that failed before it.
 2. **The sandbox, by hand:** how it looks, sounds and behaves in Obsidian, which no test sees. Keep `bun run sandbox` running while you work, try the change there, and check `bun run sandbox:errors` reports none.
 3. **Real Obsidian, automated** (`tests/obsidian/`, `bun run test:obsidian`): a throwaway sandbox (`.sandbox-test/`) with the plugin built from your tree and a fake engine, driven through `obsidian-cli`. It checks what only real Obsidian shows: its internals (Reading view's sections, the editor) and its styles. The **Obsidian** workflow runs it before every release, and by hand from the Actions tab. Locally it opens a test Obsidian for about ten seconds, so run it when you change how the plugin meets Obsidian.
 4. **CI on other platforms:** what nobody can try on one computer (below).
@@ -64,7 +68,7 @@ What to try in the sandbox, by what you changed:
 | `server.py` or the sidecar                      | Read a note and a PDF. `bun run sandbox:errors` shows errors the plugin raised; the sidecar's own output is in the sandbox's developer console (⌥⌘I, with Verbose shown).                                                            |
 | Setup (`src/setup.ts`, `locks/`)                | `bun run sandbox --fresh` installs the engine from scratch, as for a new user. On a Mac it can only finish once the engine wheels are downloadable (public repository).                                                              |
 
-Other platforms, in CI: the **Engine install** workflow installs the engine from each platform's lock on that platform (macOS Intel and Apple silicon, Windows, Linux x64 and ARM) and loads it; the **MLX engine** workflow has the real faster engine speak on Apple silicon. Both run on pull requests that touch setup, the locks or `server.py`, and can be started by hand from the Actions tab.
+Other platforms, in CI: the **Engine install** workflow installs the engine from each platform's lock on that platform (macOS Intel and Apple silicon, Windows, Linux x64 and ARM) and loads it; the **MLX engine** workflow has the real faster engine speak on Apple silicon. Both run on pull requests that touch `src/setup.ts` or `locks/`; the MLX workflow also runs for `server.py` changes. Each also watches its own workflow file, and Engine install watches `scripts/lock-engine.sh`. Both can be started by hand from the Actions tab.
 
 Every bug gets a test at the cheapest layer that catches it: a unit test if it can, real Obsidian if only Obsidian shows it.
 
@@ -79,7 +83,7 @@ In the pull request, say what you tried by hand, where, and what still needs a p
 - No `any`: type what crosses a boundary (`JSON.parse`, `loadData`, pdf.js, the sidecar protocol).
 - Comments say why, not what. Match the density of the code around them.
 - UI text is in sentence case, plain English, and names no internals the reader doesn't need.
-- Use `window.setTimeout` and similar so pop-out windows work; register listeners and events through the plugin (`registerDomEvent`, `registerEvent`) so they're removed on unload.
+- Use window timer APIs for browser code; use the owning window for DOM work in pop-out windows; register listeners and events through the plugin (`registerDomEvent`, `registerEvent`) so they're removed on unload.
 - No secrets in the repository: no tokens, keys or passwords, not even in tests. gitleaks checks each commit, and CI scans the whole history. If it flags something that isn't a secret, add it to a `.gitleaksignore` with the reason in the commit message.
 
 **Behaviour**
@@ -92,7 +96,7 @@ In the pull request, say what you tried by hand, where, and what still needs a p
 **Tests**
 
 - New behaviour comes with a test. Fixes come with a test that failed before the fix.
-- Tests don't use copyrighted documents. Build what you need, as `tests/pdf.test.ts` builds its PDFs with pdf-lib.
+- Tests don't use third-party documents without permission or a suitable license. Build what you need, as `tests/pdf.test.ts` builds its PDFs with pdf-lib.
 
 ## Commits and branches
 
@@ -102,9 +106,14 @@ In the pull request, say what you tried by hand, where, and what still needs a p
 
 ## Releases
 
+For Community directory submission, resolve the automatic engine installation against the current [developer policies](https://docs.obsidian.md/community-directory/developer-policies), which prohibit plugins installing or updating their dependencies. The existing setup downloads Python and engine packages; this requires policy clarification before claiming directory compliance.
+
+Only perform these steps when a maintainer has authorized a release. Start with a clean working tree and passing checks.
+
 1. Move the _Unreleased_ entries in `CHANGELOG.md` under the new version.
+   Commit the changelog change before running the version script; the script only stages the three version files.
 2. `bun run release 0.2.0` (updates `package.json`, `manifest.json` and `versions.json`, commits and tags `0.2.0`).
-3. `git push --follow-tags`. The release workflow builds and attaches `main.js`, `manifest.json` and `styles.css` to a draft GitHub release; check it and publish it.
+3. Push the release commit to the intended branch and the specific version tag explicitly, for example `git push origin main` and `git push origin 0.2.0` after the release commit is on `main`. The script creates a lightweight tag, which `--follow-tags` does not push. The release workflow builds and attaches `main.js`, `manifest.json` and `styles.css` to a draft GitHub release; check it and publish it.
 
 **Engine locks.** Setup installs the engine from `locks/<platform>.txt`: every package, dependencies included, at exact versions with their hashes, installed with `--require-hashes`. After changing the engine's version, the Mac wheels or the faster engine's packages in `src/setup.ts`, run `scripts/lock-engine.sh` (needs uv and gh) and commit the locks; the tests fail if they disagree with `setup.ts`. The locks only take releases at least two weeks old. The _Engine install_ workflow installs each lock on its own platform.
 
