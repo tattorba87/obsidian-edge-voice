@@ -1,0 +1,14 @@
+#!/bin/bash
+# Stands in for the engine's Python in the tests against real Obsidian: it
+# answers the plugin's checks (src/setup.ts) as an installed Moonshine engine
+# without the faster one, and runs the fake server instead of server.py.
+case "$*" in
+	*"m.version('moonshine-voice')"*) echo "0.1.5"; exit 0 ;;
+	*"mlx-audio"*) exit 1 ;;
+	*_MoonshineLib*) exit 0 ;;
+esac
+for arg; do
+	case "$arg" in *server.py) exec /usr/bin/env python3 -u "$(dirname "$0")/../fixtures/fake_server.py" ;; esac
+done
+echo "fake-python: unexpected arguments: $*" >&2
+exit 2

@@ -26,8 +26,9 @@ export interface Layout {
 	python: string;
 }
 
-export function layout(repo: string): Layout {
-	const root = join(repo, ".sandbox");
+/** Where a sandbox named `name` keeps everything: `.sandbox` for development, `.sandbox-test` for the tests. */
+export function layout(repo: string, name = ".sandbox"): Layout {
+	const root = join(repo, name);
 	const vault = join(root, "vault");
 	return {
 		root,

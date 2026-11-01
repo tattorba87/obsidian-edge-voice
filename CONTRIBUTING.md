@@ -27,16 +27,17 @@ The sandbox lives in `.sandbox/` (gitignored): its own Obsidian profile, its own
 
 ## Checks
 
-| Command                | What it does                                                                     |
-| ---------------------- | -------------------------------------------------------------------------------- |
-| `bun run check`        | Everything below; CI runs the same                                               |
-| `bun run typecheck`    | TypeScript, including tests                                                      |
-| `bun run lint`         | ESLint with Obsidian's community-review rules (`eslint-plugin-obsidianmd`)       |
-| `bun run format`       | Prettier for TypeScript, CSS, JSON and Markdown; ruff for Python                 |
-| `bun run format:check` | The same, checking only                                                          |
-| `bun run test`         | Vitest: text processing, PDF reading (generated PDFs), sidecar protocol, storage |
-| `bun run test:python`  | pytest: `server.py` against a stub engine                                        |
-| `bun run build`        | Type-check and bundle `main.js`                                                  |
+| Command                 | What it does                                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `bun run check`         | Everything below; CI runs the same                                                             |
+| `bun run typecheck`     | TypeScript, including tests                                                                    |
+| `bun run lint`          | ESLint with Obsidian's community-review rules (`eslint-plugin-obsidianmd`)                     |
+| `bun run format`        | Prettier for TypeScript, CSS, JSON and Markdown; ruff for Python                               |
+| `bun run format:check`  | The same, checking only                                                                        |
+| `bun run test`          | Vitest: text processing, PDF reading (generated PDFs), sidecar protocol, storage               |
+| `bun run test:python`   | pytest: `server.py` against a stub engine                                                      |
+| `bun run build`         | Type-check and bundle `main.js`                                                                |
+| `bun run test:obsidian` | The tests against real Obsidian (opens a test Obsidian for a few seconds; not part of `check`) |
 
 Use `bun run test`, not `bun test`: the latter is Bun's own test runner, not Vitest.
 
@@ -44,11 +45,12 @@ The pre-commit hook formats and lint-fixes staged files and type-checks; the pre
 
 ## Testing a change
 
-Three layers, each catching what the one before can't:
+Four layers, each catching what the one before can't:
 
 1. **`bun run check`** (also run by the hooks and CI): the text rules, PDF reading, the sidecar protocol, setup's choices, `server.py` against a stub engine. New behaviour gets a test here; a fix gets a test that failed before it.
 2. **The sandbox, by hand:** how it looks, sounds and behaves in Obsidian, which no test sees. Keep `bun run sandbox` running while you work, try the change there, and check `bun run sandbox:errors` reports none.
-3. **CI on other platforms:** what nobody can try on one computer (below).
+3. **Real Obsidian, automated** (`tests/obsidian/`, `bun run test:obsidian`): a throwaway sandbox (`.sandbox-test/`) with the plugin built from your tree and a fake engine, driven through `obsidian-cli`. It checks what only real Obsidian shows: its internals (Reading view's sections, the editor) and its styles. The **Obsidian** workflow runs it before every release, and by hand from the Actions tab. Locally it opens a test Obsidian for about ten seconds, so run it when you change how the plugin meets Obsidian.
+4. **CI on other platforms:** what nobody can try on one computer (below).
 
 What to try in the sandbox, by what you changed:
 
@@ -63,6 +65,8 @@ What to try in the sandbox, by what you changed:
 | Setup (`src/setup.ts`, `locks/`)                | `bun run sandbox --fresh` installs the engine from scratch, as for a new user. On a Mac it can only finish once the engine wheels are downloadable (public repository).                                                              |
 
 Other platforms, in CI: the **Engine install** workflow installs the engine from each platform's lock on that platform (macOS Intel and Apple silicon, Windows, Linux x64 and ARM) and loads it; the **MLX engine** workflow has the real faster engine speak on Apple silicon. Both run on pull requests that touch setup, the locks or `server.py`, and can be started by hand from the Actions tab.
+
+Every bug gets a test at the cheapest layer that catches it: a unit test if it can, real Obsidian if only Obsidian shows it.
 
 In the pull request, say what you tried by hand, where, and what still needs a person: another platform, a real Apple silicon GPU, a screen reader.
 

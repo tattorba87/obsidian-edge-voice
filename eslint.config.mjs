@@ -43,6 +43,7 @@ export default tseslint.config(
 		"node_modules/",
 		".scratch/",
 		".sandbox/",
+		".sandbox-test/",
 		"coverage/",
 		"scripts/",
 		"package.json",
