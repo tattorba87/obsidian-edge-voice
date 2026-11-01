@@ -309,6 +309,9 @@ function readingSections(view: MarkdownView): ReadingSection[] | undefined {
 export function sectionLines(sections: RawReadingSection[]): ReadingSection[] {
 	const lines: ReadingSection[] = [];
 	for (const section of sections) {
+		// Obsidian's own header and footer (inline title, properties, backlinks) claim lines too,
+		// line 0 for the header, which would mix their text into the note's first sentence.
+		if (section.el.classList?.contains("mod-ui")) continue;
 		const lineStart = section.start?.line ?? section.lineStart;
 		const lineEnd = section.end?.line ?? section.lineEnd;
 		if (typeof lineStart === "number" && typeof lineEnd === "number") {
