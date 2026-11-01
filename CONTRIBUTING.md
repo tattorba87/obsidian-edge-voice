@@ -42,6 +42,30 @@ Use `bun run test`, not `bun test`: the latter is Bun's own test runner, not Vit
 
 The pre-commit hook formats and lint-fixes staged files and type-checks; the pre-push hook runs both test suites. Don't skip them (`--no-verify`) except to commit work in progress on a branch of your own.
 
+## Testing a change
+
+Three layers, each catching what the one before can't:
+
+1. **`bun run check`** (also run by the hooks and CI): the text rules, PDF reading, the sidecar protocol, setup's choices, `server.py` against a stub engine. New behaviour gets a test here; a fix gets a test that failed before it.
+2. **The sandbox, by hand:** how it looks, sounds and behaves in Obsidian, which no test sees. Keep `bun run sandbox` running while you work, try the change there, and check `bun run sandbox:errors` reports none.
+3. **CI on other platforms:** what nobody can try on one computer (below).
+
+What to try in the sandbox, by what you changed:
+
+| Change                                          | Try                                                                                                                                                                                                                                  |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Reading, skipping, speed, highlighting in notes | Read `Markdown features` in Source mode, Live Preview and Reading view, and switch modes mid-sentence. In `A long note`, skip forward and back, pause, resume and change speed.                                                      |
+| Text rules (`src/normalize.ts`)                 | Listen to `Numbers and units`, and add a line there for the case you changed, so the next person hears it too. A rule is checked against how the voice actually says it.                                                             |
+| PDFs (`src/pdf.ts`)                             | Open both files in `PDFs/`: headers, page numbers, the margin stamp and the footnote are skipped (the footnote is read if _Skip footnotes in PDFs_ is off); the two columns read in order; the highlight follows onto the next page. |
+| Player bar, status bar, settings                | Both light and dark themes (Settings → Appearance in the sandbox), and a couple of highlight colours.                                                                                                                                |
+| Double tap, pausing in the background           | Switch notes; hide Obsidian (⌘H), minimize it, cover it with another window.                                                                                                                                                         |
+| `server.py` or the sidecar                      | Read a note and a PDF. `bun run sandbox:errors` shows errors the plugin raised; the sidecar's own output is in the sandbox's developer console (⌥⌘I, with Verbose shown).                                                            |
+| Setup (`src/setup.ts`, `locks/`)                | `bun run sandbox --fresh` installs the engine from scratch, as for a new user. On a Mac it can only finish once the engine wheels are downloadable (public repository).                                                              |
+
+Other platforms, in CI: the **Engine install** workflow installs the engine from each platform's lock on that platform (macOS Intel and Apple silicon, Windows, Linux x64 and ARM) and loads it; the **MLX engine** workflow has the real faster engine speak on Apple silicon. Both run on pull requests that touch setup, the locks or `server.py`, and can be started by hand from the Actions tab.
+
+In the pull request, say what you tried by hand, where, and what still needs a person: another platform, a real Apple silicon GPU, a screen reader.
+
 ## Rules
 
 **Code**
