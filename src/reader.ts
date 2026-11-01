@@ -43,7 +43,8 @@ export class Reader {
 	private segments: Segment[] = [];
 	private sourceDone = false;
 	private index = 0;
-	private audio = new Map<number, { synthesis: Promise<Synthesis>; cancel: AbortController }>();
+	/** Audio asked for, by segment; `ready` once it has arrived. */
+	private audio = new Map<number, { synthesis: Promise<Synthesis>; cancel: AbortController; ready: boolean }>();
 	private generation = 0;
 	private context?: AudioContext;
 	private gain?: GainNode;
@@ -148,7 +149,10 @@ export class Reader {
 					this.stop();
 					return;
 				}
-				if (this._state !== "paused") this.setState("loading", segment.label);
+				// Waiting only when the audio isn't here yet: audio prepared ahead plays straight on,
+				// so the glow and "Synthesizing" don't flash between sentences.
+				if (this._state !== "paused" && !this.audio.get(this.index)?.ready)
+					this.setState("loading", segment.label);
 				// Highlighted before its audio is ready, so a skip shows at once where it landed.
 				this.current = segment;
 				await segment.highlight();
@@ -201,9 +205,13 @@ export class Reader {
 				if (!segment) throw new Error("past the end");
 				return this.sidecar.synthesize(segment.text, this.options.speed(), cancel.signal);
 			});
+			const added = { synthesis, cancel, ready: false };
 			// Prefetches nobody awaits may be cancelled; keep that quiet.
-			synthesis.catch(() => undefined);
-			entry = { synthesis, cancel };
+			synthesis.then(
+				() => (added.ready = true),
+				() => undefined,
+			);
+			entry = added;
 			this.audio.set(index, entry);
 		}
 		return entry.synthesis;
