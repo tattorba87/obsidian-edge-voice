@@ -98,8 +98,10 @@ export class Sandbox {
 	 */
 	eval(code: string): string {
 		const out = this.cli("eval", `code=${code}`);
-		if (out.startsWith("=> ")) return out.slice(3);
-		if (out === "(no output)" || out === "") return "";
+		// Console output from the code comes first, as "[warn] …" lines; the result is the "=> " line.
+		const result = out.indexOf("=> ");
+		if (result === 0 || (result > 0 && out[result - 1] === "\n")) return out.slice(result + 3);
+		if (out.endsWith("(no output)") || out === "") return "";
 		throw new SandboxError(out);
 	}
 

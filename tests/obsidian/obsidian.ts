@@ -51,6 +51,7 @@ export function openNote(path: string, mode: "source" | "preview"): void {
 		app.commands.executeCommandById("edge-voice:stop");
 		const leaf = app.workspace.getMostRecentLeaf();
 		await leaf.setViewState({ type: "markdown", state: { file: ${JSON.stringify(path)}, mode: ${JSON.stringify(mode)} } });
+		app.workspace.setActiveLeaf(leaf, { focus: true });
 		await new Promise((done) => setTimeout(done, 300));
 	`);
 }
@@ -60,7 +61,9 @@ export function openFile(path: string, settle = 1500): void {
 	run(`
 		app.commands.executeCommandById("edge-voice:stop");
 		const file = app.vault.getAbstractFileByPath(${JSON.stringify(path)});
-		await app.workspace.getMostRecentLeaf().openFile(file);
+		const leaf = app.workspace.getMostRecentLeaf();
+		await leaf.openFile(file);
+		app.workspace.setActiveLeaf(leaf, { focus: true });
 		await new Promise((done) => setTimeout(done, ${settle}));
 	`);
 }
@@ -90,3 +93,19 @@ export async function until<T>(read: () => T, ms = 10000): Promise<T | undefined
 	}
 	return undefined;
 }
+
+/** The plugin inside Obsidian, for code passed to `run`. */
+export const PLUGIN = `app.plugins.plugins["edge-voice"]`;
+
+/** What the reader is doing: "idle", "loading", "playing" or "paused". */
+export function readerState(): string {
+	return run<string>(`return ${PLUGIN}.reader.state;`);
+}
+
+/** Changes the plugin's settings in Obsidian, as the settings screen would. */
+export function setSettings(changes: Record<string, unknown>): void {
+	run(`Object.assign(${PLUGIN}.settings, ${JSON.stringify(changes)}); await ${PLUGIN}.saveSettings();`);
+}
+
+/** Waits `ms` here, outside Obsidian. */
+export const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
