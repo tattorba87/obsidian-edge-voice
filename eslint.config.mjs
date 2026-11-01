@@ -38,6 +38,11 @@ export default tseslint.config(
 		files: ["tests/**"],
 		rules: { "obsidianmd/prefer-window-timers": "off" },
 	},
+	{
+		// The tests' stand-in for Obsidian's createEl has to make elements the plain way.
+		files: ["tests/support/obsidian-dom.ts"],
+		rules: { "obsidianmd/prefer-create-el": "off" },
+	},
 	globalIgnores([
 		"main.js",
 		"node_modules/",

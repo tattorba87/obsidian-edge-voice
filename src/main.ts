@@ -26,11 +26,12 @@ import {
 	SetupStep,
 	VENV_PYTHON,
 } from "./setup";
-import { StatusIndicator, StatusKind } from "./status";
+import { StatusIndicator } from "./status";
 import { deleteItem, formatBytes, scanMlxVoices, scanVoices, StorageItem } from "./storage";
 import { SetupModal } from "./setup-modal";
 import { InBackground, pausesInBackground } from "./background";
 import { playChime } from "./chime";
+import { startsReading, statusFor, toggleAction } from "./controls";
 import {
 	customKeyProblem,
 	DEFAULT_DOUBLE_TAP_KEY,
@@ -428,28 +429,23 @@ export default class EdgeVoicePlugin extends Plugin {
 	 * on, while a double tap stops (and the next one starts).
 	 */
 	private toggle(origin: "button" | "double-tap"): void {
-		switch (this.reader.state) {
-			case "playing":
-			case "loading":
+		switch (toggleAction(this.reader.state, this.onTargetPage(), origin)) {
+			case "pause":
 				this.reader.pause();
 				break;
-			case "paused":
-				if (this.onTargetPage()) {
-					this.reader.resume();
-				} else {
-					this.stop();
-					if (origin === "button") void this.readFromHere();
-				}
+			case "resume":
+				this.reader.resume();
 				break;
-			default:
+			case "stop":
+				this.stop();
+				break;
+			case "restart":
+				this.stop();
+				void this.readFromHere();
+				break;
+			case "start":
 				void this.readFromHere();
 		}
-	}
-
-	/** Whether a double tap now starts or resumes reading, rather than pausing or stopping it (see toggle). */
-	private toggleStartsReading(): boolean {
-		const state = this.reader.state;
-		return state === "idle" || (state === "paused" && this.onTargetPage());
 	}
 
 	/** Stops reading the target page and forgets it. */
@@ -551,7 +547,12 @@ export default class EdgeVoicePlugin extends Plugin {
 		const detector = new DoubleTapDetector(
 			() => (this.settings.doubleTapEnabled && !this.recordingKey ? this.settings.doubleTapKey : null),
 			() => {
-				if (this.settings.doubleTapChime) playChime(this.toggleStartsReading() ? "up" : "down");
+				if (this.settings.doubleTapChime)
+					playChime(
+						startsReading(toggleAction(this.reader.state, this.onTargetPage(), "double-tap"))
+							? "up"
+							: "down",
+					);
 				this.toggle("double-tap");
 			},
 		);
@@ -799,15 +800,7 @@ export default class EdgeVoicePlugin extends Plugin {
 			this.stateDetail = undefined;
 			this.target = undefined;
 		}
-		const where = this.stateDetail ? ` · ${this.stateDetail}` : "";
-		const speed = ` · ${formatSpeed(this.settings.speed)}`;
-		const shown: Record<ReaderState, [StatusKind, string]> = {
-			idle: ["hidden", ""],
-			loading: ["busy", `Synthesizing${where}${speed}`],
-			playing: ["playing", `Reading${where}${speed}`],
-			paused: ["paused", `Paused${where}${speed}`],
-		};
-		this.status.show(...shown[state]);
+		this.status.show(...statusFor(state, this.stateDetail, formatSpeed(this.settings.speed)));
 		this.bar.update(state, this.stateDetail);
 		setIcon(this.ribbonEl, state === "playing" || state === "loading" ? "pause" : "audio-lines");
 		this.ribbonEl.setAttribute("aria-label", state === "playing" ? "Pause reading" : "Read aloud");
