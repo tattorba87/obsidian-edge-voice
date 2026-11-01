@@ -47,7 +47,7 @@ The pre-commit hook formats and lint-fixes staged files and type-checks; the pre
 
 Four layers, each catching what the one before can't:
 
-1. **`bun run check`** (also run by the hooks and CI): the text rules, PDF reading, the sidecar protocol, setup's choices, `server.py` against a stub engine. New behaviour gets a test here; a fix gets a test that failed before it.
+1. **`bun run check`** (also run by the hooks and CI): the text rules, PDF reading, the sidecar protocol, setup's choices, `server.py` against a stub engine, and behaviour: playback on a fake clock with a fake voice (`tests/support/playback.ts`), what play/pause does (`src/controls.ts`), and the player bar in a fake page (`tests/support/obsidian-dom.ts`). New behaviour gets a test here; a fix gets a test that failed before it.
 2. **The sandbox, by hand:** how it looks, sounds and behaves in Obsidian, which no test sees. Keep `bun run sandbox` running while you work, try the change there, and check `bun run sandbox:errors` reports none.
 3. **Real Obsidian, automated** (`tests/obsidian/`, `bun run test:obsidian`): a throwaway sandbox (`.sandbox-test/`) with the plugin built from your tree and a fake engine, driven through `obsidian-cli`. It checks what only real Obsidian shows: its internals (Reading view's sections, the editor) and its styles. The **Obsidian** workflow runs it before every release, and by hand from the Actions tab. Locally it opens a test Obsidian for about ten seconds, so run it when you change how the plugin meets Obsidian.
 4. **CI on other platforms:** what nobody can try on one computer (below).
