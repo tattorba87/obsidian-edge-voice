@@ -891,7 +891,11 @@ class ReaderSettingTab extends PluginSettingTab {
 					}
 					dropdown.setValue(settings.voice);
 				})
-				.catch((error: Error) => voiceSetting.setDesc(`Could not list voices: ${error.message}`));
+				// Braces, not a returned Setting: Setting has a then() method, so a promise
+				// treats it as one and calls it, and it calls back, over and over, freezing Obsidian.
+				.catch((error: Error) => {
+					voiceSetting.setDesc(`Could not list voices: ${error.message}`);
+				});
 		});
 
 		new Setting(containerEl)
