@@ -7,7 +7,7 @@ Follow [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code rules, tests, manual c
 - Read the relevant source and tests, `README.md`, `manifest.json` and package scripts. Inspect `git status` and the diff; preserve other contributors' work.
 - Edge Voice is desktop-only (`isDesktopOnly: true`). It uses Node.js to run a local Python sidecar; do not imply mobile support or remove desktop APIs just to satisfy generic mobile guidance.
 - Keep changes focused. Preserve established behavior unless the task asks to change it; explain substantial architectural changes before implementing them.
-- If `HANDOFF.md` is available, read it before changing the reader, note/PDF sources or sidecar protocol. It is not currently tracked in this repository; use source comments and tests when it is absent, and disclose missing design context when relevant.
+- Write plans as Markdown (`.md`) files in `plans/`, the agents' working directory for plans. Create the directory if needed, use descriptive filenames, and keep plans current so the programmer can review them. This directory is gitignored; do not commit its contents.
 
 ## Architecture
 
