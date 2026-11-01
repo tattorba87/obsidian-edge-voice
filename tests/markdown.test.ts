@@ -89,6 +89,16 @@ describe("sectionLines", () => {
 		]);
 	});
 
+	it("leaves out Obsidian's own header, which claims the note's first line too", () => {
+		const header = { classList: { contains: (name: string) => name === "mod-ui" } } as unknown as HTMLElement;
+		expect(
+			sectionLines([
+				{ el: header, start: { line: 0 }, end: { line: 0 } },
+				{ el, start: { line: 0 }, end: { line: 0 } },
+			]),
+		).toEqual([{ el, lineStart: 0, lineEnd: 0 }]);
+	});
+
 	it("reads them as older Obsidian versions kept them, and skips any without lines", () => {
 		expect(sectionLines([{ el, lineStart: 3, lineEnd: 4 }, { el }])).toEqual([{ el, lineStart: 3, lineEnd: 4 }]);
 	});
