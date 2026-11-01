@@ -29,19 +29,20 @@ describe("sandbox layout", () => {
 	});
 
 	it("links only the engine parts that exist, and never server.py", () => {
+		const real = (...parts: string[]) => join("/home/me", ...parts);
 		const existing = new Set([
-			"/home/me/.edge-voice/venv",
-			"/home/me/.edge-voice/python",
-			"/home/me/.edge-voice/server.py",
-			"/home/me/Library/Caches/moonshine_voice",
+			real(".edge-voice", "venv"),
+			real(".edge-voice", "python"),
+			real(".edge-voice", "server.py"),
+			real("Library", "Caches", "moonshine_voice"),
 		]);
 		const links = engineLinks("/home/me", "/sbx", "darwin", (path) => existing.has(path));
 		expect(links).toEqual([
-			{ path: join("/sbx", ".edge-voice", "python"), target: "/home/me/.edge-voice/python" },
-			{ path: join("/sbx", ".edge-voice", "venv"), target: "/home/me/.edge-voice/venv" },
+			{ path: join("/sbx", ".edge-voice", "python"), target: real(".edge-voice", "python") },
+			{ path: join("/sbx", ".edge-voice", "venv"), target: real(".edge-voice", "venv") },
 			{
 				path: join("/sbx", "Library", "Caches", "moonshine_voice"),
-				target: "/home/me/Library/Caches/moonshine_voice",
+				target: real("Library", "Caches", "moonshine_voice"),
 			},
 		]);
 	});
