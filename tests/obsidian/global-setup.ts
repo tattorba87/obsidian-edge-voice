@@ -28,6 +28,8 @@ export async function setup(): Promise<() => Promise<void>> {
 		EDGE_VOICE_FAKE_LOG: REQUESTS,
 		// About as long as Kokoro takes to say it, so a sentence stays highlighted long enough to look at.
 		EDGE_VOICE_FAKE_SECONDS_PER_CHAR: "0.06",
+		// A moment of synthesis, so the bar's glow while waiting can be seen.
+		EDGE_VOICE_FAKE_DELAY: "0.3",
 	});
 	await sandbox.waitForPlugin("edge-voice");
 
