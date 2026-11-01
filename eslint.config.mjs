@@ -18,6 +18,23 @@ export default tseslint.config(
 	},
 	...obsidianmd.configs.recommended,
 	{
+		files: ["src/**/*.ts"],
+		rules: {
+			// Obsidian's Setting and other components have a then() method, so a promise callback that
+			// returns one (\`.catch((e) => setting.setDesc(...))\`) makes the promise call it, and it calls
+			// back, forever: Obsidian freezes. Write the callback with braces.
+			"no-restricted-syntax": [
+				"error",
+				{
+					selector:
+						"CallExpression[callee.property.name=/^(then|catch|finally)$/] > ArrowFunctionExpression[body.type='CallExpression'][body.callee.property.name=/^(set|add)[A-Z]/]",
+					message:
+						"This callback returns an Obsidian component, whose then() method a promise would call forever. Use braces.",
+				},
+			],
+		},
+	},
+	{
 		rules: {
 			// Proper nouns the plugin's UI text names.
 			"obsidianmd/ui/sentence-case": [
