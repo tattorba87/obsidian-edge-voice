@@ -11,5 +11,12 @@
 		"skipLibCheck": true,
 		"noEmit": true
 	},
-	"include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts", "vitest.config.mts", "esbuild.config.d.mts"]
+	"include": [
+		"src/**/*.ts",
+		"tests/**/*.ts",
+		"scripts/**/*.ts",
+		"vitest.config.mts",
+		"vitest.obsidian.config.mts",
+		"esbuild.config.d.mts"
+	]
 }

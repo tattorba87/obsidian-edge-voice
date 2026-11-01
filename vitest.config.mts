@@ -21,6 +21,8 @@ export default defineConfig({
 	},
 	test: {
 		include: ["tests/**/*.test.ts"],
+		// Those run real Obsidian, with their own config (vitest.obsidian.config.mts).
+		exclude: ["tests/obsidian/**", "**/node_modules/**"],
 		environment: "node",
 	},
 });
