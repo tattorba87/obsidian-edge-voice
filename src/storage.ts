@@ -1,7 +1,7 @@
 import { existsSync, promises as fs } from "fs";
 import { join, relative, sep } from "path";
 
-/** Something on disk the person can delete: a voice, a model family, the engine. */
+/** Something on disk the person can delete: a voice or a model family. */
 export interface StorageItem {
 	id: string;
 	label: string;
@@ -76,17 +76,21 @@ export async function scanVoices(cacheDir: string): Promise<StorageItem[]> {
 	return [...groups.values()].sort((a, b) => b.bytes - a.bytes);
 }
 
-/** The engine's own folder: uv, Python, the package cache and the environment. */
-export async function scanEngine(engineDir: string): Promise<StorageItem | null> {
-	const files = await filesUnder(engineDir);
+/**
+ * The faster engine's voice files on Apple silicon (the Kokoro model and its
+ * voices, from Hugging Face), as one item, or null when there are none.
+ */
+export async function scanMlxVoices(hfDir: string): Promise<StorageItem | null> {
+	const files = await filesUnder(hfDir);
 	if (files.size === 0) return null;
 	let bytes = 0;
 	for (const size of files.values()) bytes += size;
 	return {
-		id: "engine",
-		label: "Speech engine",
-		description: `Python and the speech engine, in ${engineDir}. Set up again to use Edge Voice after deleting.`,
-		paths: [engineDir],
+		id: "mlx",
+		label: "Faster engine voices",
+		description:
+			"The Kokoro model and voices the faster engine uses on Apple silicon. They download again when next used.",
+		paths: [hfDir],
 		bytes,
 	};
 }

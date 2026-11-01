@@ -1,6 +1,7 @@
+import { nearestSpeed, SPEEDS, stepSpeed } from "../src/player-bar";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "../src/colors";
-import { customKeyProblem, DoubleTapDetector, keyLabel } from "../src/double-tap";
+import { customKeyProblem, DoubleTapDetector, keyCap, keyLabel, shortKeyLabel } from "../src/double-tap";
 import { quickStartPieces } from "../src/reader";
 import { alignWords } from "../src/rendered";
 import { wordTokens } from "../src/sentences";
@@ -190,5 +191,46 @@ describe("customKeyProblem", () => {
 		}
 		expect(press("CapsLock")).toMatch(/Caps Lock/);
 		expect(press("Escape")).toMatch(/Escape/);
+	});
+});
+
+describe("key caps", () => {
+	const mac = process.platform === "darwin";
+
+	it("splits a key into its symbol and side", () => {
+		expect(keyCap("MetaRight")).toEqual({
+			symbol: mac ? "⌘" : process.platform === "win32" ? "Win" : "Super",
+			side: "Right",
+		});
+		expect(keyCap("ControlLeft")).toEqual({ symbol: mac ? "⌃" : "Ctrl", side: "Left" });
+		expect(keyCap("F13")).toEqual({ symbol: "F13", side: null });
+	});
+
+	it("labels menu entries briefly", () => {
+		expect(shortKeyLabel("AltRight")).toBe(mac ? "Right ⌥" : "Right Alt");
+		expect(shortKeyLabel("ShiftLeft")).toBe(mac ? "Left ⇧" : "Left Shift");
+		expect(shortKeyLabel("F5")).toBe("F5");
+	});
+});
+
+describe("speeds", () => {
+	it("offers only 1×, 1.5× and 2×", () => {
+		expect(SPEEDS).toEqual([1, 1.5, 2]);
+	});
+
+	it("keeps the closest one for a speed saved when finer ones were offered", () => {
+		expect(nearestSpeed(1.6)).toBe(1.5);
+		expect(nearestSpeed(0.75)).toBe(1);
+		expect(nearestSpeed(2.5)).toBe(2);
+		expect(nearestSpeed(1.8)).toBe(2);
+	});
+
+	it("steps up and down, staying at the ends", () => {
+		expect(stepSpeed(1, 1)).toBe(1.5);
+		expect(stepSpeed(1.5, 1)).toBe(2);
+		expect(stepSpeed(2, 1)).toBe(2);
+		expect(stepSpeed(1.5, -1)).toBe(1);
+		expect(stepSpeed(1, -1)).toBe(1);
+		expect(stepSpeed(1.6, 1)).toBe(2);
 	});
 });

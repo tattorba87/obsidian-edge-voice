@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 import { afterEach, describe, expect, it } from "vitest";
-import { deleteItem, formatBytes, scanEngine, scanVoices } from "../src/storage";
+import { deleteItem, formatBytes, scanMlxVoices, scanVoices } from "../src/storage";
 
 let dir: string;
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -47,11 +47,11 @@ describe("storage", () => {
 		expect((await scanVoices(root)).map((item) => item.id)).toEqual(["piper:en_US-amy-low"]);
 	});
 
-	it("reports the engine folder, or nothing when it's absent", async () => {
+	it("reports the faster engine's voices as one item, or nothing when there are none", async () => {
 		dir = mkdtempSync(join(tmpdir(), "edge-voice-"));
-		expect(await scanEngine(join(dir, "missing"))).toBeNull();
-		writeFileSync(join(dir, "uv"), Buffer.alloc(2048));
-		expect((await scanEngine(dir))?.bytes).toBe(2048);
+		expect(await scanMlxVoices(join(dir, "missing"))).toBeNull();
+		writeFileSync(join(dir, "kokoro.safetensors"), Buffer.alloc(2048));
+		expect((await scanMlxVoices(dir))?.bytes).toBe(2048);
 	});
 
 	it("formats sizes", () => {

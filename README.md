@@ -15,11 +15,11 @@ The plugin starts `server.py` in a private Python environment that has `moonshin
 
 Works in Obsidian desktop on macOS, Windows and Linux.
 
-Install and enable the plugin. That's all: it sets up its speech engine in the background, with progress in the status bar, then downloads the default voice (Kokoro, `kokoro_am_santa`) and tells you when it's ready to read. Press play before then and reading starts as soon as it is. If setup fails, a notice offers the log and a way to try again.
+Install and enable the plugin. That's all: it sets up its speech engine in the background, with progress in the status bar, then downloads the default voice (Kokoro, `kokoro_af_bella`) and tells you when it's ready to read. Press play before then and reading starts as soon as it is. If setup fails, a notice offers the log and a way to try again.
 
-Setup downloads about 100 MB into `~/.edge-voice`, once: [uv](https://docs.astral.sh/uv/) (a pinned release, checked against its published SHA-256), a private Python 3.12 that uv installs, and the [moonshine-voice](https://pypi.org/project/moonshine-voice/) package. The voice adds a few hundred MB. Nothing else is installed, nothing runs at login, and your notes never leave your computer. Delete `~/.edge-voice` to remove it all.
+Setup downloads about 100 MB into `~/.edge-voice`, once: [uv](https://docs.astral.sh/uv/) (a pinned release, checked against its published SHA-256), a private Python 3.12 that uv installs, and the [moonshine-voice](https://pypi.org/project/moonshine-voice/) package. Every package is installed from a lock with exact versions and hashes, so nothing changed or substituted can be installed. The voice adds a few hundred MB. Nothing else is installed, nothing runs at login, and your notes never leave your computer. Delete `~/.edge-voice` to remove it all.
 
-On Apple silicon Macs with macOS 14 or later, Edge Voice then sets up a faster engine in the background: Kokoro on the GPU with [MLX](https://github.com/ml-explore/mlx), through [mlx-audio](https://pypi.org/project/mlx-audio/) (pinned). On GitHub's Apple silicon runners it synthesized about 2.2 times as fast as the standard engine and started speaking about 1.6 times sooner (`scripts/bench_engines.py`). It downloads a few hundred MB more, once: mlx-audio and what it needs (PyTorch, spaCy), spaCy's English model (pinned and checked against its SHA-256), and the Kokoro voice files from [Hugging Face](https://huggingface.co/mlx-community/Kokoro-82M-bf16), into `~/.edge-voice` like the rest. Reading carries on with the standard engine until it's ready, and goes back to it if the faster one can't load. Turn it off under Settings → Edge Voice → Faster voice engine.
+On Apple silicon Macs with macOS 14 or later, Edge Voice then sets up a faster engine in the background: Kokoro on the GPU with [MLX](https://github.com/ml-explore/mlx), through [mlx-audio](https://pypi.org/project/mlx-audio/) (pinned). On GitHub's Apple silicon runners it synthesized about 2.2 times as fast as the standard engine and started speaking about 1.6 times sooner (`scripts/bench_engines.py`). It downloads a few hundred MB more, once: mlx-audio and what it needs (PyTorch, spaCy), spaCy's English model (pinned and checked against its SHA-256), and the Kokoro voice files from [Hugging Face](https://huggingface.co/mlx-community/Kokoro-82M-bf16), into `~/.edge-voice` like the rest. Reading carries on with the standard engine until it's ready, and goes back to it if the faster one can't load. Turn it off under Settings → Edge Voice → Advanced → Faster voice engine. Advanced, folded away at the bottom of the settings, also has the engine itself (Reinstall), the Python it runs in, and how many sentences to prepare ahead; none of them need changing normally.
 
 | Platform                       | Needs               | Engine package                                                              |
 | ------------------------------ | ------------------- | --------------------------------------------------------------------------- |
@@ -42,7 +42,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md): setup, the sandbox (`bun run sandbox`, a
 | Read aloud / pause                        | Also the ribbon button and the player bar's play button (see below)                                            |
 | Read from current position                | Starts again from the selection, or from the top of what's in view                                             |
 | Next / Previous sentence                  | Skip around while reading                                                                                      |
-| Read faster / Read slower                 | 0.1× steps, from 0.5× to 2.5×                                                                                  |
+| Read faster / Read slower                 | Between 1×, 1.5× and 2×                                                                                        |
 | Stop reading                              | Stops and clears the highlight                                                                                 |
 | Show or hide player controls              | Toggles the floating player bar                                                                                |
 
@@ -61,7 +61,7 @@ Reading belongs to the page it started on.
 
 ### Player bar and status bar
 
-When reading starts, a player bar floats above the status bar: previous / play-pause / next / stop, the speed with − and + buttons (click the speed for presets from 0.75× to 2.5×), and a speaker icon with a vertical volume slider that pops up on hover (click the icon to mute, or scroll over it). A new speed is heard from the next sentence; volume changes at once. While a sentence is being synthesized, a glow runs around the bar's edge. The ⌄ button shrinks the bar to a small pill in the corner, and _Show player controls_ in settings turns it off.
+When reading starts, a player bar floats above the status bar: previous / play-pause / next / stop, the speed with − and + buttons (1×, 1.5× or 2×; click the speed to pick one), and a speaker icon with a vertical volume slider that pops up on hover (click the icon to mute, or scroll over it). A new speed is heard from the next sentence; volume changes at once. While a sentence is being synthesized, a glow runs around the bar's edge. The ⌄ button shrinks the bar to a small pill in the corner, and _Show player controls_ in settings turns it off.
 
 The status bar shows what's happening: a spinner while a voice loads or a sentence is prepared (with a progress bar while a voice downloads), moving bars while reading, and resting bars while paused, with the page position and speed. Click it for the speed presets.
 
@@ -69,13 +69,13 @@ The status bar shows what's happening: a spinner while a voice loads or a senten
 
 Pick the highlight colour under Settings → Highlight colour: amber, blue, green, pink, purple, red or grey. Each sets a soft tint for the sentence and a deeper shade for the spoken word; a preview shows the result.
 
-Settings → Storage lists everything downloaded, each voice and the speech engine itself, with its size and a button to delete it. A deleted voice downloads again the next time it's used.
+Settings → Storage (folded away at the bottom, with the total beside it) lists the downloaded voices, each with its size and a button to delete it, to keep them from piling up. A deleted voice downloads again the next time it's used. The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
 
 Bind the commands you use to hotkeys under Settings → Hotkeys.
 
 ## Voices
 
-Kokoro voices (`kokoro_*`, the default is `kokoro_am_santa`) sound the most natural and synthesize about twice as fast as they play, even on a 2020 Intel i5. Piper voices (`piper_*`) are faster still, so reading starts sooner. Pick one under Settings → Edge Voice → Voice; the list marks downloaded voices with ✓.
+Kokoro voices (`kokoro_*`, the default is `kokoro_af_bella`) sound the most natural and synthesize about twice as fast as they play, even on a 2020 Intel i5. Piper voices (`piper_*`) are faster still, so reading starts sooner. Pick one under Settings → Edge Voice → Voice; the list marks downloaded voices with ✓.
 
 ## Limits
 

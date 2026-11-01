@@ -11,6 +11,7 @@ import {
 	Setting,
 	setIcon,
 } from "obsidian";
+import { join } from "path";
 import { highlightField, MarkdownSource } from "./markdown";
 import { PdfSource, PdfStart } from "./pdf";
 import { EngineSetup } from "./engine-setup";
@@ -26,7 +27,7 @@ import {
 	VENV_PYTHON,
 } from "./setup";
 import { StatusIndicator, StatusKind } from "./status";
-import { deleteItem, formatBytes, scanEngine, scanVoices, StorageItem } from "./storage";
+import { deleteItem, formatBytes, scanMlxVoices, scanVoices, StorageItem } from "./storage";
 import { SetupModal } from "./setup-modal";
 import { InBackground, pausesInBackground } from "./background";
 import { playChime } from "./chime";
@@ -35,12 +36,14 @@ import {
 	DEFAULT_DOUBLE_TAP_KEY,
 	DOUBLE_TAP_PRESETS,
 	DoubleTapDetector,
+	keyCap,
 	keyLabel,
+	shortKeyLabel,
 } from "./double-tap";
 import { Reader, ReaderState, SegmentSource } from "./reader";
 import { Sidecar } from "./sidecar";
 import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "./colors";
-import { formatSpeed, MAX_SPEED, MIN_SPEED, PlayerBar, PlayerControls, showSpeedMenu, SPEED_STEP } from "./player-bar";
+import { formatSpeed, nearestSpeed, PlayerBar, PlayerControls, showSpeedMenu, SPEEDS, stepSpeed } from "./player-bar";
 
 interface ReaderSettings {
 	pythonPath: string;
@@ -70,7 +73,7 @@ interface ReaderSettings {
 const DEFAULT_SETTINGS: ReaderSettings = {
 	pythonPath: VENV_PYTHON,
 	language: "en_us",
-	voice: "kokoro_am_santa",
+	voice: "kokoro_af_bella",
 	speed: 1.0,
 	prefetch: 2,
 	autoScroll: true,
@@ -192,12 +195,12 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.addCommand({
 			id: "faster",
 			name: "Read faster",
-			callback: () => this.setSpeed(this.settings.speed + SPEED_STEP),
+			callback: () => this.setSpeed(stepSpeed(this.settings.speed, 1)),
 		});
 		this.addCommand({
 			id: "slower",
 			name: "Read slower",
-			callback: () => this.setSpeed(this.settings.speed - SPEED_STEP),
+			callback: () => this.setSpeed(stepSpeed(this.settings.speed, -1)),
 		});
 		this.addCommand({
 			id: "toggle-player",
@@ -228,6 +231,8 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	async loadSettings(): Promise<void> {
 		this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<ReaderSettings> | null) };
+		// Finer speeds were offered before; keep the closest of the ones offered now.
+		this.settings.speed = nearestSpeed(this.settings.speed);
 		// One setting used to cover both switching pages and leaving Obsidian.
 		const old = this.settings as ReaderSettings & { keepReadingInBackground?: boolean };
 		if (old.keepReadingInBackground) {
@@ -306,8 +311,11 @@ export default class EdgeVoicePlugin extends Plugin {
 	private async installMlx(signal: AbortSignal): Promise<void> {
 		const log: string[] = [];
 		try {
+			// Its files download with it, so switching to it later doesn't wait on them.
+			const voice = this.settings.voice.startsWith("kokoro_") ? this.settings.voice : DEFAULT_SETTINGS.voice;
 			await installMlx(
 				this.settings.pythonPath,
+				voice,
 				{ step: () => undefined, log: (line) => log.push(line) },
 				signal,
 			);
@@ -556,23 +564,34 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on("window-open", (_workspaceWindow, win) => watch(win)));
 	}
 
-	/** What the engine has downloaded, and the engine itself, for the Storage settings. */
-	async storageItems(): Promise<{ voices: StorageItem[]; engine: StorageItem | null }> {
-		const engine = await scanEngine(SETUP_HOME);
+	/**
+	 * The voices downloaded, for the Storage settings: the engine's and the
+	 * faster engine's. Only voices: the engine itself isn't offered for deleting.
+	 */
+	async storageItems(): Promise<StorageItem[]> {
 		let voices: StorageItem[] = [];
 		try {
 			voices = await scanVoices(await this.sidecar.cacheDir());
 		} catch {
 			// No working engine: then there's nothing it downloaded to list either.
 		}
-		return { voices, engine };
+		const mlx = await scanMlxVoices(join(SETUP_HOME, "hf"));
+		return (mlx ? [...voices, mlx] : voices).sort((a, b) => b.bytes - a.bytes);
 	}
 
 	/** Deletes downloads, stopping reading and the engine first so no file is in use. */
 	async deleteStorage(items: StorageItem[]): Promise<void> {
+		// An install writes into the same folder; deleting under it would break it.
+		if (this.installing) {
+			new Notice("Edge Voice is setting up its voice engine. Try again when it's done.");
+			return;
+		}
 		this.stop();
 		this.sidecar.stop();
 		this.voice = undefined;
+		// Without its files, the faster engine would download them on the next press
+		// of play; the standard one speaks until they're fetched again at start-up.
+		if (items.some((item) => item.id === "mlx")) this.mlxReady = false;
 		for (const item of items) await deleteItem(item);
 		const freed = items.reduce((sum, item) => sum + item.bytes, 0);
 		new Notice(`Freed ${formatBytes(freed)}.`);
@@ -583,12 +602,20 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	/**
+	 * Whether either install is running. They share ~/.edge-voice (its
+	 * download folder and the environment), so nothing else may change it then.
+	 */
+	private get installing(): boolean {
+		return this.engine.installing || this.mlx.installing;
+	}
+
+	/**
 	 * Opens the setup window, to reinstall or to retry a failed install (shown
 	 * with `failed`); when it succeeds, the plugin switches to the new engine.
 	 */
 	openSetup(onReady?: () => void, failed?: { log: string[]; message: string }): void {
-		if (this.engine.installing) {
-			new Notice("Edge Voice is setting up its voice engine; see the status bar.");
+		if (this.installing) {
+			new Notice("Edge Voice is setting up its voice engine. Try again when it's done.");
 			return;
 		}
 		new SetupModal(
@@ -756,7 +783,7 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	/** Sets the reading speed; it is heard from the next sentence on. */
 	setSpeed(value: number): void {
-		const speed = Math.round(Math.min(MAX_SPEED, Math.max(MIN_SPEED, value)) * 20) / 20;
+		const speed = nearestSpeed(value);
 		this.settings.speed = speed;
 		void this.saveSettings();
 		this.reader.invalidateAudio();
@@ -824,59 +851,29 @@ class ReaderSettingTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
+	/** Which folded sections are open, kept when the page is drawn again. */
+	private open = new Set<string>();
+
+	/** A section folded away under a heading with a hint beside it, closed unless opened. */
+	private fold(
+		parentEl: HTMLElement,
+		title: string,
+		hint: string,
+		id: string,
+	): { details: HTMLDetailsElement; body: HTMLElement; hint: HTMLElement } {
+		const details = parentEl.createEl("details", { cls: "edge-voice-fold" });
+		details.open = this.open.has(id);
+		details.addEventListener("toggle", () => (details.open ? this.open.add(id) : this.open.delete(id)));
+		const summary = details.createEl("summary");
+		summary.createSpan({ cls: "edge-voice-fold-title", text: title });
+		const hintEl = summary.createSpan({ cls: "setting-item-description", text: hint });
+		return { details, body: details.createDiv(), hint: hintEl };
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		const settings = this.plugin.settings;
 		containerEl.empty();
-
-		const engine = new Setting(containerEl).setName("Voice engine").setDesc("Checking…");
-		engine.addButton((button) =>
-			button.setButtonText("Set up").onClick(() => this.plugin.openSetup(() => this.display())),
-		);
-		void installedVersion(settings.pythonPath).then((version) => {
-			engine.setDesc(
-				version
-					? `Ready: speech engine (moonshine-voice ${version}).`
-					: this.plugin.engineInstalling
-						? "Setting up; see the status bar."
-						: "Not set up. Downloads about 100 MB, once.",
-			);
-			const button = engine.controlEl.querySelector("button");
-			if (button) {
-				button.setText(version ? "Reinstall" : "Set up");
-				button.toggleClass("mod-cta", !version);
-			}
-		});
-
-		if (mlxSupported()) {
-			const faster = new Setting(containerEl)
-				.setName("Faster voice engine")
-				.setDesc(this.plugin.fasterEngineStatus());
-			faster.addToggle((toggle) =>
-				toggle.setValue(settings.fasterEngine).onChange((value) => {
-					this.plugin.setFasterEngine(value);
-					faster.setDesc(this.plugin.fasterEngineStatus());
-				}),
-			);
-		}
-
-		new Setting(containerEl)
-			.setName("Python interpreter")
-			.setDesc(
-				"Advanced: the Python the engine runs in. Set up fills this in; change it only to use a Python you set up yourself.",
-			)
-			.addText((text) =>
-				text.setValue(settings.pythonPath).onChange((value) => {
-					settings.pythonPath = value.trim();
-					void this.plugin.saveSettings();
-				}),
-			)
-			.addButton((button) =>
-				button.setButtonText("Restart").onClick(() => {
-					this.plugin.restartSidecar();
-					this.display();
-				}),
-			);
 
 		const voiceSetting = new Setting(containerEl)
 			.setName("Voice")
@@ -909,25 +906,11 @@ class ReaderSettingTab extends PluginSettingTab {
 			.setDesc(
 				"Also adjustable while reading, from the player bar, the status bar or the commands to read faster and slower.",
 			)
-			.addSlider((slider) =>
-				slider
-					.setLimits(MIN_SPEED, MAX_SPEED, 0.05)
-					.setValue(settings.speed)
-					.onChange((value) => this.plugin.setSpeed(value)),
-			);
-
-		new Setting(containerEl)
-			.setName("Sentences to prepare ahead")
-			.setDesc("More smooths over slow sentences; fewer reacts faster to skips and speed changes.")
-			.addSlider((slider) =>
-				slider
-					.setLimits(1, 4, 1)
-					.setValue(settings.prefetch)
-					.onChange((value) => {
-						settings.prefetch = value;
-						void this.plugin.saveSettings();
-					}),
-			);
+			.addDropdown((dropdown) => {
+				for (const speed of SPEEDS) dropdown.addOption(String(speed), formatSpeed(speed));
+				dropdown.setValue(String(nearestSpeed(settings.speed)));
+				dropdown.onChange((value) => this.plugin.setSpeed(Number(value)));
+			});
 
 		const colorSetting = new Setting(containerEl)
 			.setName("Highlight colour")
@@ -1025,12 +1008,90 @@ class ReaderSettingTab extends PluginSettingTab {
 				toggle.setValue(settings.autoScroll).onChange((value) => {
 					settings.autoScroll = value;
 					void this.plugin.saveSettings();
-
-					new Setting(containerEl).setName("Storage").setHeading();
-					const storage = containerEl.createDiv();
-					storage.createDiv({ cls: "setting-item-description", text: "Checking downloads…" });
-					void this.showStorage(storage);
 				}),
+			);
+
+		const storage = this.fold(containerEl, "Storage", "Checking downloads…", "storage");
+		void this.showStorage(storage.body, storage.hint);
+
+		this.advancedSettings(containerEl);
+	}
+
+	/**
+	 * Settings almost nobody needs, folded away at the bottom: the engine, the
+	 * Python it runs in, the faster engine and how far ahead to prepare. It
+	 * opens by itself when the engine isn't set up, so Set up can be found.
+	 */
+	private advancedSettings(parentEl: HTMLElement): void {
+		const settings = this.plugin.settings;
+		const { details, body: containerEl } = this.fold(
+			parentEl,
+			"Advanced",
+			"Rarely needed: the speech engine and how it runs.",
+			"advanced",
+		);
+
+		const engine = new Setting(containerEl).setName("Voice engine").setDesc("Checking…");
+		engine.addButton((button) =>
+			button.setButtonText("Set up").onClick(() => this.plugin.openSetup(() => this.display())),
+		);
+		void installedVersion(settings.pythonPath).then((version) => {
+			engine.setDesc(
+				version
+					? `Ready: speech engine (moonshine-voice ${version}).`
+					: this.plugin.engineInstalling
+						? "Setting up; see the status bar."
+						: "Not set up. Downloads about 100 MB, once.",
+			);
+			if (!version && !this.plugin.engineInstalling) details.open = true;
+			const button = engine.controlEl.querySelector("button");
+			if (button) {
+				button.setText(version ? "Reinstall" : "Set up");
+				button.toggleClass("mod-cta", !version);
+			}
+		});
+
+		if (mlxSupported()) {
+			const faster = new Setting(containerEl)
+				.setName("Faster voice engine")
+				.setDesc(this.plugin.fasterEngineStatus());
+			faster.addToggle((toggle) =>
+				toggle.setValue(settings.fasterEngine).onChange((value) => {
+					this.plugin.setFasterEngine(value);
+					faster.setDesc(this.plugin.fasterEngineStatus());
+				}),
+			);
+		}
+
+		new Setting(containerEl)
+			.setName("Python interpreter")
+			.setDesc(
+				"The Python the engine runs in. Set up fills this in; change it only to use a Python you set up yourself.",
+			)
+			.addText((text) =>
+				text.setValue(settings.pythonPath).onChange((value) => {
+					settings.pythonPath = value.trim();
+					void this.plugin.saveSettings();
+				}),
+			)
+			.addButton((button) =>
+				button.setButtonText("Restart").onClick(() => {
+					this.plugin.restartSidecar();
+					this.display();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName("Sentences to prepare ahead")
+			.setDesc("More smooths over slow sentences; fewer reacts faster to skips and speed changes.")
+			.addSlider((slider) =>
+				slider
+					.setLimits(1, 4, 1)
+					.setValue(settings.prefetch)
+					.onChange((value) => {
+						settings.prefetch = value;
+						void this.plugin.saveSettings();
+					}),
 			);
 	}
 
@@ -1051,7 +1112,16 @@ class ReaderSettingTab extends PluginSettingTab {
 			.setDesc(
 				"Double-tap a key to start reading, and again to pause or resume. Works while Obsidian is the active app.",
 			);
-		const recorder = containerEl.createDiv({ cls: "edge-voice-key-recorder" });
+		// Custom: a panel inside the setting's own box, with the key, Save and clear in a row
+		// and a message line below that always keeps its space, so nothing shifts.
+		setting.settingEl.addClass("edge-voice-key-setting");
+		const panel = setting.settingEl.createDiv({ cls: "edge-voice-key-panel" });
+		const row = panel.createDiv({ cls: "edge-voice-key-row" });
+		const capture = row.createDiv({ cls: "edge-voice-key-capture", attr: { tabindex: "0", role: "button" } });
+		const confirm = row.createEl("button", { cls: "mod-cta", text: "Save" });
+		const clear = row.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Clear the custom key" } });
+		setIcon(clear, "x");
+		const message = panel.createDiv({ cls: "edge-voice-key-message" });
 		const chime = new Setting(containerEl)
 			.setName("Chime on double tap")
 			.setDesc("A short chime, rising when reading starts or resumes and falling when it pauses.")
@@ -1063,103 +1133,100 @@ class ReaderSettingTab extends PluginSettingTab {
 			);
 
 		let dropdown!: DropdownComponent;
-		const customLabel = () =>
-			settings.doubleTapCustomKey ? `Custom: ${keyLabel(settings.doubleTapCustomKey)}` : "Custom…";
-		const refresh = () => {
-			const custom = !isPreset(settings.doubleTapKey);
-			dropdown.selectEl.querySelector(`option[value="${CUSTOM}"]`)?.setText(customLabel());
-			dropdown.setValue(custom ? CUSTOM : settings.doubleTapKey);
-			dropdown.setDisabled(!settings.doubleTapEnabled);
-			chime.setDisabled(!settings.doubleTapEnabled);
-			recorder.hidden = !settings.doubleTapEnabled || dropdown.getValue() !== CUSTOM;
-		};
-
-		// The box: shows the saved custom key, or the key being pressed and why it can't be used.
-		const box = recorder.createDiv({ cls: "edge-voice-key-box", attr: { tabindex: "0", role: "textbox" } });
-		const keyText = box.createSpan({ cls: "edge-voice-key-text" });
-		const clear = box.createEl("button", {
-			cls: "edge-voice-key-clear clickable-icon",
-			attr: { "aria-label": "Clear" },
-		});
-		setIcon(clear, "x-circle");
-		const footer = recorder.createDiv({ cls: "edge-voice-key-footer" });
-		const message = footer.createSpan({ cls: "edge-voice-key-message" });
-		const confirm = footer.createEl("button", { cls: "mod-cta", text: "Use this key" });
 		let pending: string | null = null;
 
-		const showBox = () => {
-			const saved = settings.doubleTapCustomKey;
-			keyText.setText(pending ? keyLabel(pending) : saved ? keyLabel(saved) : "Click here, then press a key");
-			box.toggleClass("is-empty", !pending && !saved);
-			confirm.hidden = !pending;
-			clear.hidden = !pending && !saved;
+		/** Draws `code` as a key cap (⌘ and "Right"), or the placeholder. */
+		const showKey = (code: string | null) => {
+			capture.empty();
+			capture.toggleClass("is-empty", !code);
+			if (!code) {
+				capture.createSpan({ text: "Click to record a key" });
+				capture.setAttr("aria-label", "Record a custom key");
+				return;
+			}
+			const { symbol, side } = keyCap(code);
+			capture.createEl("kbd", { text: symbol });
+			if (side) capture.createSpan({ cls: "edge-voice-key-side", text: side });
+			capture.setAttr("aria-label", `${keyLabel(code)}; click to change`);
 		};
-		const stopRecording = () => {
-			this.plugin.recordingKey = false;
-			box.removeClass("is-recording");
+		const say = (text: string, error = false) => {
+			message.setText(text);
+			message.toggleClass("is-error", error);
+		};
+		/** The resting state: the saved custom key, or the placeholder. */
+		const rest = () => {
+			pending = null;
+			const saved = settings.doubleTapCustomKey;
+			showKey(saved);
+			capture.removeClass("is-invalid");
+			confirm.disabled = true;
+			clear.disabled = !saved;
+			say(saved ? `Double-tap ${keyLabel(saved)} to read.` : "Click the key above, then press the one you want.");
+		};
+		const refresh = () => {
+			dropdown.setValue(isPreset(settings.doubleTapKey) ? settings.doubleTapKey : CUSTOM);
+			dropdown.setDisabled(!settings.doubleTapEnabled);
+			chime.setDisabled(!settings.doubleTapEnabled);
+			panel.hidden = !settings.doubleTapEnabled || dropdown.getValue() !== CUSTOM;
 		};
 
-		box.addEventListener("focus", () => {
+		capture.addEventListener("focus", () => {
 			this.plugin.recordingKey = true;
-			box.addClass("is-recording");
-			if (!pending) {
-				keyText.setText("Press a key…");
-				message.setText("");
-			}
+			capture.addClass("is-recording");
+			if (!pending) say("Press a key. Esc cancels.");
 		});
-		box.addEventListener("blur", () => {
-			stopRecording();
-			if (!pending) showBox();
+		capture.addEventListener("blur", () => {
+			this.plugin.recordingKey = false;
+			capture.removeClass("is-recording");
+			if (!pending) rest();
 		});
-		box.addEventListener("keydown", (event) => {
+		capture.addEventListener("keydown", (event) => {
 			if (event.code === "Tab") return; // still moves focus
 			event.preventDefault();
 			event.stopPropagation();
 			if (event.repeat) return;
 			if (event.code === "Escape") {
 				pending = null;
-				message.setText("");
-				box.blur();
+				capture.blur();
 				return;
 			}
 			const problem = customKeyProblem(event);
-			box.toggleClass("is-invalid", problem !== null);
+			showKey(event.code);
+			capture.toggleClass("is-invalid", problem !== null);
 			if (problem) {
 				pending = null;
-				keyText.setText(keyLabel(event.code));
-				message.setText(problem);
-				confirm.hidden = true;
+				confirm.disabled = true;
+				say(problem, true);
 				return;
 			}
 			pending = event.code;
-			message.setText(
+			confirm.disabled = false;
+			clear.disabled = false;
+			say(
 				isPreset(event.code)
-					? `${keyLabel(event.code)} is also in the menu above.`
-					: "Double-tap it to test after saving.",
+					? `${keyLabel(event.code)} is also in the menu. Save to use it.`
+					: `Save to use ${keyLabel(event.code)}.`,
 			);
-			showBox();
 		});
 		confirm.addEventListener("click", () => {
 			if (!pending) return;
 			settings.doubleTapCustomKey = pending;
 			settings.doubleTapKey = pending;
-			pending = null;
-			message.setText("Saved.");
-			box.removeClass("is-invalid");
 			save();
-			showBox();
+			rest();
 			refresh();
 		});
-		clear.addEventListener("click", (event) => {
-			event.stopPropagation();
-			pending = null;
+		clear.addEventListener("click", () => {
+			// A key pressed but not saved is only discarded; the saved one stays.
+			if (pending) {
+				rest();
+				return;
+			}
 			const wasActive = settings.doubleTapKey === settings.doubleTapCustomKey;
 			settings.doubleTapCustomKey = null;
 			if (wasActive) settings.doubleTapKey = DEFAULT_DOUBLE_TAP_KEY;
-			message.setText("");
-			box.removeClass("is-invalid");
 			save();
-			showBox();
+			rest();
 			refresh();
 		});
 
@@ -1172,21 +1239,19 @@ class ReaderSettingTab extends PluginSettingTab {
 		);
 		setting.addDropdown((component) => {
 			dropdown = component;
-			for (const code of DOUBLE_TAP_PRESETS) dropdown.addOption(code, keyLabel(code));
-			dropdown.addOption(CUSTOM, customLabel());
+			dropdown.selectEl.addClass("edge-voice-key-menu");
+			for (const code of DOUBLE_TAP_PRESETS) dropdown.addOption(code, shortKeyLabel(code));
+			dropdown.addOption(CUSTOM, "Custom");
 			dropdown.onChange((value) => {
-				pending = null;
-				message.setText("");
-				box.removeClass("is-invalid");
+				rest();
 				if (value === CUSTOM) {
-					// The saved custom key comes back; with none yet, the box waits for one.
+					// The saved custom key comes back; with none yet, the panel waits for one.
 					if (settings.doubleTapCustomKey) {
 						settings.doubleTapKey = settings.doubleTapCustomKey;
 						save();
 					}
-					showBox();
-					recorder.hidden = false;
-					if (!settings.doubleTapCustomKey) box.focus();
+					panel.hidden = false;
+					if (!settings.doubleTapCustomKey) capture.focus();
 					return;
 				}
 				settings.doubleTapKey = value;
@@ -1194,14 +1259,17 @@ class ReaderSettingTab extends PluginSettingTab {
 				refresh();
 			});
 		});
-		showBox();
+		rest();
 		refresh();
 	}
 
 	/** Lists downloads with their sizes and a Delete button each (click twice to confirm). */
-	private async showStorage(el: HTMLElement): Promise<void> {
-		const { voices, engine } = await this.plugin.storageItems();
+	/** Lists downloaded voices with their sizes and a Delete button each (click twice to confirm). */
+	private async showStorage(el: HTMLElement, hint: HTMLElement): Promise<void> {
+		const voices = await this.plugin.storageItems();
 		el.empty();
+		const total = voices.reduce((sum, item) => sum + item.bytes, 0);
+		hint.setText(voices.length > 0 ? `${formatBytes(total)} of voices downloaded.` : "No voices downloaded.");
 		const deleteButton = (setting: Setting, items: StorageItem[], label = "Delete") =>
 			setting.addButton((button) => {
 				let armed = false;
@@ -1215,31 +1283,22 @@ class ReaderSettingTab extends PluginSettingTab {
 					}
 					button.setDisabled(true);
 					await this.plugin.deleteStorage(items);
-					void this.showStorage(el);
+					void this.showStorage(el, hint);
 				});
 			});
 
-		if (voices.length === 0 && !engine) {
-			el.createDiv({ cls: "setting-item-description", text: "Nothing downloaded." });
+		if (voices.length === 0) {
+			el.createDiv({ cls: "setting-item-description", text: "Nothing downloaded yet." });
 			return;
 		}
-		if (voices.length > 0) {
-			const total = voices.reduce((sum, item) => sum + item.bytes, 0);
-			const all = new Setting(el)
-				.setName("Downloaded voices")
-				.setDesc(`${formatBytes(total)} in all. A deleted voice downloads again the next time it's used.`);
-			if (voices.length > 1) deleteButton(all, voices, "Delete all voices");
-		}
+		const all = new Setting(el)
+			.setName("Downloaded voices")
+			.setDesc(`${formatBytes(total)} in all. A deleted voice downloads again the next time it's used.`);
+		if (voices.length > 1) deleteButton(all, voices, "Delete all voices");
 		for (const item of voices) {
 			deleteButton(
 				new Setting(el).setName(item.label).setDesc(`${formatBytes(item.bytes)} · ${item.description}`),
 				[item],
-			);
-		}
-		if (engine) {
-			deleteButton(
-				new Setting(el).setName(engine.label).setDesc(`${formatBytes(engine.bytes)} · ${engine.description}`),
-				[engine],
 			);
 		}
 	}

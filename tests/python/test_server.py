@@ -138,6 +138,15 @@ def test_mlx_falls_back_to_moonshine_when_it_cannot_load():
     server.close()
 
 
+def test_mlx_downloads_stay_private_whatever_the_environment_says():
+    # As if Obsidian had been started with someone's own Hugging Face settings.
+    server = Server(HF_HOME="/elsewhere/hf", USER_HF_HOME="/elsewhere/hf", HF_TOKEN="hf_secret")
+    assert server.read() == {"event": "ready"}
+    reply = loaded(server, language="en_us", voice="kokoro_af_heart", engine="mlx")
+    assert reply["engine"] == "mlx", reply
+    server.close()
+
+
 def test_load_without_an_engine_replies_as_before(server):
     reply = loaded(server, language="en_us", voice="kokoro_af_heart")
     assert reply == {"id": reply["id"], "ok": True}
