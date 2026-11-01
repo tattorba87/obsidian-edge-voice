@@ -51,6 +51,8 @@ for line in sys.stdin:
             level = 0.0 if SECONDS_PER_CHAR else 0.5
             pcm = struct.pack(f"<{count}f", *([level] * count))
             reply = {"id": request_id, "ok": True, "sampleRate": 24000, "audio": base64.b64encode(pcm).decode()}
+    elif op == "voices":
+        reply = {"id": request_id, "ok": True, "present": ["kokoro_af_bella"], "downloadable": ["kokoro_am_santa"]}
     elif op == "paths":
         reply = {"id": request_id, "ok": True, "cache": "/tmp/cache"}
     else:
