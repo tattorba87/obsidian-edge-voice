@@ -1,0 +1,184 @@
+name: Engine package
+
+# Users install the engine from an engine release with one line of two uv
+# commands (see the release notes, written by engine-release.yml). This builds
+# such a release, serves it from localhost (the repository's releases can't be
+# downloaded anonymously while it's private) and runs that exact line on every
+# platform: everything must install hash-checked, from wheels, with our Mac
+# wheels, and the engine must answer. It also checks that changed files are
+# refused, and that the faster engine speaks on Apple silicon.
+on:
+  pull_request:
+    paths:
+      - engine/**
+      - locks/**
+      - src/setup.ts
+      - scripts/engine-requirements.py
+      - scripts/build-engine-release.sh
+      - .github/workflows/engine-package.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BASE: http://127.0.0.1:8765
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: false
+      - name: Build the release's files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/build-engine-release.sh release "$BASE"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: engine-release
+          path: release/
+          if-no-files-found: error
+
+  install:
+    name: Install (${{ matrix.lock }}, ${{ matrix.runner }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { lock: linux-x64, runner: ubuntu-latest }
+          - { lock: linux-arm64, runner: ubuntu-24.04-arm }
+          - { lock: win32-x64, runner: windows-latest }
+          - { lock: darwin-x64, runner: macos-15-intel, tag: macosx_13_0_x86_64 }
+          - { lock: darwin-arm64, runner: macos-14, tag: macosx_13_0_arm64 }
+          - { lock: darwin-arm64, runner: macos-15, tag: macosx_13_0_arm64 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      # Whatever uv users have today, and no cache: a cached, already-verified
+      # file would hide what a first install downloads.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: latest
+          enable-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: engine-release
+          path: release
+      - name: Serve the release
+        shell: bash
+        run: |
+          cd release && nohup python3 -m http.server 8765 >/dev/null 2>&1 &
+          for _ in $(seq 30); do curl -sSf "$BASE/SHA256SUMS" >/dev/null && exit 0; sleep 1; done; exit 1
+      - name: The user's command (macOS and Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12 && uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r "$BASE/requirements-${{ matrix.lock }}.txt"
+          echo "PYTHON=$HOME/.edge-voice/engine/bin/python" >> "$GITHUB_ENV"
+      - name: The user's command (Windows PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          uv venv --clear --managed-python "$HOME\.edge-voice\engine" --python 3.12; uv pip install --python "$HOME\.edge-voice\engine" --require-hashes --no-build -r "$env:BASE/requirements-win32-x64.txt"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "PYTHON=$HOME\.edge-voice\engine\Scripts\python.exe" >> $env:GITHUB_ENV
+      - name: The engine runs isolated and answers
+        shell: bash
+        env:
+          MAC_TAG: ${{ matrix.tag }}
+        run: |
+          "$PYTHON" -I - <<'EOF'
+          import importlib.metadata as m, json, os, subprocess, sys
+          print(sys.version, sys.base_prefix)
+          wheel = m.distribution("moonshine-voice").read_text("WHEEL")
+          if os.environ["MAC_TAG"]:
+              assert f"Tag: py3-none-{os.environ['MAC_TAG']}" in wheel, "not our Mac wheel"
+          from moonshine_voice.moonshine_api import _MoonshineLib
+          _MoonshineLib()
+          proc = subprocess.run([sys.executable, "-I", "-u", "-m", "edge_voice_engine"],
+                                input='{"id": 1, "op": "hello"}\n', capture_output=True, text=True, timeout=120)
+          replies = [json.loads(line) for line in proc.stdout.splitlines()]
+          print(replies)
+          assert replies[0] == {"event": "ready"} and replies[1]["engine"] == "edge-voice-engine", proc.stderr
+          EOF
+          du -sh ~/.edge-voice/engine
+
+  tamper:
+    name: Changed files are refused
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: latest
+          enable-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: engine-release
+          path: release
+      - name: Swap in a different engine wheel, then break a dependency's hash
+        run: |
+          cd release && nohup python3 -m http.server 8765 >/dev/null 2>&1 &
+          for _ in $(seq 30); do curl -sSf "$BASE/SHA256SUMS" >/dev/null && break; sleep 1; done
+          install() { uv venv -q --clear --managed-python env --python 3.12 && uv pip install --python env --require-hashes --no-build -r "$BASE/requirements-linux-x64.txt"; }
+          wheel=$(ls release/edge_voice_engine-*.whl)
+          cp "$wheel" good.whl
+          # A valid wheel with the same name and different contents.
+          mkdir swap && (cd swap && unzip -q ../good.whl && echo "print('swapped')" >> edge_voice_engine/__init__.py && rm -f "../$wheel" && zip -qr "../$wheel" .)
+          if install; then echo "::error::a changed engine wheel installed"; exit 1; fi
+          cp good.whl "$wheel"
+          install && rm -rf env
+          sed -i -E '/^numpy==/,/^[a-z]/ s/sha256:[0-9a-f]{64}/sha256:0000000000000000000000000000000000000000000000000000000000000000/' release/requirements-linux-x64.txt
+          if install; then echo "::error::a wrong numpy hash installed"; exit 1; fi
+          echo "Both refused; the unchanged release installs."
+
+  mlx:
+    name: Faster engine speaks (macos-15)
+    needs: build
+    runs-on: macos-15
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: latest
+          enable-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: engine-release
+          path: release
+      - name: The user's command, with the faster engine
+        run: |
+          (cd release && nohup python3 -m http.server 8765 >/dev/null 2>&1 &)
+          for _ in $(seq 30); do curl -sSf "$BASE/SHA256SUMS" >/dev/null && break; sleep 1; done
+          uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12 && uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r "$BASE/requirements-darwin-arm64-mlx.txt"
+          du -sh ~/.edge-voice/engine
+      - name: Load a voice with MLX and speak
+        run: |
+          ~/.edge-voice/engine/bin/python -I - <<'EOF'
+          import base64, json, subprocess, sys
+          proc = subprocess.Popen([sys.executable, "-I", "-u", "-m", "edge_voice_engine"],
+                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+          def ask(**body):
+              proc.stdin.write(json.dumps(body) + "\n"); proc.stdin.flush()
+              while True:
+                  reply = json.loads(proc.stdout.readline())
+                  if reply.get("id") == body["id"]:
+                      return reply
+          assert json.loads(proc.stdout.readline()) == {"event": "ready"}
+          loaded = ask(id=1, op="load", language="en_us", voice="kokoro_am_santa", engine="mlx")
+          print("load:", loaded)
+          assert loaded.get("ok") and loaded.get("engine") == "mlx", loaded
+          spoken = ask(id=2, op="synth", text="The faster engine is speaking.", speed=1.0)
+          seconds = len(base64.b64decode(spoken["audio"])) / 4 / spoken["sampleRate"]
+          print(f"synth: {seconds:.2f} s of audio")
+          assert seconds > 1, spoken
+          proc.stdin.close(); proc.wait(timeout=30)
+          EOF
+      - name: The voice files went to ~/.edge-voice/hf, which the plugin can show and delete
+        run: du -sh ~/.edge-voice/hf
