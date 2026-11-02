@@ -1,11 +1,13 @@
 """Report advisories and coverage gaps without installing or changing locked packages."""
 
+import argparse
 import importlib.metadata
 import json
 import os
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 PIP_AUDIT_VERSION = "2.10.1"
@@ -67,6 +69,7 @@ def bun_report(data):
         raise ValueError("Invalid Bun audit JSON")
     findings = []
     gaps = []
+    records = []
     for name, advisories in data.items():
         if not isinstance(advisories, list):
             raise ValueError(f"Unrecognized Bun audit field: {name}")
@@ -75,7 +78,8 @@ def bun_report(data):
                 gaps.append(f"{name}: unrecognized or skipped advisory record: {advisory}")
                 continue
             findings.append(f"{name}: {advisory['severity']} — {advisory['url']}")
-    return {"packages": "bun.lock", "findings": findings, "gaps": gaps}
+            records.append({"package": name, "url": advisory["url"], "severity": advisory["severity"]})
+    return {"packages": "bun.lock", "findings": findings, "gaps": gaps, "advisories": records}
 
 
 def run_scan(name, command, parser):
@@ -128,7 +132,44 @@ def markdown(reports):
     return "\n".join(lines) + "\n"
 
 
+def release_gate(reports, policy, manifest, today=None):
+    """Only reviewed, dated, moderate-or-lower dev exceptions can pass the gate."""
+    today = today or date.today()
+    reviewed, review_by = date.fromisoformat(policy["reviewed"]), date.fromisoformat(policy["reviewBy"])
+    if not reviewed <= today <= review_by:
+        raise ValueError("Advisory allowlist needs a current maintainer review")
+    allowed = {}
+    for entry in policy["advisories"]:
+        if not entry["reason"].strip() or not re.fullmatch(r"GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}", entry["id"]):
+            raise ValueError("Each allowlist entry needs an exact advisory ID and reason")
+        key = (canonical(entry["package"]), "https://github.com/advisories/" + entry["id"])
+        if key in allowed:
+            raise ValueError("Duplicate advisory allowlist entry")
+        allowed[key] = entry["reason"]
+    blocked, accepted = [], []
+    for name, report in reports.items():
+        blocked.extend(f"{name}: scanner error: {error}" for error in report["errors"])
+        if name != "bun.lock":
+            blocked.extend(f"{name}: {finding}" for finding in report["findings"])
+            continue
+        blocked.extend(f"bun.lock: incomplete advisory coverage: {gap}" for gap in report["gaps"])
+        records = report.get("advisories", [])
+        if len(records) != len(report["findings"]):
+            blocked.append("bun.lock: missing structured advisory records")
+        production = any(manifest.get(key) for key in ("dependencies", "optionalDependencies", "peerDependencies"))
+        for entry in records:
+            key = (canonical(entry["package"]), entry["url"])
+            if key in allowed and entry["severity"] in ("low", "moderate") and not production:
+                accepted.append(f"{entry['package']}: {entry['url']} — {allowed[key]}")
+            else:
+                blocked.append(f"bun.lock: {entry['package']}: {entry['severity']} — {entry['url']}")
+    return blocked, accepted
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--release", action="store_true", help="enforce the reviewed release advisory policy")
+    args = parser.parse_args()
     OUTPUT.mkdir(parents=True, exist_ok=True)
     reports = {}
     try:
@@ -166,14 +207,33 @@ def main():
         )
     reports["bun.lock"] = run_scan("bun", ["bun", "audit", "--json"], bun_report)
     summary = markdown(reports)
+    gate_failed = False
+    gate_error = False
+    if args.release:
+        try:
+            policy = json.loads((ROOT / "scripts/advisory-allowlist.json").read_text())
+            manifest = json.loads((ROOT / "package.json").read_text())
+            blocked, accepted = release_gate(reports, policy, manifest)
+            gate_failed = bool(blocked)
+            summary += "\n## Release advisory gate\n\n"
+            summary += "Gate failed.\n" if blocked else "Gate passed; coverage gaps above remain unaudited.\n"
+            summary += "\n".join("- Blocked: " + item for item in blocked) + "\n"
+            summary += "\n".join("- Accepted dev-only advisory: " + item for item in accepted) + "\n"
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            gate_failed = True
+            gate_error = True
+            summary += f"\nRelease gate policy error: {error}\n"
+
     (OUTPUT / "summary.md").write_text(summary)
     (OUTPUT / "summary.json").write_text(json.dumps(reports, indent=2) + "\n")
     print(summary)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as stream:
             stream.write(summary)
-    if any(report["errors"] for report in reports.values()):
+    if gate_error or any(report["errors"] for report in reports.values()):
         return 2
+    if args.release:
+        return int(gate_failed)
     return int(any(report["findings"] or report["gaps"] for report in reports.values()))
 
 
