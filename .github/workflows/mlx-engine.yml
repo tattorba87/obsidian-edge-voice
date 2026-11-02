@@ -2,13 +2,13 @@ name: MLX engine
 
 # The faster engine only runs on Apple silicon, so the unit tests use a stub.
 # This runs the real thing: it installs what setup installs (the locks, and
-# the checksums from src/setup.ts, so they can't drift), then has server.py
+# the checksums from src/setup.ts, so they can't drift), then has the engine
 # load a Kokoro voice with MLX and speak, and fails if it fell back to
 # Moonshine or made no audio.
 on:
   pull_request:
     paths:
-      - server.py
+      - engine/**
       - src/setup.ts
       - locks/**
       - .github/workflows/mlx-engine.yml
@@ -52,7 +52,7 @@ jobs:
           uv pip install --python .mlx/venv/bin/python --require-hashes --find-links .mlx/files -r locks/darwin-arm64-mlx.txt
       - name: Load a voice with MLX and speak
         run: |
-          mkdir -p .mlx/home && cp server.py .mlx/home/
+          mkdir -p .mlx/home && cp engine/src/edge_voice_engine/server.py .mlx/home/
           python3 -I - <<'EOF'
           import base64, json, subprocess, time
           proc = subprocess.Popen([".mlx/venv/bin/python", "-I", ".mlx/home/server.py"],
@@ -75,10 +75,10 @@ jobs:
           assert seconds > 1, spoken
           proc.stdin.close(); proc.wait(timeout=30)
           EOF
-      - name: Downloads stayed in the engine's folder, where setup looks for them
+      - name: Downloads went to ~/.edge-voice/hf, where setup looks for them
         run: |
-          du -sh .mlx/home/hf
+          du -sh ~/.edge-voice/hf
           # src/setup.ts (mlxModelDir) counts the faster engine as installed when this exists.
-          repo=$(sed -n 's/^MLX_WEIGHTS = "\(.*\)"$/\1/p' server.py | sed 's#/#--#')
-          revision=$(sed -n 's/^MLX_REVISION = "\(.*\)"$/\1/p' server.py)
-          ls -d ".mlx/home/hf/hub/models--$repo/snapshots/$revision"
+          repo=$(sed -n 's/^MLX_WEIGHTS = "\(.*\)"$/\1/p' engine/src/edge_voice_engine/server.py | sed 's#/#--#')
+          revision=$(sed -n 's/^MLX_REVISION = "\(.*\)"$/\1/p' engine/src/edge_voice_engine/server.py)
+          ls -d "$HOME/.edge-voice/hf/hub/models--$repo/snapshots/$revision"

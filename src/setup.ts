@@ -11,7 +11,7 @@ import lockDarwinX64 from "../locks/darwin-x64.txt";
 import lockLinuxArm64 from "../locks/linux-arm64.txt";
 import lockLinuxX64 from "../locks/linux-x64.txt";
 import lockWin32X64 from "../locks/win32-x64.txt";
-import serverSource from "../server.py";
+import serverSource from "../engine/src/edge_voice_engine/server.py";
 
 /**
  * Sets up the Python environment the speech sidecar runs in, with nothing
@@ -112,9 +112,10 @@ export const VENV_PYTHON =
 	process.platform === "win32" ? join(VENV_DIR, "Scripts", "python.exe") : join(VENV_DIR, "bin", "python");
 
 /**
- * Writes the sidecar script (bundled into main.js, since Obsidian installs a
- * plugin from main.js, manifest.json and styles.css only) to SETUP_HOME, if it
- * isn't there already in this version, and returns its path.
+ * Writes the sidecar script (engine/src/edge_voice_engine/server.py, bundled
+ * into main.js, since Obsidian installs a plugin from main.js, manifest.json
+ * and styles.css only) to SETUP_HOME, if it isn't there already in this
+ * version, and returns its path.
  */
 export function installServerScript(): string {
 	const path = join(SETUP_HOME, "server.py");

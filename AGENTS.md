@@ -15,8 +15,8 @@ Follow [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code rules, tests, manual c
 - `src/reader.ts` handles playback and synthesis ahead of playback. Keep engine-specific behavior out of it.
 - `src/markdown.ts`, `src/rendered.ts` and `src/pdf.ts` handle note text, rendered highlights and PDF reading. Preserve source positions when transforming text; verify highlighting in real Obsidian when changing these integrations.
 - `src/normalize.ts` and `src/sentences.ts` prepare speech text. Pronunciation changes need both automated coverage and listening with the real engine.
-- `src/sidecar.ts` owns the JSON-lines connection to `server.py`. Keep the protocol backward compatible within a minor version and document new requests in the server docstring.
-- `src/setup.ts` installs the engines from `locks/`; `src/engine-setup.ts` coordinates setup. `server.py` and the locks are bundled into `main.js` as text by esbuild. Preserve pinned versions and checksum verification.
+- `src/sidecar.ts` owns the JSON-lines connection to the engine (`engine/src/edge_voice_engine/server.py`, also an installable package; see `engine/`). Keep the protocol backward compatible within a minor version and document new requests in the server docstring.
+- `src/setup.ts` installs the engines from `locks/`; `src/engine-setup.ts` coordinates setup. The engine's `server.py` and the locks are bundled into `main.js` as text by esbuild. Preserve pinned versions and checksum verification.
 - Prefer documented Obsidian APIs and plugin lifecycle cleanup. Where rendering integrations rely on Obsidian DOM structure or internals, keep the dependency isolated and verify it with `tests/obsidian/` and manual testing.
 
 ## Validation and handoff

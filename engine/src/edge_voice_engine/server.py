@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Text-to-speech sidecar for the Edge Voice Obsidian plugin.
 
-The plugin starts this script and talks to it in JSON lines. One request per
-line on stdin, one reply per request on stdout, in order:
+The plugin starts this (as `python -I -u -m edge_voice_engine` when the engine
+is installed as a package, or as a script) and talks to it in JSON lines. One
+request per line on stdin, one reply per request on stdout, in order:
+
+  {"id": 0, "op": "hello"}
+  -> {"id": 0, "ok": true, "engine": "edge-voice-engine", "version": "0.2.0", "protocol": 1}
+
+"protocol" changes only when a change would break a plugin that speaks the
+previous one; additions within a protocol keep older plugins working.
 
   {"id": 1, "op": "load", "language": "en_us", "voice": "kokoro_af_heart"}
   -> {"id": 1, "ok": true}
@@ -39,6 +46,10 @@ import re
 import sys
 from pathlib import Path
 
+# Released with the engine package (engine/pyproject.toml has the same version).
+VERSION = "0.2.0"
+PROTOCOL = 1
+
 # Kokoro for MLX on Hugging Face (the model and its voices, as .safetensors),
 # pinned to one commit so what users download can't change under them.
 MLX_WEIGHTS = "mlx-community/Kokoro-82M-bf16"
@@ -53,7 +64,7 @@ def private_hugging_face() -> None:
     deleting ~/.edge-voice doesn't reach. Tokens are dropped, so nothing ties the
     downloads to anyone's account.
     """
-    os.environ["HF_HOME"] = str(Path(__file__).resolve().parent / "hf")
+    os.environ["HF_HOME"] = str(Path.home() / ".edge-voice" / "hf")
     os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
     os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
     os.environ.pop("HF_TOKEN", None)
@@ -199,6 +210,16 @@ def main() -> None:
                         "ok": True,
                         "sampleRate": sample_rate,
                         "audio": base64.b64encode(pcm).decode("ascii"),
+                    }
+                )
+            elif op == "hello":
+                send(
+                    {
+                        "id": request_id,
+                        "ok": True,
+                        "engine": "edge-voice-engine",
+                        "version": VERSION,
+                        "protocol": PROTOCOL,
                     }
                 )
             elif op == "paths":

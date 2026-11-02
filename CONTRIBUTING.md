@@ -37,7 +37,7 @@ The sandbox lives in `.sandbox/` (gitignored): its own Obsidian profile, its own
 | `bun run format`        | Prettier for TypeScript, CSS, JSON and Markdown; ruff for Python                               |
 | `bun run format:check`  | The same, checking only                                                                        |
 | `bun run test`          | Vitest: text processing, PDF reading (generated PDFs), sidecar protocol, storage               |
-| `bun run test:python`   | pytest: `server.py` against a stub engine                                                      |
+| `bun run test:python`   | pytest: the engine (`engine/`) against a stub of moonshine-voice                               |
 | `bun run build`         | Type-check and bundle `main.js`                                                                |
 | `bun run test:obsidian` | The tests against real Obsidian (opens a test Obsidian for a few seconds; not part of `check`) |
 
@@ -104,9 +104,9 @@ In the pull request, say what you tried by hand, where, and what still needs a p
 **Behaviour**
 
 - Nothing leaves the computer except the documented downloads: uv (pinned, checksummed), Python and the engine package during setup, and voice files on first use; on Apple silicon also the faster engine's packages (pinned), spaCy's English model (pinned, checksummed) and its Kokoro voice files from Hugging Face, with Hugging Face's telemetry off. Don't add network calls or telemetry.
-- `server.py` ships inside `main.js` (Obsidian installs only `main.js`, `manifest.json` and `styles.css`). Keep it to the standard library plus the engine package, and keep its JSON-lines protocol backward compatible within a minor version. Document new requests in its docstring.
+- The engine is `engine/src/edge_voice_engine/server.py`. It ships two ways: inside `main.js`, for today's setup (Obsidian installs only `main.js`, `manifest.json` and `styles.css`), and as the `edge-voice-engine` package (`engine/`), installed from an engine release. Keep it to the standard library plus moonshine-voice (and the faster engine's packages), and keep its JSON-lines protocol backward compatible within a protocol version (`PROTOCOL`). Document new requests in its docstring. Changing the engine's version means changing `VERSION` and `engine/pyproject.toml` together; a test checks they agree.
 - Text normalization rules (`src/normalize.ts`) must be checked against the engine's pronunciation before they're added. Add a test with the written form and the spoken form.
-- The engine is replaceable: keep engine specifics in `server.py` and `src/setup.ts`, out of the reader, sources and UI.
+- The engine is replaceable: keep engine specifics in `engine/` and `src/setup.ts`, out of the reader, sources and UI.
 
 **Tests**
 
