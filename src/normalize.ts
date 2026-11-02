@@ -170,10 +170,20 @@ export function normalizeForSpeech(text: string): string {
 	out = out.replace(
 		/[$€£]\s?(\d[\d,]*(?:\.\d+)?)(\s?(?:billion|million|thousand|[BMK]\b))?/g,
 		(match: string, amount: string, scale: string | undefined) => {
-			const currency = match[0] === "$" ? "dollars" : match[0] === "€" ? "euros" : "pounds";
+			const [one, many, cent, cents] =
+				match[0] === "$"
+					? ["dollar", "dollars", "cent", "cents"]
+					: match[0] === "€"
+						? ["euro", "euros", "cent", "cents"]
+						: ["pound", "pounds", "penny", "pence"];
 			const scales: Record<string, string> = { B: " billion", M: " million", K: " thousand" };
 			const scaleWord = scale ? (scales[scale.trim()] ?? scale) : "";
-			return `${amount}${scaleWord} ${currency}`;
+			// "$4.99" is "4 dollars 99 cents", not "4 point 9 9 dollars".
+			const price = scale ? null : /^([\d,]+)\.(\d\d)$/.exec(amount);
+			const whole = price ? price[1] : amount;
+			const unit = whole === "1" && !scaleWord ? one : many;
+			const change = price ? Number(price[2]) : 0;
+			return `${whole}${scaleWord} ${unit}` + (change ? ` ${change} ${change === 1 ? cent : cents}` : "");
 		},
 	);
 	out = out.replace(UNIT_PATTERN, (_m, amount: string, unit: string) => {
@@ -194,6 +204,14 @@ export function normalizeForSpeech(text: string): string {
 	out = out.replace(/(?<=[\p{L}\d])[_/](?=[\p{L}\d])/gu, " ");
 	out = out.replace(/(?<=[\p{Lu}\d])-(?=[\p{L}\d])|(?<=[\p{L}\d])-(?=[\p{Lu}\d])/gu, " ");
 	out = out.replace(/(?<=\p{L})(?=\d)|(?<=\d)(?=\p{L})/gu, " ");
+
+	// Plain decimals ("2.4", "0.75") the front end already reads as "two point
+	// four". Dotted runs it garbles: a version "1.2.3" is "1 point 2 point 3",
+	// and an address "192.168.0.1" is "192 dot 168 dot 0 dot 1".
+	out = out.replace(/(?<![\p{L}\d.])\d+(?:\.\d+){2,}(?![.\d]*\d)/gu, (run) => {
+		const parts = run.split(".");
+		return parts.join(parts.length === 3 ? " point " : " dot ");
+	});
 
 	// Symbols. A "~" after "about" is already said.
 	out = out

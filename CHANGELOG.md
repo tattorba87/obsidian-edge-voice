@@ -14,7 +14,7 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - Reading follows its page: switching pages pauses it, and so does hiding Obsidian behind other apps. Each has its own setting; in the background it can also pause as soon as you switch apps, or keep reading.
 - Player bar with skip, speed and volume, which can be minimized or turned off; animated status-bar indicator.
 - Double-tap shortcut to start, pause and resume, with a chime that can be turned off, a choice of three keys or one custom key.
-- Text normalization for technical writing: units, percentages, ranges, acronyms, model names, ordinals, decades and citations.
+- Text normalization for technical writing: units, percentages, prices, ranges, version numbers and addresses, acronyms, model names, ordinals, decades and citations.
 - PDFs skip margin stamps, page numbers, running headers and footers, and footnotes.
 - Seven highlight colour themes.
 - Storage settings to see and delete downloaded voices, and what an earlier setup left behind.
