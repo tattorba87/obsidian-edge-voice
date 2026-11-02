@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-edge-voice",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"private": true,
 	"description": "Obsidian plugin that reads notes and PDFs aloud with on-device Moonshine TTS.",
 	"scripts": {
