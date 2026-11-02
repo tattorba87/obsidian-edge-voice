@@ -12,6 +12,11 @@ on:
       moonshine-ref:
         description: moonshine tag to build (match the PyPI version setup installs elsewhere)
         default: v0.1.5
+        required: true
+      moonshine-sha:
+        description: Reviewed full commit SHA that the Moonshine tag must resolve to
+        type: string
+        required: true
       publish:
         description: Publish the built wheels as a release (leave off for validation)
         type: boolean
@@ -44,7 +49,23 @@ jobs:
         with:
           persist-credentials: false
           repository: moonshine-ai/moonshine
-          ref: ${{ inputs.moonshine-ref }}
+          ref: refs/tags/${{ inputs.moonshine-ref }}
+      - name: Verify the reviewed Moonshine commit before running its code
+        env:
+          MOONSHINE_REF: ${{ inputs.moonshine-ref }}
+          MOONSHINE_SHA: ${{ inputs.moonshine-sha }}
+        run: |
+          git check-ref-format "refs/tags/${MOONSHINE_REF}"
+          if ! [[ "$MOONSHINE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Expected a full 40-character Moonshine commit SHA" >&2
+            exit 1
+          fi
+          expected=$(printf '%s' "$MOONSHINE_SHA" | tr 'A-F' 'a-f')
+          actual=$(git rev-parse "refs/tags/${MOONSHINE_REF}^{commit}")
+          if [ "$actual" != "$expected" ] || [ "$(git rev-parse HEAD)" != "$expected" ]; then
+            echo "Moonshine tag ${MOONSHINE_REF} resolves to ${actual}, not ${expected}" >&2
+            exit 1
+          fi
       # Only the LFS files a macOS build reads; the rest (Android, iOS, wasm) are hundreds of MB.
       - run: git lfs pull --include "core/cpp-annote/**,core/moonshine-tts/**,core/third-party/onnxruntime/lib/macos/${{ matrix.arch }}/**"
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
@@ -85,11 +106,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
           # Through the environment, never pasted into the script, so the input can't run as shell.
           MOONSHINE_REF: ${{ inputs.moonshine-ref }}
+          MOONSHINE_SHA: ${{ inputs.moonshine-sha }}
         run: |
           version=$(ls moonshine_voice-*.whl | head -1 | cut -d- -f2)
           sha256sum moonshine_voice-*.whl > SHA256SUMS
-          notes=$(printf 'moonshine-voice %s built from moonshine %s for macOS 13.4 and later.\n\n```\n%s\n```\n' \
-            "$version" "$MOONSHINE_REF" "$(cat SHA256SUMS)")
+          notes=$(printf 'moonshine-voice %s built from moonshine tag %s, commit %s, for macOS 13.4 and later.\n\n```\n%s\n```\n' \
+            "$version" "$MOONSHINE_REF" "$MOONSHINE_SHA" "$(cat SHA256SUMS)")
           # Not marked latest, so it never stands in for a plugin release.
           gh release create "moonshine-voice-${version}" moonshine_voice-*.whl SHA256SUMS \
             --title "moonshine-voice ${version} for macOS" --notes "$notes" --latest=false
