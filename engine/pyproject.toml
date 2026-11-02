@@ -17,5 +17,5 @@ mlx = ["mlx-audio==0.5.9", "misaki[en]==0.9.4"]
 edge-voice-engine = "edge_voice_engine.__main__:main"
 
 [build-system]
-requires = ["uv_build>=0.13.6,<0.14"]
+requires = ["uv_build==0.13.1"]
 build-backend = "uv_build"
