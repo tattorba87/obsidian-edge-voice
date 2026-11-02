@@ -342,7 +342,13 @@ def run_command(*args, home=None, voice_manifest=None, **extra):
     )
     env = engine_env(home, **extra)
     env["PYTHONPATH"] = os.pathsep.join([str(STUB), str(package.parent)])
-    return subprocess.run([sys.executable, "-m", "edge_voice_engine", *args], capture_output=True, text=True, env=env)
+    return subprocess.run(
+        [sys.executable, "-m", "edge_voice_engine", *args],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+    )
 
 
 def test_command_prints_its_python_and_version():
@@ -394,7 +400,8 @@ def catalog_manifest():
 
 def test_voices_list_shows_names_sizes_and_what_is_here(tmp_path):
     home = engine_home(tmp_path, voices=[], mlx=())
-    result = run_command("voices", "list", home=home, voice_manifest=catalog_manifest())
+    # A UTF-8 console, as on macOS and Linux; Windows' legacy one is tested below.
+    result = run_command("voices", "list", home=home, voice_manifest=catalog_manifest(), PYTHONIOENCODING="utf-8")
     assert result.returncode == 0, result.stderr
     lines = result.stdout.splitlines()
     assert lines[1].startswith("★") and "Heart · American English · female · Kokoro" in lines[1]
