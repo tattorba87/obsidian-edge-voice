@@ -77,6 +77,50 @@ describe("Edge Voice settings in Obsidian", () => {
 		expect(errors()).toEqual([]);
 	});
 
+	it("lists voices to get by name and size, and a British voice switches the language", () => {
+		const list = run<{ voices: string[]; groups: string[]; options: string[]; links: string[] }>(`
+			await new Promise((resolve) => setTimeout(resolve, 500));
+			const voices = [...${SETTING("Voice")}.querySelectorAll("option")].map((option) => option.textContent);
+			const more = ${SETTING("Get another voice")};
+			return {
+				voices,
+				groups: [...more.querySelectorAll("optgroup")].map((group) => group.label),
+				options: [...more.querySelectorAll("optgroup option")].map((option) => option.textContent),
+				links: [...more.querySelectorAll("a")].map((link) => link.textContent),
+			};
+		`);
+		expect(list.voices).toContain("Bella · American English · female · Kokoro");
+		expect(list.groups).toEqual(["Recommended", "Kokoro · American English"]);
+		expect(list.options).toEqual([
+			"Emma · British English · female · Kokoro (under 1 MB)",
+			"Santa · American English · male · Kokoro (under 1 MB)",
+		]);
+		expect(list.links).toEqual(["Kokoro voices", "Piper voices"]);
+
+		const picked = run<{ command: string; language: string }>(`
+			const more = ${SETTING("Get another voice")};
+			const select = more.querySelector("select");
+			select.value = "kokoro_bf_emma";
+			select.dispatchEvent(new Event("change"));
+			const command = more.querySelector("code.edge-voice-command").textContent;
+			const plugin = ${PLUGIN};
+			const before = { voice: plugin.settings.voice, language: plugin.settings.language };
+			// As if Emma had been downloaded: choosing her sets British English.
+			const voice = ${SETTING("Voice")}.querySelector("select");
+			voice.appendChild(new Option("Emma", "kokoro_bf_emma"));
+			voice.value = "kokoro_bf_emma";
+			voice.dispatchEvent(new Event("change"));
+			const language = plugin.settings.language;
+			plugin.settings.voice = before.voice;
+			plugin.settings.language = before.language;
+			await plugin.saveSettings();
+			return { command, language };
+		`);
+		expect(picked.command).toMatch(/edge-voice-engine voices get kokoro_bf_emma( --faster)?$/);
+		expect(picked.language).toBe("en_gb");
+		expect(errors()).toEqual([]);
+	});
+
 	it("says why when the voice list can't be had, without freezing Obsidian", () => {
 		// As for someone whose engine isn't set up yet. This used to hang Obsidian at 100% CPU:
 		// the failure path returned a Setting, whose then() method a promise keeps calling.

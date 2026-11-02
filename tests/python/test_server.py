@@ -133,12 +133,32 @@ def test_a_bad_voice_keeps_the_old_one(server):
 
 def test_voices_paths_and_unknown_ops(server):
     server.request(op="voices", language="en_us")
-    assert server.read() == {
+    reply = server.read()
+    catalog = reply.pop("catalog")
+    assert reply == {
         "id": 1,
         "ok": True,
         "present": ["kokoro_af_heart"],
         "downloadable": ["piper_en_US-lessac-medium"],
     }
+    # Every verified voice, recommended first, described for people.
+    assert catalog[0]["id"] == "kokoro_af_heart" and catalog[0]["recommended"]
+    emma = next(voice for voice in catalog if voice["id"] == "kokoro_bf_emma")
+    assert emma | {"size": 0, "download": 0} == {
+        "id": "kokoro_bf_emma",
+        "language": "en_gb",
+        "name": "Emma",
+        "accent": "British English",
+        "gender": "female",
+        "engine": "Kokoro",
+        "quality": "",
+        "recommended": True,
+        "faster": True,
+        "installed": False,
+        "size": 0,
+        "download": 0,
+    }
+    assert emma["download"] == emma["size"] > 80_000_000
     server.request(op="paths")
     assert server.read()["cache"] == "/tmp/moonshine_voice"
     request_id = server.request(op="dance")
@@ -322,7 +342,13 @@ def run_command(*args, home=None, voice_manifest=None, **extra):
     )
     env = engine_env(home, **extra)
     env["PYTHONPATH"] = os.pathsep.join([str(STUB), str(package.parent)])
-    return subprocess.run([sys.executable, "-m", "edge_voice_engine", *args], capture_output=True, text=True, env=env)
+    return subprocess.run(
+        [sys.executable, "-m", "edge_voice_engine", *args],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+    )
 
 
 def test_command_prints_its_python_and_version():
@@ -362,10 +388,46 @@ def test_voices_get_refuses_unknown_voices_and_piper_for_the_faster_engine(tmp_p
     assert "not a voice name" in run_command("voices", "get", "../x", home=home).stderr
 
 
-def test_voices_list_shows_what_is_here_and_what_can_be_fetched():
-    result = run_command("voices", "list")
-    assert "On this computer: kokoro_af_heart" in result.stdout
-    assert "Available to get: piper_en_US-lessac-medium" in result.stdout
+def catalog_manifest():
+    """The fixture manifest plus a British voice, sharing Kokoro's model file."""
+    data = fixture_voice_manifest()
+    data["moonshine"]["files"]["kokoro.model"] = {"sha256": "0" * 64, "size": 80_000_000}
+    for key in ["en_us/kokoro_af_heart", "en_gb/kokoro_bf_emma"]:
+        data["moonshine"]["voices"][key] = ["kokoro.model", key.split("/")[1] + ".ort"]
+    data["moonshine"]["files"]["kokoro_bf_emma.ort"] = data["moonshine"]["files"]["kokoro_af_heart.ort"]
+    return data
+
+
+def test_voices_list_shows_names_sizes_and_what_is_here(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    # A UTF-8 console, as on macOS and Linux; Windows' legacy one is tested below.
+    result = run_command("voices", "list", home=home, voice_manifest=catalog_manifest(), PYTHONIOENCODING="utf-8")
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert lines[1].startswith("★") and "Heart · American English · female · Kokoro" in lines[1]
+    assert "kokoro_af_heart" in lines[1] and "80 MB" in lines[1] and "yes" in lines[1]
+    assert any("Lessac · American English · female · Piper · medium quality" in line for line in lines)
+    assert "voices get <ID>" in result.stdout
+
+    # Once Kokoro's model is here, the next Kokoro voice is small.
+    (home / "moonshine" / "kokoro.model").write_text("model")
+    (home / "moonshine" / "kokoro_af_heart.ort").write_text("voice")
+    voices = json.loads(run_command("voices", "list", "--json", home=home, voice_manifest=catalog_manifest()).stdout)
+    by_id = {voice["id"]: voice for voice in voices}
+    assert by_id["kokoro_af_heart"]["installed"] and by_id["kokoro_af_heart"]["download"] == 0
+    assert by_id["kokoro_bf_emma"]["download"] == 5 and by_id["kokoro_bf_emma"]["language"] == "en_gb"
+    installed = run_command("voices", "list", "--installed", home=home, voice_manifest=catalog_manifest())
+    assert "kokoro_af_heart" in installed.stdout and "kokoro_bf_emma" not in installed.stdout
+
+
+def test_voices_get_takes_several_voices(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    result = run_command("voices", "get", "kokoro_af_heart", "piper_en_US-lessac-medium", home=home)
+    assert result.returncode == 0, result.stderr
+    assert "Got 2 of 2 voices." in result.stdout
+    assert (home / "moonshine" / "piper_en_US-lessac-medium.ort").exists()
+    partly = run_command("voices", "get", "kokoro_af_heart", "kokoro_nobody", home=home)
+    assert partly.returncode == 1 and "Got 1 of 2 voices." in partly.stderr
 
 
 def test_voice_manifest_is_packaged_identically():
@@ -431,3 +493,17 @@ def test_manifest_path_escape_and_incomplete_record_are_refused(tmp_path):
         reply = run_command("voices", "get", "kokoro_af_heart", home=home, voice_manifest=data)
         assert reply.returncode == 1
         assert not (home / "moonshine/kokoro_af_heart.ort").exists()
+
+
+def test_readme_voice_tables_match_the_catalog():
+    result = subprocess.run(
+        [sys.executable, "-I", str(ROOT / "scripts" / "voice-table.py"), "--check"], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_voices_list_works_on_a_legacy_windows_console(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    result = run_command("voices", "list", home=home, voice_manifest=catalog_manifest(), PYTHONIOENCODING="cp1252")
+    assert result.returncode == 0, result.stderr
+    assert "* " in result.stdout and "Heart - American English - female - Kokoro" in result.stdout

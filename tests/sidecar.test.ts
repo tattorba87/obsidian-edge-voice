@@ -153,7 +153,19 @@ describe("Sidecar limits", () => {
 		expect(await bad("bad-voices").voices("en_us")).toEqual({
 			present: ["kokoro_af_bella"],
 			downloadable: ["piper_en_US-lessac-medium"],
+			catalog: [],
 		});
+	});
+
+	it("passes on the engine's voice catalog: names, languages and sizes", async () => {
+		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
+		const { catalog } = await sidecar.voices("en_us");
+		expect(catalog.map((voice) => [voice.id, voice.language, voice.installed])).toEqual([
+			["kokoro_af_bella", "en_us", true],
+			["kokoro_bf_emma", "en_gb", false],
+			["kokoro_am_santa", "en_us", false],
+		]);
+		expect(catalog[1]).toMatchObject({ name: "Emma", accent: "British English", download: 520_000 });
 	});
 
 	it("never sends the engine a voice ID that isn't one", async () => {

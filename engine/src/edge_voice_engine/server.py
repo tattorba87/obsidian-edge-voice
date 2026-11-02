@@ -18,7 +18,7 @@ previous one; additions within a protocol keep older plugins working.
   -> {"id": 2, "ok": true, "sampleRate": 24000, "audio": "<base64 float32 LE>"}
 
   {"id": 3, "op": "voices", "language": "en_us"}
-  -> {"id": 3, "ok": true, "present": [...], "downloadable": [...]}
+  -> {"id": 3, "ok": true, "present": [...], "downloadable": [...], "catalog": [...]}
 
   {"id": 4, "op": "paths"}
   -> {"id": 4, "ok": true, "cache": "/path/to/moonshine_voice/cache"}
@@ -28,7 +28,11 @@ voices are fetched beforehand by the person, with `edge-voice-engine voices get
 <voice>` (see voices.py). Loading a voice that isn't on disk fails with
 {"id": n, "error": "...", "missing": "<voice>"}, so the plugin can show that
 command. "voices" lists what's on disk ("present") and what the command can
-fetch ("downloadable").
+fetch ("downloadable") for that language, and "catalog": every voice with
+pinned hashes in any language, each {"id", "language", "name", "accent",
+"gender", "engine", "quality", "recommended", "faster", "installed", "size",
+"download"} (sizes in bytes; "download" is what `voices get` would fetch now),
+recommended first. See catalog.py.
 
 On Apple silicon, "load" can ask for Kokoro on MLX (the GPU, via mlx-audio):
 
@@ -188,6 +192,11 @@ def main() -> None:
     from moonshine_voice import list_tts_voices
     from moonshine_voice.download import tts_asset_cache_path
 
+    try:
+        from edge_voice_engine.catalog import catalog
+    except ImportError:  # Run as a lone script: no catalog, the plugin copes.
+        catalog = None
+
     def send(message: dict) -> None:
         protocol.write(json.dumps(message) + "\n")
         protocol.flush()
@@ -271,6 +280,8 @@ def main() -> None:
             elif op == "voices":
                 language = engine_id(request.get("language"), "language", "en_us")
                 voices = list_tts_voices(language, root_path=tts_asset_cache_path())
+                if catalog:
+                    voices["catalog"] = catalog(Path(tts_asset_cache_path()))
                 send({"id": request_id, "ok": True, **voices})
             else:
                 raise ValueError(f"unknown op {op!r}")
