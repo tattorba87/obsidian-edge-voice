@@ -14,6 +14,7 @@ is downloaded, and only when run.
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -94,7 +95,14 @@ def main(argv: list[str]) -> int:
             voices = [voice for voice in voices if voice["language"] == args.language]
         if args.installed:
             voices = [voice for voice in voices if voice["installed"]]
-        return show(voices, args.json)
+        try:
+            status = show(voices, args.json)
+            sys.stdout.flush()  # Here, not at exit, so a closed pipe is caught below.
+            return status
+        except BrokenPipeError:
+            # `voices list | head`: the reader has what it wanted. Stop quietly.
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+            return 0
 
     failed = [voice for voice in args.voices if get_voice(voice, args) != 0]
     if len(args.voices) > 1:

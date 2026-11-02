@@ -507,3 +507,22 @@ def test_voices_list_works_on_a_legacy_windows_console(tmp_path):
     result = run_command("voices", "list", home=home, voice_manifest=catalog_manifest(), PYTHONIOENCODING="cp1252")
     assert result.returncode == 0, result.stderr
     assert "* " in result.stdout and "Heart - American English - female - Kokoro" in result.stdout
+
+
+def test_voices_list_stops_quietly_when_the_reader_does(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    package = home / "test-package"
+    run_command("voices", "list", home=home)  # Lays out the package with the fixture manifest.
+    env = engine_env(home)
+    env["PYTHONPATH"] = os.pathsep.join([str(STUB), str(package)])
+    for _ in range(20):
+        lister = subprocess.Popen(
+            [sys.executable, "-m", "edge_voice_engine", "voices", "list"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+        )
+        lister.stdout.close()  # Like `| head` exiting before the table is written.
+        _, errors = lister.communicate()
+        assert lister.returncode == 0, errors
+        assert b"Traceback" not in errors and b"BrokenPipe" not in errors
