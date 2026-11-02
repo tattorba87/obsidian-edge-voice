@@ -23,6 +23,7 @@ Follow [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code rules, tests, manual c
 
 - Run `bun run check` before saying work is done. Report failures as they are; do not claim skipped checks passed. It covers type-checking, lint, formatting, Vitest and pytest, but does not build the bundle or launch Obsidian.
 - Run `bun run build` when changing shipped code, bundling or dependencies. Run `bun run test:obsidian` when changing integration with Obsidian; it launches a separate macOS test app and requires Obsidian installed locally.
+- While the repository is private, GitHub Actions minutes are limited (macOS counts 10×). Validate locally (`bun run check`, `bun run build`, `bun run check:engine` for engine or setup changes) and don't start macOS or Windows workflows (Obsidian, Demo, full Engine package or CI) unless asked; see CONTRIBUTING's Checks.
 - Follow CONTRIBUTING's manual sandbox checklist for the affected behavior. Automated tests use fake engines; they do not prove pronunciation, audio quality or GPU behavior. Say what was tried by hand and what still needs a person.
 - End with a short summary of changes, checks and remaining limitations. Update user documentation and the Unreleased changelog for user-facing behavior changes.
 
