@@ -50,7 +50,7 @@ def tables() -> str:
         f"each one after that is {megabytes(own)}. "
         f"Piper voices are {megabytes(min(piper))} to {megabytes(max(piper))} each.",
         "",
-        "**Recommended** (Kokoro's best-graded voices, then Piper's high-quality ones):",
+        "**Recommended** (Kokoro's best-graded voices, then Piper's high-quality public-domain ones):",
         "",
         *table(recommended),
         "",
@@ -59,6 +59,11 @@ def tables() -> str:
         *table(others),
         "",
         "</details>",
+        "",
+        "Voices have their own licences: Kokoro's are Apache 2.0; each Piper voice's licence is in its "
+        "[model card](https://huggingface.co/rhasspy/piper-voices). A few Piper voices (such as Lessac and Ryan) "
+        "were trained on recordings licensed for research or non-commercial use only; check the model card "
+        "before using one for anything commercial.",
         "",
         END,
     ]

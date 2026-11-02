@@ -14,8 +14,10 @@ from pathlib import Path
 LANGUAGES = {"en_us": "American English", "en_gb": "British English"}
 
 # Best first. Kokoro's own grades (VOICES.md in hexgrad/Kokoro-82M): heart A,
-# bella A-, nicole and emma B-, michael and fenrir C+, george C. Piper's
-# high-quality voices after them.
+# bella A-, nicole and emma B-, michael and fenrir C+, george C (Kokoro is
+# Apache 2.0). Then Piper's high-quality voices trained on public-domain
+# recordings; some other Piper voices (lessac, ryan) come from data licensed
+# for research or non-commercial use only, so they aren't recommended.
 RECOMMENDED = [
     "kokoro_af_heart",
     "kokoro_af_bella",
@@ -24,8 +26,8 @@ RECOMMENDED = [
     "kokoro_bm_george",
     "kokoro_af_nicole",
     "kokoro_am_fenrir",
-    "piper_en_US-lessac-high",
-    "piper_en_US-ryan-high",
+    "piper_en_US-ljspeech-high",
+    "piper_en_GB-cori-high",
 ]
 
 # Piper voices whose speaker is one known person; multi-speaker sets are left blank.
