@@ -148,19 +148,19 @@ American and British voices both work; choosing a British voice reads with Briti
 Hear them first: [Kokoro voices](https://huggingface.co/spaces/hexgrad/Kokoro-TTS), [Piper voices](https://rhasspy.github.io/piper-samples/).
 The first Kokoro voice is about 109 MB (it brings Kokoro's model); each one after that is under 1 MB. Piper voices are 42 MB to 89 MB each.
 
-**Recommended** (Kokoro's best-graded voices, then Piper's high-quality ones):
+**Recommended** (Kokoro's best-graded voices, then Piper's high-quality public-domain ones):
 
-| Voice           | Accent           | Engine              | ID                        | Faster engine |
-| --------------- | ---------------- | ------------------- | ------------------------- | ------------- |
-| Heart (female)  | American English | Kokoro              | `kokoro_af_heart`         | yes           |
-| Bella (female)  | American English | Kokoro              | `kokoro_af_bella`         | yes           |
-| Emma (female)   | British English  | Kokoro              | `kokoro_bf_emma`          | yes           |
-| Michael (male)  | American English | Kokoro              | `kokoro_am_michael`       | yes           |
-| George (male)   | British English  | Kokoro              | `kokoro_bm_george`        | yes           |
-| Nicole (female) | American English | Kokoro              | `kokoro_af_nicole`        | yes           |
-| Fenrir (male)   | American English | Kokoro              | `kokoro_am_fenrir`        | yes           |
-| Lessac (female) | American English | Piper, high quality | `piper_en_US-lessac-high` |               |
-| Ryan (male)     | American English | Piper, high quality | `piper_en_US-ryan-high`   |               |
+| Voice             | Accent           | Engine              | ID                          | Faster engine |
+| ----------------- | ---------------- | ------------------- | --------------------------- | ------------- |
+| Heart (female)    | American English | Kokoro              | `kokoro_af_heart`           | yes           |
+| Bella (female)    | American English | Kokoro              | `kokoro_af_bella`           | yes           |
+| Emma (female)     | British English  | Kokoro              | `kokoro_bf_emma`            | yes           |
+| Michael (male)    | American English | Kokoro              | `kokoro_am_michael`         | yes           |
+| George (male)     | British English  | Kokoro              | `kokoro_bm_george`          | yes           |
+| Nicole (female)   | American English | Kokoro              | `kokoro_af_nicole`          | yes           |
+| Fenrir (male)     | American English | Kokoro              | `kokoro_am_fenrir`          | yes           |
+| LJSpeech (female) | American English | Piper, high quality | `piper_en_US-ljspeech-high` |               |
+| Cori (female)     | British English  | Piper, high quality | `piper_en_GB-cori-high`     |               |
 
 <details><summary>The other 57 voices</summary>
 
@@ -200,14 +200,15 @@ The first Kokoro voice is about 109 MB (it brings Kokoro's model); each one afte
 | Kristin (female)          | American English | Piper, medium quality | `piper_en_US-kristin-medium`               |               |
 | Kusal (male)              | American English | Piper, medium quality | `piper_en_US-kusal-medium`                 |               |
 | L2-ARCTIC                 | American English | Piper, medium quality | `piper_en_US-l2arctic-medium`              |               |
-| LJSpeech (female)         | American English | Piper, high quality   | `piper_en_US-ljspeech-high`                |               |
 | LJSpeech (female)         | American English | Piper, medium quality | `piper_en_US-ljspeech-medium`              |               |
+| Lessac (female)           | American English | Piper, high quality   | `piper_en_US-lessac-high`                  |               |
 | Lessac (female)           | American English | Piper, low quality    | `piper_en_US-lessac-low`                   |               |
 | Lessac (female)           | American English | Piper, medium quality | `piper_en_US-lessac-medium`                |               |
 | LibriTTS                  | American English | Piper, high quality   | `piper_en_US-libritts-high`                |               |
 | LibriTTS-R                | American English | Piper, medium quality | `piper_en_US-libritts_r-medium`            |               |
 | Norman (male)             | American English | Piper, medium quality | `piper_en_US-norman-medium`                |               |
 | Reza Ibrahim (male)       | American English | Piper, medium quality | `piper_en_US-reza_ibrahim-medium`          |               |
+| Ryan (male)               | American English | Piper, high quality   | `piper_en_US-ryan-high`                    |               |
 | Ryan (male)               | American English | Piper, low quality    | `piper_en_US-ryan-low`                     |               |
 | Ryan (male)               | American English | Piper, medium quality | `piper_en_US-ryan-medium`                  |               |
 | Saikat                    | American English | Piper                 | `piper_en_US-saikat`                       |               |
@@ -216,7 +217,6 @@ The first Kokoro voice is about 109 MB (it brings Kokoro's model); each one afte
 | Alan (male)               | British English  | Piper, medium quality | `piper_en_GB-alan-medium`                  |               |
 | Alba (female)             | British English  | Piper, medium quality | `piper_en_GB-alba-medium`                  |               |
 | Aru                       | British English  | Piper, medium quality | `piper_en_GB-aru-medium`                   |               |
-| Cori (female)             | British English  | Piper, high quality   | `piper_en_GB-cori-high`                    |               |
 | Cori (female)             | British English  | Piper, medium quality | `piper_en_GB-cori-medium`                  |               |
 | Jenny (female)            | British English  | Piper, medium quality | `piper_en_GB-jenny_dioco-medium`           |               |
 | Northern English (male)   | British English  | Piper, medium quality | `piper_en_GB-northern_english_male-medium` |               |
@@ -225,6 +225,8 @@ The first Kokoro voice is about 109 MB (it brings Kokoro's model); each one afte
 | VCTK                      | British English  | Piper, medium quality | `piper_en_GB-vctk-medium`                  |               |
 
 </details>
+
+Voices have their own licences: Kokoro's are Apache 2.0; each Piper voice's licence is in its [model card](https://huggingface.co/rhasspy/piper-voices). A few Piper voices (such as Lessac and Ryan) were trained on recordings licensed for research or non-commercial use only; check the model card before using one for anything commercial.
 
 <!-- voices:end -->
 
