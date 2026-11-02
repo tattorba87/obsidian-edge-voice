@@ -4,6 +4,10 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Fixed
+
+- PDFs: lines set with ligatures ("fi", "fl", as in most typeset papers) are highlighted again; they were skipped. Highlight boxes on one line are joined, without seams where italics start.
+
 ## [0.1.0] - 2026-11-02
 
 ### Added

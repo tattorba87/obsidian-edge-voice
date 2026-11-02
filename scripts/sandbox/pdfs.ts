@@ -2,11 +2,25 @@
  * The sandbox's sample PDFs, made with pdf-lib (as tests/pdf.test.ts does), so
  * there's no copyrighted document in the repository. They hold what the PDF
  * reader has to skip: running headers, page numbers, a rotated margin stamp
- * and footnotes, plus a two-column page for reading order.
+ * and footnotes, plus a two-column page for reading order, and a page set with
+ * the "fi" ligature, as most typeset papers are.
  */
 import { writeFileSync } from "fs";
 import { join } from "path";
-import { degrees, PDFDocument, PDFFont, PDFPage, StandardFonts } from "pdf-lib";
+import {
+	beginText,
+	degrees,
+	endText,
+	moveText,
+	PDFDocument,
+	PDFFont,
+	PDFHexString,
+	PDFName,
+	PDFPage,
+	setFontAndSize,
+	showText,
+	StandardFonts,
+} from "pdf-lib";
 
 const PARAGRAPHS = [
 	"Reading along with audio can help people stay with a text. In this short paper we describe a reader that speaks a document aloud on the reader's own computer, highlighting each sentence and word as it is spoken.",
@@ -82,8 +96,41 @@ async function twoColumns(): Promise<Uint8Array> {
 	return pdf.save();
 }
 
+/**
+ * One sentence over three lines, the middle one written with the "ﬁ" ligature
+ * glyph, as TeX sets papers. The font is Times-Roman in its own encoding, where
+ * byte 0xAE is that glyph; pdf.js reads it as U+FB01.
+ */
+export const LIGATURE_LINES = [
+	"Reading along with audio helps many people, and this reader",
+	"highlights every line signi\ufb01cantly and con\ufb01dently, even in a",
+	"paper set with ligatures.",
+];
+
+export async function ligatures(): Promise<Uint8Array> {
+	const pdf = await PDFDocument.create();
+	const page = pdf.addPage([612, 792]);
+	const font = pdf.context.register(pdf.context.obj({ Type: "Font", Subtype: "Type1", BaseFont: "Times-Roman" }));
+	page.node.setFontDictionary(PDFName.of("Lig"), font);
+	const bytes = (line: string) =>
+		PDFHexString.of(
+			[...line].map((c) => (c === "\ufb01" ? "ae" : c.charCodeAt(0).toString(16).padStart(2, "0"))).join(""),
+		);
+	LIGATURE_LINES.forEach((line, i) => {
+		page.pushOperators(
+			beginText(),
+			setFontAndSize("Lig", 12),
+			moveText(72, 700 - i * 17),
+			showText(bytes(line)),
+			endText(),
+		);
+	});
+	return pdf.save();
+}
+
 /** Writes the sample PDFs into `folder`. */
 export async function writeSamplePdfs(folder: string): Promise<void> {
 	writeFileSync(join(folder, "A short paper.pdf"), await paper());
 	writeFileSync(join(folder, "Two columns.pdf"), await twoColumns());
+	writeFileSync(join(folder, "Ligatures.pdf"), await ligatures());
 }

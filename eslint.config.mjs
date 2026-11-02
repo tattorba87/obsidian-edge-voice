@@ -66,6 +66,7 @@ export default tseslint.config(
 		".scratch/",
 		".sandbox/",
 		".sandbox-test/",
+		".sandbox-demo/",
 		"coverage/",
 		"scripts/",
 		"package.json",

@@ -1,7 +1,9 @@
 import { degrees, PDFDocument, StandardFonts } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildPageText, marginLines, skippedItems } from "../src/pdf";
+import { normalizeForSpeech } from "../src/normalize";
+import { alignSpans, buildPageText, marginLines, mergeLineRects, skippedItems, TEXT_CONTENT } from "../src/pdf";
+import { LIGATURE_LINES, ligatures } from "../scripts/sandbox/pdfs";
 
 type Content = Parameters<typeof skippedItems>[0];
 
@@ -98,5 +100,43 @@ describe("PDF reading", () => {
 		const withText = contents[1].items.filter((item) => item.str !== undefined);
 		expect(page.items).toHaveLength(withText.length);
 		expect(page.starts).toHaveLength(withText.length);
+	});
+});
+
+describe("ligatures", () => {
+	it("reads the text as the text layer shows it, ligatures kept, and the voice still hears plain letters", async () => {
+		const doc = await getDocument({ data: await ligatures(), verbosity: 0 }).promise;
+		const page = await doc.getPage(1);
+		const items = (await page.getTextContent(TEXT_CONTENT)).items as { str?: string }[];
+		const lines = items.map((item) => item.str).filter((text) => text?.trim());
+		// What Obsidian's text layer shows: pdf.js renders it without normalization.
+		expect(lines).toEqual(LIGATURE_LINES);
+		expect(lines[1]).toContain("signiﬁcantly");
+		expect(normalizeForSpeech(lines[1] ?? "")).toContain("significantly");
+	});
+
+	it("matches a line to its span even when one side wrote the ligature as two letters", () => {
+		const span = (text: string) => ({ textContent: text }) as HTMLElement;
+		const spans = [span("first"), span(""), span("signiﬁcantly better"), span("last")];
+		const aligned = alignSpans(["first", "significantly better", "last"], spans);
+		expect(aligned.map((el) => el?.textContent)).toEqual(["first", "signiﬁcantly better", "last"]);
+	});
+});
+
+describe("highlight boxes", () => {
+	const box = (left: number, top: number, width: number, height = 12) => ({ left, top, width, height });
+
+	it("joins touching boxes on one line, so an italic run shows no seam", () => {
+		expect(mergeLineRects([box(100, 50, 40), box(140.5, 50.5, 60), box(200, 50, 30)])).toEqual([
+			{ left: 100, top: 50, width: 130, height: 12.5 },
+		]);
+	});
+
+	it("keeps lines apart, and columns on the same line apart", () => {
+		expect(mergeLineRects([box(72, 70, 400), box(320, 50, 100), box(72, 50, 200)])).toEqual([
+			box(72, 50, 200),
+			box(320, 50, 100),
+			box(72, 70, 400),
+		]);
 	});
 });
