@@ -12,6 +12,10 @@ https://github.com/user-attachments/assets/0ab2984c-49eb-4444-8074-2f25ff312abe
 - **Natural voices.** 66 English voices, American and British, from [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) and [Piper](https://github.com/rhasspy/piper). On Apple silicon, a faster engine runs the Kokoro voices on the GPU.
 - **Start anywhere.** Right-click a sentence and choose _Start text-to-speech here_. Pause, skip sentences and change the speed from the player bar.
 
+![Edge Voice reading the abstract of a research paper in Obsidian's PDF view, with the sentence and the current word highlighted](docs/media/reading-a-pdf.png)
+
+<sub>PDF: Wei et al., "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models" ([arXiv 2201.11903](https://arxiv.org/abs/2201.11903)), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).</sub>
+
 English only for now. Obsidian desktop only (macOS, Windows, Linux); not on phones or tablets.
 
 ## Why read along

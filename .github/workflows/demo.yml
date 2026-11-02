@@ -8,6 +8,13 @@ name: Demo
 
 on:
   workflow_dispatch:
+    inputs:
+      pdf-url:
+        description: A PDF to read instead of the sample (it must be free to show, e.g. CC BY; credit it where it's used)
+        default: ""
+      pdf-from:
+        description: Text in the PDF to start reading at (e.g. the abstract's first words)
+        default: ""
 
 permissions:
   contents: read
@@ -57,7 +64,16 @@ jobs:
           hdiutil detach -quiet /Volumes/Obsidian
           brew install --quiet ffmpeg
       - name: Record
-        run: bun scripts/demo/record.ts demo-out
+        env:
+          PDF_URL: ${{ inputs.pdf-url }}
+          DEMO_PDF_FROM: ${{ inputs.pdf-from }}
+        run: |
+          if [ -n "$PDF_URL" ]; then
+            mkdir -p demo-in
+            curl -fsSL -o demo-in/paper.pdf "$PDF_URL"
+            export DEMO_PDF="$PWD/demo-in/paper.pdf"
+          fi
+          bun scripts/demo/record.ts demo-out
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
