@@ -87,4 +87,4 @@ Kokoro voices (`kokoro_*`, the default is `kokoro_af_bella`) sound the most natu
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for security scope and private reporting instructions. GitHub private reporting is pending maintainer activation; the policy records Steven's setup task. Please keep vulnerability details out of public issues.
+See [SECURITY.md](SECURITY.md) for security scope and private reporting instructions.
