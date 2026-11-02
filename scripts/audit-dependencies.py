@@ -53,6 +53,12 @@ def python_report(lock, data):
         package_gaps["moonshine-voice"] = "PyPI name/version lookup does not audit the custom Mac wheel" + (
             f"; scanner: {scanner_reason}" if scanner_reason else ""
         )
+    if "docopt" in expected:
+        scanner_reason = package_gaps.get("docopt")
+        package_gaps["docopt"] = (
+            "repository-built wheel is not audited by a PyPI source-package name/version lookup"
+            + (f"; scanner: {scanner_reason}" if scanner_reason else "")
+        )
     gaps = [f"{name}: {reason}" for name, reason in sorted(package_gaps.items())]
     if "moonshine-voice" in expected:
         gaps.append(
@@ -211,6 +217,12 @@ def main():
             ],
             lambda data, lock=lock: python_report(lock, data),
         )
+    reports["edge-voice-engine"] = {
+        "packages": 0,
+        "findings": [],
+        "errors": [],
+        "gaps": ["edge-voice-engine: repository-built wheel is not published on PyPI and needs source/build review"],
+    }
     reports["bun.lock"] = run_scan("bun", ["bun", "audit", "--json"], bun_report)
     summary = markdown(reports)
     gate_failed = False

@@ -21,6 +21,9 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
+
+import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
 # Platform, and the Mac wheel this repository builds for it.
@@ -54,8 +57,12 @@ def read_lock(name: str) -> dict[str, str]:
     blocks: dict[str, str] = {}
     for block in re.split(r"\n(?=[A-Za-z0-9])", (ROOT / "locks" / f"{name}.txt").read_text().strip()):
         package = re.match(r"([A-Za-z0-9_.-]+)==", block)
-        if package:
-            blocks[package.group(1).lower()] = block.rstrip() + "\n"
+        if not package:
+            fail(f"unsupported lock requirement in {name}: {block.splitlines()[0]}")
+        key = canonical(package.group(1))
+        if key in blocks:
+            fail(f"duplicate lock requirement in {name}: {key}")
+        blocks[key] = block.rstrip() + "\n"
     return blocks
 
 
@@ -95,6 +102,75 @@ def spacy_model(blocks: dict[str, str]) -> None:
     blocks["en-core-web-sm"] = by_url("en-core-web-sm", model["url"], model["sha256"])
 
 
+def canonical(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def versions(blocks: dict[str, str]) -> dict[str, str]:
+    result = {}
+    for name, block in blocks.items():
+        match = re.match(r"[A-Za-z0-9_.-]+==([^\s\\]+)", block)
+        if not match:
+            fail(f"{name} is not an exact lock pin")
+        result[canonical(name)] = match[1]
+    return result
+
+
+def validate_release(out: Path) -> None:
+    """Reject missing, extra, duplicate or changed versions, including URL wheels."""
+    engine_version = tomllib.loads((ROOT / "engine/pyproject.toml").read_text())["project"]["version"]
+    platforms = {**PLATFORMS, "darwin-arm64-mlx": "arm64"}
+    expected_files = {f"requirements-{name}.txt" for name in platforms}
+    if {path.name for path in out.glob("requirements-*.txt")} != expected_files:
+        fail("release requirements files do not match the supported locks")
+    for platform in platforms:
+        blocks = read_lock("darwin-arm64" if platform == "darwin-arm64-mlx" else platform)
+        expected = versions(blocks)
+        if platform.endswith("-mlx"):
+            for name, version in versions(read_lock(platform)).items():
+                if name in expected and expected[name] != version:
+                    fail(f"{name} differs between base and MLX locks")
+                expected[name] = version
+        expected["edge-voice-engine"] = engine_version
+        actual = {}
+        url_names = {"edge-voice-engine"}
+        if platform.startswith("darwin-"):
+            url_names.add("moonshine-voice")
+        if platform.endswith("-mlx"):
+            url_names.update({"docopt", "en-core-web-sm"})
+        text = (out / f"requirements-{platform}.txt").read_text()
+        for block in re.split(r"\n(?=[A-Za-z0-9])", text.strip()):
+            first = block.splitlines()[0].rstrip(" \\")
+            pin = re.fullmatch(r"([A-Za-z0-9_.-]+)==([^\s]+)", first)
+            url = re.fullmatch(r"([A-Za-z0-9_.-]+)(\[mlx\])? @ (https?://[^\s]+)", first)
+            if pin:
+                name, version = canonical(pin[1]), pin[2]
+            elif url:
+                name = canonical(url[1])
+                wheel = unquote(urlsplit(url[3]).path.rsplit("/", 1)[-1])
+                parts = wheel.split("-")
+                if len(parts) < 5 or not wheel.endswith(".whl") or canonical(parts[0]) != name:
+                    fail(f"{platform}: invalid wheel URL for {name}")
+                version = parts[1]
+                if name == "edge-voice-engine" and bool(url[2]) != platform.endswith("-mlx"):
+                    fail(f"{platform}: wrong engine extras")
+            else:
+                fail(f"{platform}: unsupported requirement {first}")
+            if (name in url_names) != bool(url):
+                fail(f"{platform}: wrong requirement source for {name}")
+            for row in block.splitlines()[1:]:
+                row = row.strip().rstrip("\\").strip()
+                if row and not row.startswith("#") and not re.fullmatch(r"--hash=sha256:[0-9a-f]{64}", row):
+                    fail(f"{platform}: unsupported requirement option for {name}")
+            if name in actual:
+                fail(f"{platform}: duplicate requirement {name}")
+            if not locked_hashes(block):
+                fail(f"{platform}: missing hash for {name}")
+            actual[name] = version
+        if actual != expected:
+            fail(f"{platform}: requirement versions differ from locks: expected {expected}, got {actual}")
+
+
 def main() -> None:
     if len(sys.argv) != 4:
         fail("usage: engine-requirements.py <dist dir> <base url> <out dir>")
@@ -121,6 +197,7 @@ def main() -> None:
             text += by_url(requirement, f"{base}/{engine.name}", sha256(engine))
             (out / f"requirements-{name}.txt").write_text(text)
             print(f"requirements-{name}.txt")
+    validate_release(out)
 
 
 if __name__ == "__main__":
