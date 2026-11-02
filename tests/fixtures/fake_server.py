@@ -23,6 +23,31 @@ LOG = os.environ.get("EDGE_VOICE_FAKE_LOG")
 SECONDS_PER_CHAR = float(os.environ.get("EDGE_VOICE_FAKE_SECONDS_PER_CHAR", "0"))
 DELAY = float(os.environ.get("EDGE_VOICE_FAKE_DELAY", "0"))
 
+
+def voice(voice_id, language, name, accent, gender, recommended, installed, download):
+    return {
+        "id": voice_id,
+        "language": language,
+        "name": name,
+        "accent": accent,
+        "gender": gender,
+        "engine": "Kokoro",
+        "quality": "",
+        "recommended": recommended,
+        "faster": True,
+        "installed": installed,
+        "size": 84_000_000,
+        "download": download,
+    }
+
+
+# Like the engine's catalog: recommended first, sizes for what's still to get.
+CATALOG = [
+    voice("kokoro_af_bella", "en_us", "Bella", "American English", "female", True, True, 0),
+    voice("kokoro_bf_emma", "en_gb", "Emma", "British English", "female", True, False, 520_000),
+    voice("kokoro_am_santa", "en_us", "Santa", "American English", "male", False, False, 520_000),
+]
+
 print(json.dumps({"event": "ready"}), flush=True)
 for line in sys.stdin:
     request = json.loads(line)
@@ -59,7 +84,13 @@ for line in sys.stdin:
             pcm = struct.pack(f"<{count}f", *([level] * count))
             reply = {"id": request_id, "ok": True, "sampleRate": 24000, "audio": base64.b64encode(pcm).decode()}
     elif op == "voices":
-        reply = {"id": request_id, "ok": True, "present": ["kokoro_af_bella"], "downloadable": ["kokoro_am_santa"]}
+        reply = {
+            "id": request_id,
+            "ok": True,
+            "present": ["kokoro_af_bella"],
+            "downloadable": ["kokoro_am_santa"],
+            "catalog": CATALOG,
+        }
     elif op == "paths":
         reply = {"id": request_id, "ok": True, "cache": "/tmp/cache"}
     else:

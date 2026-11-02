@@ -157,6 +157,12 @@ jobs:
           _MoonshineLib()
           EOF
           du -sh ~/.edge-voice/engine
+      - name: The voice list shows the voice just set up
+        shell: bash
+        run: |
+          "$PYTHON" -I -m edge_voice_engine voices list | head -5
+          "$PYTHON" -I -m edge_voice_engine voices list --installed --json |
+            python3 -I -c "import json, sys; ids = [v['id'] for v in json.load(sys.stdin)]; print(ids); assert sys.argv[1] in ids" "$VOICE"
       - name: A tampered cached voice is rejected and removed (Linux)
         if: runner.os == 'Linux' && runner.arch == 'X64'
         shell: bash
