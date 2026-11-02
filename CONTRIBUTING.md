@@ -106,7 +106,7 @@ In the pull request, say what you tried by hand, where, and what still needs a p
 
 ## Releases
 
-For Community directory submission, resolve the automatic engine installation against the current [developer policies](https://docs.obsidian.md/community-directory/developer-policies), which prohibit plugins installing or updating their dependencies. The existing setup downloads Python and engine packages; this requires policy clarification before claiming directory compliance.
+For Community directory submission, resolve the engine installation against the current [developer policies](https://docs.obsidian.md/community-directory/developer-policies), which prohibit plugins installing or updating their dependencies. Setup now installs only when the person clicks **Install** in a window that lists every download, but it still downloads Python and engine packages; this requires policy clarification before claiming directory compliance.
 
 Only perform these steps when a maintainer has authorized a release. Start with a clean working tree and passing checks.
 

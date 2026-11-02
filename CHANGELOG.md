@@ -7,7 +7,7 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 ### Added
 
 - Reads notes and PDFs aloud with on-device voices (Moonshine: Kokoro and Piper), highlighting the sentence and the word being spoken.
-- Sets up its speech engine and downloads the default voice by itself when first enabled, with nothing to install beforehand, on macOS (Apple Silicon and Intel, 13.4 or later), Windows (x64 and ARM) and Linux.
+- Sets up its speech engine and the default voice when you ask, from a window listing what will be downloaded and where it goes, with nothing to install beforehand, on macOS (Apple Silicon and Intel, 13.4 or later), Windows (x64 and ARM) and Linux.
 - On Apple silicon (macOS 14 or later), a faster engine that runs voices on the GPU with MLX, set up in the background and used automatically, with the standard engine as fallback.
 - Highlighting in Source mode, Live Preview (including rendered callouts and math) and Reading view, and over PDF pages.
 - Right-click _Start text-to-speech here_ in the editor, Reading view and PDFs.
