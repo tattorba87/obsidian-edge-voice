@@ -4,6 +4,10 @@
 
 **Free. Private.** Free and open source (MIT), with no account, no subscription and no limits. The voices run on your own computer: your notes never leave it, and once it's set up it works offline.
 
+![Edge Voice reading a note aloud in Obsidian, highlighting the sentence and the word being spoken](docs/media/demo.gif)
+
+▶ [Watch the demo with sound](docs/media/demo.mp4) (44 seconds: a note, then a PDF).
+
 - **Read along.** The sentence and the word being spoken are highlighted as you listen, in notes (editing, Live Preview and Reading view) and in PDFs.
 - **Natural voices.** 66 English voices, American and British, from [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) and [Piper](https://github.com/rhasspy/piper). On Apple silicon, a faster engine runs the Kokoro voices on the GPU.
 - **Start anywhere.** Right-click a sentence and choose _Start text-to-speech here_. Pause, skip sentences and change the speed from the player bar.
@@ -28,7 +32,7 @@ Edge Voice doesn't install or download anything itself. Its speech engine is a s
 1. **Install the plugin** from Obsidian's Community plugins (until it's listed there, with [BRAT](https://github.com/TfTHacker/obsidian42-brat) from this repository) and enable it.
 2. **Install [uv](https://docs.astral.sh/uv/getting-started/installation/)**, Astral's widely used Python installer, if you don't have it.
 3. **Run the commands for your computer** in Terminal (PowerShell on Windows).
-4. **Back in Obsidian**, click **Check again**.
+4. **Back in Obsidian**, open Settings, choose Edge Voice under Community plugins in the left bar, open **Advanced** and click **Check again**.
 
 **macOS (Apple silicon, macOS 14 or later)**, with the faster engine:
 
