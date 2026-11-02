@@ -103,3 +103,29 @@ describe("sectionLines", () => {
 		expect(sectionLines([{ el, lineStart: 3, lineEnd: 4 }, { el }])).toEqual([{ el, lineStart: 3, lineEnd: 4 }]);
 	});
 });
+
+describe("Long lines", () => {
+	it("are handled quickly even when full of unclosed links, tags, code and maths", () => {
+		// Each unclosed opener used to make masking rescan the rest of the line: quadratic, 4 s here.
+		const n = 80000;
+		const lines: Record<string, string> = {
+			wikilinks: "[[a|".repeat(n / 4),
+			html: "<a ".repeat(n / 3),
+			links: "[a](".repeat(n / 4),
+			code: "`a".repeat(n / 2),
+			maths: "$a".repeat(n / 2),
+		};
+		for (const [name, line] of Object.entries(lines)) {
+			const started = performance.now();
+			new MarkdownSource(viewOf(line), () => false, 0);
+			expect(performance.now() - started, name).toBeLessThan(1000);
+		}
+	});
+
+	it("still masks a normal link after a long run of unclosed ones", async () => {
+		const text = "[[a ".repeat(2000) + "Read [[Target|the shown words]] here.";
+		const said = (await spoken(text)).join(" ");
+		expect(said).toContain("the shown words here");
+		expect(said).not.toContain("Target");
+	});
+});
