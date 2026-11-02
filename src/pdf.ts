@@ -162,7 +162,7 @@ export class PdfSource implements SegmentSource {
 		let content = this.contents.get(pageNumber);
 		if (!content) {
 			content = doc.getPage(pageNumber).then(async (page) => {
-				const { items } = await page.getTextContent();
+				const { items } = await page.getTextContent(TEXT_CONTENT);
 				page.cleanup();
 				return { items, view: page.view };
 			});
@@ -284,11 +284,19 @@ interface PdfTextItem {
 	transform?: number[];
 }
 
+/**
+ * How the page text is read: exactly as Obsidian's text layer shows it. By
+ * default pdf.js normalizes it, turning a ligature such as "ﬁ" into "fi", while
+ * the text layer keeps "ﬁ"; lines with a ligature then matched no span and got
+ * no highlight. The voice still hears "fi": normalizeForSpeech applies NFKC.
+ */
+export const TEXT_CONTENT = { disableNormalization: true } as const;
+
 interface PdfDocument {
 	numPages: number;
 	getPage(n: number): Promise<{
 		view: number[];
-		getTextContent(): Promise<{ items: PdfTextItem[] }>;
+		getTextContent(options?: typeof TEXT_CONTENT): Promise<{ items: PdfTextItem[] }>;
 		cleanup(): void;
 	}>;
 	destroy(): Promise<void>;
@@ -460,16 +468,18 @@ function itemAt(pageText: PageText, offset: number): number {
 /**
  * Pairs each item with the span that shows it. Usually the two lists line up
  * one to one; matching on text keeps it working when a pdf.js version drops
- * spans for empty items.
+ * spans for empty items. Text is compared NFKC-normalized, so a ligature
+ * written two ways ("ﬁ" or "fi") still finds its line.
  */
-function alignSpans(items: string[], spans: HTMLElement[]): (HTMLElement | undefined)[] {
+export function alignSpans(items: string[], spans: HTMLElement[]): (HTMLElement | undefined)[] {
 	if (spans.length === items.length) return spans;
 	const out = new Array<HTMLElement | undefined>(items.length);
+	const same = (a: string, b: string) => a === b || a.normalize("NFKC") === b.normalize("NFKC");
 	let j = 0;
 	for (let i = 0; i < items.length && j < spans.length; i++) {
 		if (!items[i]) continue;
 		for (let look = j; look < Math.min(spans.length, j + 6); look++) {
-			if (spans[look].textContent === items[i]) {
+			if (same(spans[look].textContent ?? "", items[i])) {
 				out[i] = spans[look];
 				j = look + 1;
 				break;
@@ -530,13 +540,52 @@ function drawBoxes(layer: HTMLElement, pageEl: HTMLElement, rects: DOMRect[], cl
 	const page = pageEl.getBoundingClientRect();
 	// The page may be CSS-scaled; boxes are positioned in its unscaled pixels.
 	const scale = pageEl.offsetWidth > 0 ? page.width / pageEl.offsetWidth : 1;
-	for (const rect of rects) {
+	for (const rect of mergeLineRects(rects)) {
 		const box = layer.createDiv({ cls });
 		box.style.left = `${(rect.left - page.left) / scale - pageEl.clientLeft - 1}px`;
 		box.style.top = `${(rect.top - page.top) / scale - pageEl.clientTop - 1}px`;
 		box.style.width = `${rect.width / scale + 2}px`;
 		box.style.height = `${rect.height / scale + 2}px`;
 	}
+}
+
+interface Box {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
+/**
+ * One box per run of touching rectangles on the same line. A line in several
+ * text-layer spans (an italic phrase, say) otherwise shows seams where the
+ * boxes' borders meet.
+ */
+export function mergeLineRects(rects: Box[]): Box[] {
+	const out: Box[] = [];
+	for (const rect of [...rects].sort((a, b) => a.left - b.left)) {
+		// The box it continues: on the same line (overlapping by over half a
+		// line's height) and ending at most about a space before it starts.
+		const last = out.find((box) => {
+			const overlap = Math.min(box.top + box.height, rect.top + rect.height) - Math.max(box.top, rect.top);
+			const right = box.left + box.width;
+			return (
+				overlap > Math.min(box.height, rect.height) / 2 &&
+				rect.left >= box.left &&
+				rect.left <= right + rect.height / 3
+			);
+		});
+		if (last) {
+			const right = Math.max(last.left + last.width, rect.left + rect.width);
+			const bottom = Math.max(last.top + last.height, rect.top + rect.height);
+			last.top = Math.min(last.top, rect.top);
+			last.width = right - last.left;
+			last.height = bottom - last.top;
+		} else {
+			out.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+		}
+	}
+	return out.sort((a, b) => a.top - b.top || a.left - b.left);
 }
 
 /** Joins words hyphenated across a line break and collapses whitespace. */

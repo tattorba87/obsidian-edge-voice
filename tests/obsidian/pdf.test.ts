@@ -26,4 +26,20 @@ describe("Reading PDFs in Obsidian", () => {
 		}
 		expect(errors()).toEqual([]);
 	});
+
+	it("highlights every line of a sentence set with ligatures (fi), one box per line", async () => {
+		openFile("PDFs/Ligatures.pdf");
+		command("read-from-here");
+		const lines = await until(() => {
+			const boxes = run<{ top: number }[]>(`
+				return [...document.querySelectorAll(".edge-voice-layer > .edge-voice-sentence")]
+					.map((box) => ({ top: Math.round(box.getBoundingClientRect().top) }));
+			`);
+			return boxes.length >= 3 ? boxes : undefined;
+		}, 15000);
+		// Three lines, three boxes: the middle line ("signiﬁcantly") used to get none.
+		expect(lines?.length).toBe(3);
+		expect(new Set(lines?.map((box) => box.top)).size).toBe(3);
+		expect(errors()).toEqual([]);
+	});
 });
