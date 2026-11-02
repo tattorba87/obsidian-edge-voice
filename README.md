@@ -1,12 +1,12 @@
 # Edge Voice
 
-An Obsidian plugin that reads notes and PDFs aloud with speech models running on your own computer, highlighting each sentence and word as it is spoken. Your notes never leave your computer, and the plugin itself never downloads or installs anything: you set up its speech engine yourself, with a few commands it shows you.
+An Obsidian plugin that reads notes and PDFs aloud with speech models running on your own computer, highlighting each sentence and word as it is spoken. Edge Voice processes note and PDF text locally, without telemetry. The plugin downloads and installs nothing: you run its setup and voice-download commands yourself. Those commands contact the Python/package sources and voice hosts described below; reading uses the engine offline.
 
 The speech engine today is [Moonshine](https://github.com/moonshine-ai/moonshine) (Kokoro and Piper voices, on the CPU). The plugin talks to it through a small engine interface, so other engines can be added.
 
 ## How it works
 
-The plugin starts the speech engine (`python -I -m edge_voice_engine`, from the environment you set up) and asks it for one sentence of audio at a time over stdin/stdout. The engine reads voices from disk only; it never downloads. It plays the audio with Web Audio and synthesizes a couple of sentences ahead, so there is no gap between them.
+The plugin starts the speech engine (`python -I -m edge_voice_engine`, from the environment you set up) and asks it for one sentence of audio at a time over stdin/stdout. While serving the plugin, the engine reads voices from disk only and makes no downloads. The separate `edge-voice-engine voices get` command downloads voices only when you run it. The plugin plays the audio with Web Audio and synthesizes a couple of sentences ahead, so there is no gap between them.
 
 - **PDFs**: text comes from pdf.js (Obsidian's `loadPdfJs`), page by page. The sentence and the word being spoken are drawn as boxes over the page, positioned from the viewer's text layer, and the view follows along onto the next page.
 - **Notes**: reads from the cursor to the end of the note. It skips frontmatter, code, comments, embeds, tables and URLs. Highlighting works in Source mode, Live Preview (including rendered callouts and math blocks) and Reading view: rendered text is matched word by word and painted with the CSS Custom Highlight API.
