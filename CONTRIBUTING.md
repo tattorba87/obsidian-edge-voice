@@ -45,7 +45,7 @@ The sandbox lives in `.sandbox/` (gitignored): its own Obsidian profile, its own
 
 ### Dependency advisories
 
-The **Dependency advisories** workflow runs weekly, by hand, and on pull requests changing its scanner or lock inputs. Start it with `gh workflow run advisory-scan.yml --ref <branch>` (the workflow must first exist on the default branch for manual dispatch). Read the run summary and download the `dependency-advisories` artifact for raw JSON and diagnostics.
+The **Dependency advisories** workflow runs weekly, by hand, and on pull requests changing its scanner or lock inputs. Start it with `gh workflow run advisory-scan.yml --ref <branch>`. If GitHub cannot resolve a new workflow by filename before merge, use its numeric workflow ID from a PR run instead. Read the run summary and download the `dependency-advisories` artifact for raw JSON and diagnostics.
 
 To run the same report locally:
 
