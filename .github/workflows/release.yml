@@ -6,12 +6,18 @@ on:
   push:
     tags: ["[0-9]+.[0-9]+.[0-9]+"]
   workflow_dispatch:
+    inputs:
+      run-obsidian:
+        description: Run the Obsidian gate (disable only for a repeated artifact-only validation)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 jobs:
   obsidian:
+    if: github.event_name != 'workflow_dispatch' || inputs.run-obsidian
     uses: ./.github/workflows/obsidian.yml
 
   build:
@@ -55,6 +61,25 @@ jobs:
             manifest.json
             styles.css
             release-notes.md
+
+  verify-artifact:
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # Match publish's same-run download without a checkout or write token.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: release-files
+      - name: List and check the release files without executing them
+        run: |
+          ls -lh release-files/
+          for file in main.js manifest.json styles.css release-notes.md; do
+            test -s "release-files/$file"
+          done
 
   publish:
     needs: [build, obsidian]
