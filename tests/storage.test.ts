@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 import { afterEach, describe, expect, it } from "vitest";
-import { deleteItem, formatBytes, scanMlxVoices, scanVoices } from "../src/storage";
+import { deleteItem, formatBytes, scanMlxVoices, scanVoices, StorageItem } from "../src/storage";
 
 let dir: string;
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -58,5 +58,62 @@ describe("storage", () => {
 		expect(formatBytes(512)).toBe("1 KB");
 		expect(formatBytes(84_000_000)).toBe("84 MB");
 		expect(formatBytes(1_250_000_000)).toBe("1.3 GB");
+	});
+});
+
+describe("deleting downloads", () => {
+	// Symbolic links need extra rights on Windows; the boundary itself is tested everywhere.
+	const links = it.skipIf(process.platform === "win32");
+
+	/** A root folder with a voice file in it, and a precious file outside it. */
+	function layout() {
+		dir = mkdtempSync(join(tmpdir(), "edge-voice-delete-"));
+		const root = join(dir, "root");
+		const outside = join(dir, "outside");
+		mkdirSync(join(root, "kokoro"), { recursive: true });
+		mkdirSync(outside);
+		writeFileSync(join(root, "kokoro", "voice.bin"), "voice");
+		writeFileSync(join(outside, "precious.txt"), "keep me");
+		return { root, outside };
+	}
+
+	const item = (root: string, paths: string[]): StorageItem => ({
+		id: "test",
+		label: "Test",
+		description: "",
+		paths,
+		root,
+		bytes: 0,
+	});
+
+	it("refuses a path outside its root, and deletes nothing there", async () => {
+		const { root, outside } = layout();
+		await expect(deleteItem(item(root, [join(root, "..", "outside", "precious.txt")]))).rejects.toThrow(
+			/isn't inside/,
+		);
+		expect(existsSync(join(outside, "precious.txt"))).toBe(true);
+	});
+
+	links("refuses a path whose folder is a link to somewhere else", async () => {
+		const { root, outside } = layout();
+		symlinkSync(outside, join(root, "escape"));
+		await expect(deleteItem(item(root, [join(root, "escape", "precious.txt")]))).rejects.toThrow(/isn't inside/);
+		expect(existsSync(join(outside, "precious.txt"))).toBe(true);
+	});
+
+	links("removes a link inside the root as a link, leaving what it points to", async () => {
+		const { root, outside } = layout();
+		symlinkSync(outside, join(root, "kokoro", "linked"));
+		await deleteItem(item(root, [join(root, "kokoro", "linked")]));
+		expect(existsSync(join(root, "kokoro", "linked"))).toBe(false);
+		expect(existsSync(join(outside, "precious.txt"))).toBe(true);
+	});
+
+	links("deletes the faster engine's voices where they really are when their folder is a link", async () => {
+		const { root } = layout();
+		const linked = join(dir, "hf");
+		symlinkSync(root, linked);
+		await deleteItem(item(linked, [linked]));
+		expect(existsSync(join(root, "kokoro", "voice.bin"))).toBe(false);
 	});
 });
