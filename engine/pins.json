@@ -1,0 +1,26 @@
+{
+	"_comment": "What an engine release installs, besides the locks. scripts/lock-engine.sh, build-engine-release.sh and engine-requirements.py read this; tests check engine/pyproject.toml and the locks agree with it.",
+	"moonshine": {
+		"package": "moonshine-voice==0.1.5",
+		"_macWheels": "PyPI has no moonshine-voice wheel for Intel Macs, and its Apple silicon one needs macOS 15. The Engine wheels workflow builds both for macOS 13.4 and publishes them as this release; the checksums come from its notes.",
+		"release": "moonshine-voice-0.1.5",
+		"macWheels": {
+			"darwin-x64": {
+				"asset": "moonshine_voice-0.1.5-py3-none-macosx_13_0_x86_64.whl",
+				"sha256": "a3a5d827cbb31339808ba0cba0f0082bd26550f0a6a2d5577fc8bf65f382ad23"
+			},
+			"darwin-arm64": {
+				"asset": "moonshine_voice-0.1.5-py3-none-macosx_13_0_arm64.whl",
+				"sha256": "5328a49f62ff4670dada9a0bb7f950994a3ba0b2d47898a7049f540d79afbafd"
+			}
+		}
+	},
+	"mlx": {
+		"_packages": "The faster engine on Apple silicon (macOS 14+): Kokoro on the GPU through MLX. misaki needs spaCy's English model, which isn't on PyPI.",
+		"packages": ["mlx-audio==0.5.9", "misaki[en]==0.9.4"],
+		"spacyModel": {
+			"url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+			"sha256": "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85"
+		}
+	}
+}

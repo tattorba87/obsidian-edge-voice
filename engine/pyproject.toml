@@ -1,7 +1,7 @@
 # The speech engine as an installable package. Users install it from this
 # repository's engine release with the hash-locked requirements files that
 # scripts/engine-requirements.py writes, never from PyPI. The pins below must
-# match src/setup.ts (PACKAGE, MLX_PACKAGES); a test checks they do.
+# match engine/pins.json; a test checks they do.
 [project]
 name = "edge-voice-engine"
 version = "0.2.0"

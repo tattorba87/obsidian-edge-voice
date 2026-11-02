@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 env:
-  # Keep these the same as MLX_PACKAGES in src/setup.ts, so this measures what users get.
+  # Keep these the same as mlx.packages in engine/pins.json, so this measures what users get.
   MLX_AUDIO: mlx-audio==0.5.9
   MISAKI: misaki[en]==0.9.4
   HF_HUB_DISABLE_TELEMETRY: "1"
@@ -30,7 +30,7 @@ jobs:
     name: Apple silicon (Moonshine and MLX)
     runs-on: macos-15
     env:
-      # From src/setup.ts (ENGINE_WHEELS), the release the plugin installs on Macs.
+      # From engine/pins.json (moonshine.macWheels), the wheel engine releases install on Macs.
       WHEEL: moonshine_voice-0.1.5-py3-none-macosx_13_0_arm64.whl
       WHEEL_SHA256: 5328a49f62ff4670dada9a0bb7f950994a3ba0b2d47898a7049f540d79afbafd
       HF_HOME: ${{ github.workspace }}/.bench/hf
