@@ -1,0 +1,1819 @@
+{
+	"faster": {
+		"base_files": ["config.json", "kokoro-v1_0.safetensors"],
+		"files": {
+			"config.json": {
+				"sha256": "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f",
+				"size": 2351
+			},
+			"kokoro-v1_0.safetensors": {
+				"sha256": "4e9ecdf03b8b6cf906070390237feda473dc13327cb8d56a43deaa374c02acd8",
+				"size": 327115152
+			},
+			"voices/af_alloy.safetensors": {
+				"sha256": "5bb848d02ade7e37981809acad52a1761ef7a586ff9f30d02d65fd71c4af95f9",
+				"size": 522320
+			},
+			"voices/af_aoede.safetensors": {
+				"sha256": "23809148777f2a2378983dd856bc14b9c261018279f916f98c23d86e844409a5",
+				"size": 522320
+			},
+			"voices/af_bella.safetensors": {
+				"sha256": "112d310468cbb3cf23404d3d0b50ad3adf017b87bf38bf9edd15f4ad572df6a3",
+				"size": 522320
+			},
+			"voices/af_heart.safetensors": {
+				"sha256": "2c1c733b0e6576c810e268d3e440c21dea4e0f0131a3ba4cfc98d7fe6136d094",
+				"size": 522320
+			},
+			"voices/af_jessica.safetensors": {
+				"sha256": "c358448e4277b79e8b13b92033711660a1a2205c3940c2dfb16698b99fed58a8",
+				"size": 522320
+			},
+			"voices/af_kore.safetensors": {
+				"sha256": "c491174280cb1ad25210a842f2f34b46a9ef904ec6f6a8e784839531795fa278",
+				"size": 522320
+			},
+			"voices/af_nicole.safetensors": {
+				"sha256": "574656386022c81a029e9a72558191925f44c3de2dad2fa2e45751938557d062",
+				"size": 522320
+			},
+			"voices/af_nova.safetensors": {
+				"sha256": "242b9a0a01eac1ac2865c69fc617a756b20d86df82d5fae3970533e2312ca50e",
+				"size": 522320
+			},
+			"voices/af_river.safetensors": {
+				"sha256": "82c866b0b976d50e82cbd781ac7bc771471ce5bd21decf05ab92812a08fb1c04",
+				"size": 522320
+			},
+			"voices/af_sarah.safetensors": {
+				"sha256": "4940072182542f54c1035d1daf4c1cf3136ca9baa9ac57c8e006b4befcc50be6",
+				"size": 522320
+			},
+			"voices/af_sky.safetensors": {
+				"sha256": "957af332330db8e9bd7f9dc449475a946cb0d7d689afef64b91007bbbf20eaa0",
+				"size": 522320
+			},
+			"voices/am_adam.safetensors": {
+				"sha256": "a4f60a3b9c20353c2604a17485ba53260502a758681a84d41e8af53cc559d929",
+				"size": 522320
+			},
+			"voices/am_echo.safetensors": {
+				"sha256": "031fc608a900332c4e1a29bd0884f5d0e84bd0348261fa79981e5cbd138c950d",
+				"size": 522320
+			},
+			"voices/am_eric.safetensors": {
+				"sha256": "1fb4a61dcee1f114f90886ecf29bc2feed05e29eed9caa6ddb109f1934d73274",
+				"size": 522320
+			},
+			"voices/am_fenrir.safetensors": {
+				"sha256": "9abed964b906c4cae6f404d9849e76260689aea862bc6ca85fc3f5207ba96538",
+				"size": 522320
+			},
+			"voices/am_liam.safetensors": {
+				"sha256": "66b65a96e16c3d91035a6e9019d9986ed524d27ce35b487270cdf61c99e3ebad",
+				"size": 522320
+			},
+			"voices/am_michael.safetensors": {
+				"sha256": "3940147ded35deba0bb52e8132f89b719298e0520258c34584358aa5a24da2ea",
+				"size": 522320
+			},
+			"voices/am_onyx.safetensors": {
+				"sha256": "b5d6132a5747648d98c82c9c4aaa9cf52d7230e63e403c1cb9c12858446ca5f5",
+				"size": 522320
+			},
+			"voices/am_puck.safetensors": {
+				"sha256": "9a8c2e56413bd2063f814cb4c3885fc425876157369117c3f8258d03c8a9ad89",
+				"size": 522320
+			},
+			"voices/am_santa.safetensors": {
+				"sha256": "d1f433b57ffccf105ea9e434ea19af6c2a8a7916ba6d1a73c34f0046bd226084",
+				"size": 522320
+			},
+			"voices/bf_alice.safetensors": {
+				"sha256": "9c77e390d93d9db7c4a7526c3b1f393290a2be46f233b89a00b8188e850c20a8",
+				"size": 522320
+			},
+			"voices/bf_emma.safetensors": {
+				"sha256": "8878a75a6661305849eeb1d6293a7177250193616e161b4c3100636434dfe69f",
+				"size": 522320
+			},
+			"voices/bf_isabella.safetensors": {
+				"sha256": "f7b6076f025649699fcfed1a6debf13049a87afdc7aafc8c72b7d81246db6ead",
+				"size": 522320
+			},
+			"voices/bf_lily.safetensors": {
+				"sha256": "ee77a419046a765420ac82cb46e8b8cf5754a0b9d20c340fece1d4b18be7ecdb",
+				"size": 522320
+			},
+			"voices/bm_daniel.safetensors": {
+				"sha256": "b195dec592ee024f57ddc5bf481464596082ba60998a2a295eba90bfc1064f4b",
+				"size": 522320
+			},
+			"voices/bm_fable.safetensors": {
+				"sha256": "9fa80184e96d016a744bc13b0b2e7695e55d6b855556fa003325cb1e5ebf2c2b",
+				"size": 522320
+			},
+			"voices/bm_george.safetensors": {
+				"sha256": "a3d9b8995cbbe5536f954b6be2a0f1f312f077118ba0d4d2178fc41dc8306672",
+				"size": 522320
+			},
+			"voices/bm_lewis.safetensors": {
+				"sha256": "e1e68013c21a141efe527aaec561e1174c2f5a6951b3bcecc8396adab315b247",
+				"size": 522320
+			}
+		},
+		"repository": "mlx-community/Kokoro-82M-bf16",
+		"revision": "a71e4d38b236d968966a2002c4c895dbd12b1c3c",
+		"voices": {
+			"kokoro_af_alloy": ["config.json", "kokoro-v1_0.safetensors", "voices/af_alloy.safetensors"],
+			"kokoro_af_aoede": ["config.json", "kokoro-v1_0.safetensors", "voices/af_aoede.safetensors"],
+			"kokoro_af_bella": ["config.json", "kokoro-v1_0.safetensors", "voices/af_bella.safetensors"],
+			"kokoro_af_heart": ["config.json", "kokoro-v1_0.safetensors", "voices/af_heart.safetensors"],
+			"kokoro_af_jessica": ["config.json", "kokoro-v1_0.safetensors", "voices/af_jessica.safetensors"],
+			"kokoro_af_kore": ["config.json", "kokoro-v1_0.safetensors", "voices/af_kore.safetensors"],
+			"kokoro_af_nicole": ["config.json", "kokoro-v1_0.safetensors", "voices/af_nicole.safetensors"],
+			"kokoro_af_nova": ["config.json", "kokoro-v1_0.safetensors", "voices/af_nova.safetensors"],
+			"kokoro_af_river": ["config.json", "kokoro-v1_0.safetensors", "voices/af_river.safetensors"],
+			"kokoro_af_sarah": ["config.json", "kokoro-v1_0.safetensors", "voices/af_sarah.safetensors"],
+			"kokoro_af_sky": ["config.json", "kokoro-v1_0.safetensors", "voices/af_sky.safetensors"],
+			"kokoro_am_adam": ["config.json", "kokoro-v1_0.safetensors", "voices/am_adam.safetensors"],
+			"kokoro_am_echo": ["config.json", "kokoro-v1_0.safetensors", "voices/am_echo.safetensors"],
+			"kokoro_am_eric": ["config.json", "kokoro-v1_0.safetensors", "voices/am_eric.safetensors"],
+			"kokoro_am_fenrir": ["config.json", "kokoro-v1_0.safetensors", "voices/am_fenrir.safetensors"],
+			"kokoro_am_liam": ["config.json", "kokoro-v1_0.safetensors", "voices/am_liam.safetensors"],
+			"kokoro_am_michael": ["config.json", "kokoro-v1_0.safetensors", "voices/am_michael.safetensors"],
+			"kokoro_am_onyx": ["config.json", "kokoro-v1_0.safetensors", "voices/am_onyx.safetensors"],
+			"kokoro_am_puck": ["config.json", "kokoro-v1_0.safetensors", "voices/am_puck.safetensors"],
+			"kokoro_am_santa": ["config.json", "kokoro-v1_0.safetensors", "voices/am_santa.safetensors"],
+			"kokoro_bf_alice": ["config.json", "kokoro-v1_0.safetensors", "voices/bf_alice.safetensors"],
+			"kokoro_bf_emma": ["config.json", "kokoro-v1_0.safetensors", "voices/bf_emma.safetensors"],
+			"kokoro_bf_isabella": ["config.json", "kokoro-v1_0.safetensors", "voices/bf_isabella.safetensors"],
+			"kokoro_bf_lily": ["config.json", "kokoro-v1_0.safetensors", "voices/bf_lily.safetensors"],
+			"kokoro_bm_daniel": ["config.json", "kokoro-v1_0.safetensors", "voices/bm_daniel.safetensors"],
+			"kokoro_bm_fable": ["config.json", "kokoro-v1_0.safetensors", "voices/bm_fable.safetensors"],
+			"kokoro_bm_george": ["config.json", "kokoro-v1_0.safetensors", "voices/bm_george.safetensors"],
+			"kokoro_bm_lewis": ["config.json", "kokoro-v1_0.safetensors", "voices/bm_lewis.safetensors"]
+		}
+	},
+	"moonshine": {
+		"files": {
+			"en_gb/piper-voices/en_GB-alan-low.generator.model.ort": {
+				"sha256": "319a13b64d5d9bc3e9422b34cd590f690b9447ac047e2dcb16bb00f4c4c48036",
+				"size": 274184
+			},
+			"en_gb/piper-voices/en_GB-alan-low.generator.weights.ort": {
+				"sha256": "14fe5d585d6b0e7636375f7f2d69c1458cbd0877fde2c1540577bddbf287f830",
+				"size": 1634472
+			},
+			"en_gb/piper-voices/en_GB-alan-low.onnx.json": {
+				"sha256": "c8164cc04b6ce102c651ce4a1e788e8429fa638501fca0723860718d4b44637e",
+				"size": 4170
+			},
+			"en_gb/piper-voices/en_GB-alan-low.upstream.model.ort": {
+				"sha256": "74755d03d891be2832257b8f595accd287fc9bb4cdaa8df0bd397346e691358c",
+				"size": 1390328
+			},
+			"en_gb/piper-voices/en_GB-alan-low.upstream.weights.ort": {
+				"sha256": "eab1e57a13047169cd0f70ed186130ef552ccd004af7b13bd638c04764df27e3",
+				"size": 14071232
+			},
+			"en_gb/piper-voices/en_GB-alan-medium.generator.model.ort": {
+				"sha256": "b2e2db85c834eb44f06393c42feff186114258a08aae3274b1c3fc88f60ef2de",
+				"size": 274176
+			},
+			"en_gb/piper-voices/en_GB-alan-medium.generator.weights.ort": {
+				"sha256": "6020f8902b4115749ef2a52737cbe9667d6a13f4fd62fdb63bd28ef484574173",
+				"size": 1634472
+			},
+			"en_gb/piper-voices/en_GB-alan-medium.onnx.json": {
+				"sha256": "c0f0d124e5895c00e7c03b35dcc8287f319a6998a365b182deb5c8e752ee8c1e",
+				"size": 4888
+			},
+			"en_gb/piper-voices/en_GB-alan-medium.upstream.model.ort": {
+				"sha256": "27806468b63f21abb125e05e9d250bd182aba257a7bae270b4f3563a79887d83",
+				"size": 1390344
+			},
+			"en_gb/piper-voices/en_GB-alan-medium.upstream.weights.ort": {
+				"sha256": "475bf1ccc83add43f5409c53678c76490d28062bb2d6a04782fd1e2a27a7a8ce",
+				"size": 14095424
+			},
+			"en_gb/piper-voices/en_GB-alba-medium.generator.model.ort": {
+				"sha256": "59da1fa9aa77528cf9aef6d2c18ff602d693ad82aaa171b5bfcd034afa32b30d",
+				"size": 274168
+			},
+			"en_gb/piper-voices/en_GB-alba-medium.generator.weights.ort": {
+				"sha256": "5833ba702df4ddcfaae5fb8e95c5103b7516c0cdbfe4b3b8acb226683a801113",
+				"size": 1634472
+			},
+			"en_gb/piper-voices/en_GB-alba-medium.onnx.json": {
+				"sha256": "aa965a2f02ecced632c2694e1fc72bbff6d65f265fab567ca945918c73dd89f4",
+				"size": 4888
+			},
+			"en_gb/piper-voices/en_GB-alba-medium.upstream.model.ort": {
+				"sha256": "24e3be10b197155ec771945f343610ddbfca2beba3240cc8517a31e1b0984ccf",
+				"size": 1390344
+			},
+			"en_gb/piper-voices/en_GB-alba-medium.upstream.weights.ort": {
+				"sha256": "4ea821a9d9a66a84c323fadfeabab8c2453cd6387a5f01467f3eaf3441b074e0",
+				"size": 14095424
+			},
+			"en_gb/piper-voices/en_GB-aru-medium.generator.model.ort": {
+				"sha256": "a10a5f7f48161c7ae9a52bf49d58c2de6fa87b2e6b794912874da50f1c19855d",
+				"size": 276968
+			},
+			"en_gb/piper-voices/en_GB-aru-medium.generator.weights.ort": {
+				"sha256": "7ccf64bedfe235dcd24ccc33b04e2e759818334525b710b0d4dcd5653327ca71",
+				"size": 1767400
+			},
+			"en_gb/piper-voices/en_GB-aru-medium.onnx.json": {
+				"sha256": "00529fabf0e79f29a9cb10fda5b60f9b7cf80671faac2b316e13af20e7816d5e",
+				"size": 5048
+			},
+			"en_gb/piper-voices/en_GB-aru-medium.upstream.model.ort": {
+				"sha256": "055851d836c4b452ea5903b2b5cc166f91c258ae1d3eb3dd1e9e1871ec9a0013",
+				"size": 1438496
+			},
+			"en_gb/piper-voices/en_GB-aru-medium.upstream.weights.ort": {
+				"sha256": "6bb50d97dc38c91cb44a50dd5995a200adfb70b149da3e4eaf80b0d03fe1a033",
+				"size": 17348848
+			},
+			"en_gb/piper-voices/en_GB-cori-high.generator.model.ort": {
+				"sha256": "558caa4bab001768ccff72f3adffebb02dea4873f35d8ff07517baff715fe48a",
+				"size": 1008384
+			},
+			"en_gb/piper-voices/en_GB-cori-high.generator.weights.ort": {
+				"sha256": "91228a2c90a165298d34bf9b835e153366171f29a89655f5ae4fe520e3508d22",
+				"size": 14213264
+			},
+			"en_gb/piper-voices/en_GB-cori-high.onnx.json": {
+				"sha256": "9e7fb5b5671612c22f3c81cbe46c1ae87b031a4632bcb509e499dad6f1e2adec",
+				"size": 4963
+			},
+			"en_gb/piper-voices/en_GB-cori-high.upstream.model.ort": {
+				"sha256": "a506e30a40062c113dae4f978fa69e7c09e1ba29ad983a873863875f8d639750",
+				"size": 1415288
+			},
+			"en_gb/piper-voices/en_GB-cori-high.upstream.weights.ort": {
+				"sha256": "5a0787b34eedd880759000f91961df64ca917c4c3793c52ed46cd48d0d446398",
+				"size": 14095488
+			},
+			"en_gb/piper-voices/en_GB-cori-medium.generator.model.ort": {
+				"sha256": "3027b9550092d9306f9ed5d0c1b6e8dba7597821214ef9e1c84cba3b8cc1b0ff",
+				"size": 274176
+			},
+			"en_gb/piper-voices/en_GB-cori-medium.generator.weights.ort": {
+				"sha256": "c4cac165744e3b505a4d45b5c1a60efe11ea9b6e1f753435214e4a7b0ef7c1c7",
+				"size": 1634488
+			},
+			"en_gb/piper-voices/en_GB-cori-medium.onnx.json": {
+				"sha256": "e262c16d7f192f69d4edd6b4ef8a5915379e67495fcc402f1ab15eeb33da3d36",
+				"size": 4966
+			},
+			"en_gb/piper-voices/en_GB-cori-medium.upstream.model.ort": {
+				"sha256": "86fdfe87c2b70ec740cd60abcc0f91ea319f9780d0d254b149e79e2e4822a895",
+				"size": 1415312
+			},
+			"en_gb/piper-voices/en_GB-cori-medium.upstream.weights.ort": {
+				"sha256": "ec4695f14ef20cf1a31f3c713027dcc0d001ae3cd6a7dfed56b50cbc71c76cd8",
+				"size": 14095424
+			},
+			"en_gb/piper-voices/en_GB-jenny_dioco-medium.generator.model.ort": {
+				"sha256": "fa81d2cf87b262cd6be3387c82f934914be144485456f28c49c7d3b6b1d2b8e0",
+				"size": 274176
+			},
+			"en_gb/piper-voices/en_GB-jenny_dioco-medium.generator.weights.ort": {
+				"sha256": "d64df59f7d0416cd2ae66d27e244e26267578b41fdf005c386b91b06a637c1ba",
+				"size": 1634472
+			},
+			"en_gb/piper-voices/en_GB-jenny_dioco-medium.onnx.json": {
+				"sha256": "a9a7a93a317c9a3cb6563e37eb057df9ef09c06188a8a4341b0fcb58cba54dd4",
+				"size": 4895
+			},
+			"en_gb/piper-voices/en_GB-jenny_dioco-medium.upstream.model.ort": {
+				"sha256": "dfb6f5a57a573b9eca006ff9557989b47808d692e596c004569f7e7a2c618ed4",
+				"size": 1390360
+			},
+			"en_gb/piper-voices/en_GB-jenny_dioco-medium.upstream.weights.ort": {
+				"sha256": "ece44e55e4e9c2abe2592de31866e162eac072cbeaf0ae2dc47cb35a0b61eb4a",
+				"size": 14095416
+			},
+			"en_gb/piper-voices/en_GB-northern_english_male-medium.generator.model.ort": {
+				"sha256": "c8e00caa12710df0e43f242ff67302006595f7b1762072360c5e5f331bae0be7",
+				"size": 274176
+			},
+			"en_gb/piper-voices/en_GB-northern_english_male-medium.generator.weights.ort": {
+				"sha256": "59adb17d9f4da5058b2aa331168689b853b4b44e9c46509ea7efe1ec1d5eebb0",
+				"size": 1634472
+			},
+			"en_gb/piper-voices/en_GB-northern_english_male-medium.onnx.json": {
+				"sha256": "69557ed3d974463453e9b0c09dd99a7ed0e52b8b87b64b357dbeeb2540a97d47",
+				"size": 4847
+			},
+			"en_gb/piper-voices/en_GB-northern_english_male-medium.upstream.model.ort": {
+				"sha256": "6b859f53620048f592e411c1b87981a7d6abb0cde1169c53d7966b3737970a32",
+				"size": 1390328
+			},
+			"en_gb/piper-voices/en_GB-northern_english_male-medium.upstream.weights.ort": {
+				"sha256": "bff6e0c1f9828eb1b6522b5d0ef9123c472548e80feb9fefd3d0a5f3dacc2b6c",
+				"size": 14095416
+			},
+			"en_gb/piper-voices/en_GB-semaine-medium.generator.model.ort": {
+				"sha256": "1de3434d1c0c0e4c05a62b622bcf7f7f22c4ca74563bdfa45e7e65a5e013b3c2",
+				"size": 276968
+			},
+			"en_gb/piper-voices/en_GB-semaine-medium.generator.weights.ort": {
+				"sha256": "cac57cc2508d396bd9fa959fac495f6982366a1c897af3f83bac00dadfde9e0b",
+				"size": 1767400
+			},
+			"en_gb/piper-voices/en_GB-semaine-medium.onnx.json": {
+				"sha256": "6425dcb878684043b77d772b173ae006d86a583b110303edda48b8438ecee5ee",
+				"size": 5076
+			},
+			"en_gb/piper-voices/en_GB-semaine-medium.upstream.model.ort": {
+				"sha256": "98685cc78bf28370c7de9fc55461aeed9b0221831c870627756b96d5ef126af9",
+				"size": 1422160
+			},
+			"en_gb/piper-voices/en_GB-semaine-medium.upstream.weights.ort": {
+				"sha256": "46c06bda295006cb30992e808c151e690ec8d3e166311c9c4f3c71671f3a88b7",
+				"size": 17348856
+			},
+			"en_gb/piper-voices/en_GB-southern_english_female-low.generator.model.ort": {
+				"sha256": "f7c1f3cebeb55fb31389e5e1d5d849ab0bfd953c1f552c0a7ac7a3d74da8a58e",
+				"size": 274176
+			},
+			"en_gb/piper-voices/en_GB-southern_english_female-low.generator.weights.ort": {
+				"sha256": "a701d5b3f02baef188b23673a0a3ba8c5568f17458d59e194575f551cfb3465c",
+				"size": 1634472
+			},
+			"en_gb/piper-voices/en_GB-southern_english_female-low.onnx.json": {
+				"sha256": "a1af43310f8756161506e849a2863d342a98b0853af9e2437581d39e9922d0e5",
+				"size": 4189
+			},
+			"en_gb/piper-voices/en_GB-southern_english_female-low.upstream.model.ort": {
+				"sha256": "90ab273c1c7256370507bae75c7560dff272613199604036acaae1812929c84b",
+				"size": 1390328
+			},
+			"en_gb/piper-voices/en_GB-southern_english_female-low.upstream.weights.ort": {
+				"sha256": "76609dd6cd959b51b093e4622e9cdb63b1b2e257340f3362ac0197053756ef08",
+				"size": 14071240
+			},
+			"en_gb/piper-voices/en_GB-vctk-medium.generator.model.ort": {
+				"sha256": "240d3e806c41fc95443e4b47ac31e3f59f829d95ec01db7d04432f00248a659e",
+				"size": 276968
+			},
+			"en_gb/piper-voices/en_GB-vctk-medium.generator.weights.ort": {
+				"sha256": "cae80b81fcc01703c1580f912cc6cd14a11d555506b6f96c6b4db9f8fd295b74",
+				"size": 1767400
+			},
+			"en_gb/piper-voices/en_GB-vctk-medium.onnx.json": {
+				"sha256": "7f85e6391ed0f7f46e4abd19345929a16be931a0c9945086f96692dce2087fa8",
+				"size": 6637
+			},
+			"en_gb/piper-voices/en_GB-vctk-medium.upstream.model.ort": {
+				"sha256": "27a1a677ca449591d6fde7c25e83e692176ab250d79377a1ca8092cca6435a9b",
+				"size": 1413896
+			},
+			"en_gb/piper-voices/en_GB-vctk-medium.upstream.weights.ort": {
+				"sha256": "24ff8d53ce2ef37b3cfc180516578ffffff80c4547397b0bfe5213c8adf8f0c2",
+				"size": 17406360
+			},
+			"en_us/dict_filtered_heteronyms.tsv": {
+				"sha256": "8fb0fa0e3ce1a74b864f03c06ace015257660fa2116c6157d11061f4e35bb6b7",
+				"size": 2900453
+			},
+			"en_us/g2p-config.json": {
+				"sha256": "f10e652b28c49edd90a94ceb139b94d2368de5814650d81289fcb985fe1ca0f5",
+				"size": 60
+			},
+			"en_us/oov/model.ort": {
+				"sha256": "ef8d07a0577a07617fabf5282d80d680e4e17ad07a763e7e3748417f94554d94",
+				"size": 22143488
+			},
+			"en_us/oov/onnx-config.json": {
+				"sha256": "60a7cf2592ae66702f56e4368a8614e72235eef89205de96f4cf6bace96c5692",
+				"size": 4641
+			},
+			"en_us/piper-voices/en_US-amy-low.generator.model.ort": {
+				"sha256": "132c8c962ff5a96462bdc777dfa4ae32693752afa86ef63b725246f7477d0565",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-amy-low.generator.weights.ort": {
+				"sha256": "19ea3e14fcd160cc1caa4614dcf39238920742c0e63e4a00082ae32b39fd870a",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-amy-low.onnx.json": {
+				"sha256": "2250a9a605b8dc35a116717fadc5056695dd809e34a15d02f72a0f52d53d3ebb",
+				"size": 4164
+			},
+			"en_us/piper-voices/en_US-amy-low.upstream.model.ort": {
+				"sha256": "89f15a9a297353cf15ca5989321e45df3f9390c619998b7b21281b592a463ac2",
+				"size": 1390328
+			},
+			"en_us/piper-voices/en_US-amy-low.upstream.weights.ort": {
+				"sha256": "c1e63af69f2966e0024211f88b1d940f8d3f3772057c262ee2d1b0b207292f7d",
+				"size": 14071216
+			},
+			"en_us/piper-voices/en_US-amy-medium.generator.model.ort": {
+				"sha256": "1c8c4ca8422550c218765f714ee97dc49f49952e1d16681d4e990af39b377408",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-amy-medium.generator.weights.ort": {
+				"sha256": "63dc3ed34312a81f7a8da98c9c02831272829dc4ad529ca9f80e697451e0ffdd",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-amy-medium.onnx.json": {
+				"sha256": "95a23eb4d42909d38df73bb9ac7f45f597dbfcde2d1bf9526fdeaf5466977d77",
+				"size": 4882
+			},
+			"en_us/piper-voices/en_US-amy-medium.upstream.model.ort": {
+				"sha256": "c7d7bbf72e1c4be0813fb158d125079133c3ef61defb9259a5a3728e117db08c",
+				"size": 1390336
+			},
+			"en_us/piper-voices/en_US-amy-medium.upstream.weights.ort": {
+				"sha256": "5edde9a0de042b15a8df056d96f3cc5321f7f0e9cd9f77b016da83c0e09f28e0",
+				"size": 14095432
+			},
+			"en_us/piper-voices/en_US-arctic-medium.generator.model.ort": {
+				"sha256": "5071274c5807a64b8d17151dea5bd143cfc512a1810ad0eb398f09208012620f",
+				"size": 276968
+			},
+			"en_us/piper-voices/en_US-arctic-medium.generator.weights.ort": {
+				"sha256": "d3f93bf334ec29b6fc20bf1337d820446ff875932d0e542b8ad59ab757fbfc84",
+				"size": 1767400
+			},
+			"en_us/piper-voices/en_US-arctic-medium.onnx.json": {
+				"sha256": "db2ca1a55db01cdd3ce28ae63037ac525133e9e00ca557430dec572643235efe",
+				"size": 5148
+			},
+			"en_us/piper-voices/en_US-arctic-medium.upstream.model.ort": {
+				"sha256": "cfade65995a4f5ca6c3a733f9f7b8aa86e82ca8da6b65e0da655070602a226f6",
+				"size": 1450848
+			},
+			"en_us/piper-voices/en_US-arctic-medium.upstream.weights.ort": {
+				"sha256": "40552837d7a0c62b53514b60cd2c4dbaa315ebe7b98439ac67a24bc5e2798cda",
+				"size": 17348856
+			},
+			"en_us/piper-voices/en_US-bryce-medium.generator.model.ort": {
+				"sha256": "c53fb12a5c57dc58b2298c4db77c7aa7a61ad5f8c140174dc3a18397532ea63a",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-bryce-medium.generator.weights.ort": {
+				"sha256": "33da5047f7a40c77a1c689297d541f01d035bf0745761ba28c958c309189862c",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-bryce-medium.onnx.json": {
+				"sha256": "7ceb1bc4af6d4e41b6d1edbb86c67e91e01eaa71f66db4cd0ae92ac704d415be",
+				"size": 4966
+			},
+			"en_us/piper-voices/en_US-bryce-medium.upstream.model.ort": {
+				"sha256": "ba40af91764f6e11b4bc3b6976b8d1512a4dfc7399c4de7735130d1249462274",
+				"size": 1415280
+			},
+			"en_us/piper-voices/en_US-bryce-medium.upstream.weights.ort": {
+				"sha256": "d47428908f9091036183240b5e5046942240aacaa65eb01a683e6a6ddea46ef3",
+				"size": 14095448
+			},
+			"en_us/piper-voices/en_US-danny-low.generator.model.ort": {
+				"sha256": "ce2b925fc9196fb6cbd3463d82ec8d1121f865c328e3a6606e763a64ec5afc8b",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-danny-low.generator.weights.ort": {
+				"sha256": "88939e5a94f2e23999dbcd3cac1beade1b6298a3de16b1fb81150d9db9c6171b",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-danny-low.onnx.json": {
+				"sha256": "191dea1ba9863199d8ca2e9048f83b219219fb450f62767ee02f1bc4568ce4f4",
+				"size": 4166
+			},
+			"en_us/piper-voices/en_US-danny-low.upstream.model.ort": {
+				"sha256": "da2495bf021c93aa868b3fcf7826032e466dbacd4e4a7edcbe06f1a0d5137b99",
+				"size": 1390328
+			},
+			"en_us/piper-voices/en_US-danny-low.upstream.weights.ort": {
+				"sha256": "6628734e5faa9721f6ce4df82dbf3404a9bcf7dcf21d07e031a052871c83f76c",
+				"size": 14071240
+			},
+			"en_us/piper-voices/en_US-hfc_female-medium.generator.model.ort": {
+				"sha256": "86059a7bf4f2cf39b6a81b2d9d63307b8b165e0ffdd6caf3fa870720291e000c",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-hfc_female-medium.generator.weights.ort": {
+				"sha256": "59a39d929ecc72e390a17f4567b1010d36941e310e1bd7a300aab7b0a981c0fe",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-hfc_female-medium.onnx.json": {
+				"sha256": "03f1fa0622b80463283592d97aca9f6e89aec345a5c56b7257723e0093c58b6c",
+				"size": 5033
+			},
+			"en_us/piper-voices/en_US-hfc_female-medium.upstream.model.ort": {
+				"sha256": "384264672ea0ca7def449599b95902dd38260703915cda17aec676ee63debfb0",
+				"size": 1390328
+			},
+			"en_us/piper-voices/en_US-hfc_female-medium.upstream.weights.ort": {
+				"sha256": "460dfb2b68543e8c8a07bc275d0215620f0945aa0c9c0f0f4d472deab0cd0b54",
+				"size": 14095432
+			},
+			"en_us/piper-voices/en_US-hfc_male-medium.generator.model.ort": {
+				"sha256": "15d699792e14387ed3e445f4983b221411e1ff143da9c510163492dce1dd1955",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-hfc_male-medium.generator.weights.ort": {
+				"sha256": "404fe212335322f38cc4c2ecba755398ba11a0ad2403fa35637813b4cd0fc5e8",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-hfc_male-medium.onnx.json": {
+				"sha256": "f66847424aed0bf99ecbb5d7cfde47c0a906f426a0daf7c46f305e7d21afd886",
+				"size": 5033
+			},
+			"en_us/piper-voices/en_US-hfc_male-medium.upstream.model.ort": {
+				"sha256": "7bcfbd23761e4981fee72b8e01627b45680834c31b19cf5ce9ab43fd6930ae21",
+				"size": 1390328
+			},
+			"en_us/piper-voices/en_US-hfc_male-medium.upstream.weights.ort": {
+				"sha256": "1fca841d87b59f1df7de91882fb3287d49318d21e85579f45436d6c2110df2ca",
+				"size": 14095432
+			},
+			"en_us/piper-voices/en_US-joe-medium.generator.model.ort": {
+				"sha256": "b42e0d80d1af9f8bd20b24e0898d8702f4dd352d524b6f3f8d0ada487eea102e",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-joe-medium.generator.weights.ort": {
+				"sha256": "83500f0dc3cdf5a548a10d7f07a057b908e5dfa90e910767cd971182636f7f67",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-joe-medium.onnx.json": {
+				"sha256": "3d6d5410b3795cb1950595247ef8f06190719e6fdbfa3a2356d8ec368e1aad33",
+				"size": 4794
+			},
+			"en_us/piper-voices/en_US-joe-medium.upstream.model.ort": {
+				"sha256": "edf1a8390d8ba5b7e1457f405fdc982cb08cd0e11866167b87a6e4065782027b",
+				"size": 1390328
+			},
+			"en_us/piper-voices/en_US-joe-medium.upstream.weights.ort": {
+				"sha256": "56f86520aa23f3546e57313f9a2762f7ec15e77a5ab395dc405de246ad4a151c",
+				"size": 14095424
+			},
+			"en_us/piper-voices/en_US-john-medium.generator.model.ort": {
+				"sha256": "28f82806f204a77685de362994a0316da2a1136a3995261160b53ed68fe8c54c",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-john-medium.generator.weights.ort": {
+				"sha256": "4222117686a977e77b73819e54edd35d39b300ef8baab639432f75dc81055616",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-john-medium.onnx.json": {
+				"sha256": "af60f177b6b550f3d7a302720c0fb89e7f94a82b5dca464775ef63b1c69ba09a",
+				"size": 4965
+			},
+			"en_us/piper-voices/en_US-john-medium.upstream.model.ort": {
+				"sha256": "91f579c472b63047fcef9807dc7560626deb5f8e262af8bc4aed842a1718693f",
+				"size": 1415288
+			},
+			"en_us/piper-voices/en_US-john-medium.upstream.weights.ort": {
+				"sha256": "9e3a3f640ad368a24988c60e8376505ea446cf206cfc37b329d542a8c7904e3d",
+				"size": 14095416
+			},
+			"en_us/piper-voices/en_US-kathleen-low.generator.model.ort": {
+				"sha256": "ff823a52c01ee01bcd944b135eca96e93e4f2f953ea488f48a2ac2f6dcb32718",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-kathleen-low.generator.weights.ort": {
+				"sha256": "82f8aa2552909f95cfd7a3ff7c94bce1c8c576e1b9147ceb06a42f4e5d67d454",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-kathleen-low.onnx.json": {
+				"sha256": "39ebab88416edce0f63781754651788620cb97b9bb73ddf3c01f28e29a648feb",
+				"size": 4169
+			},
+			"en_us/piper-voices/en_US-kathleen-low.upstream.model.ort": {
+				"sha256": "944da43805f7bb2225dbc5c6cf2c563fca231899f53b7e65d379a972c717b6e2",
+				"size": 1390328
+			},
+			"en_us/piper-voices/en_US-kathleen-low.upstream.weights.ort": {
+				"sha256": "f5fc35da2439752ac5ff7b131b08fa1b38862e8e5a0b3ae273fe7cdb21f6616a",
+				"size": 14071240
+			},
+			"en_us/piper-voices/en_US-kristin-medium.generator.model.ort": {
+				"sha256": "0b7586c028d6b5111e99901ede760b348a41678c8ad20123dd1654a894856c70",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-kristin-medium.generator.weights.ort": {
+				"sha256": "0c418acb6728d561ad0a01d153e4cbb42ad9e42b6c838b192a6a7fa37aeb47f0",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-kristin-medium.onnx.json": {
+				"sha256": "5681426d4aead22195de70531eeeeddb46493cfaffc5764b2ea3db73428b651c",
+				"size": 4968
+			},
+			"en_us/piper-voices/en_US-kristin-medium.upstream.model.ort": {
+				"sha256": "7657184252633d7e5c834b479027129ac3636874f8e428ed9cf689b66a46d53a",
+				"size": 1415272
+			},
+			"en_us/piper-voices/en_US-kristin-medium.upstream.weights.ort": {
+				"sha256": "6d3264b20482d562a59402db49ea302da0f32de861bf7d71b7812f6e9233247d",
+				"size": 14095456
+			},
+			"en_us/piper-voices/en_US-kusal-medium.generator.model.ort": {
+				"sha256": "862a9ba85a50c1067ba0ff30c6414b426e90a4b8296190646094eff8b64adc8f",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-kusal-medium.generator.weights.ort": {
+				"sha256": "cbf84692112e8bd4fba3922efc622abec833ed46193ded0f3d3763aeddf06a36",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-kusal-medium.onnx.json": {
+				"sha256": "ddd3c4dfd8b4f568150c934fb94912dd788d44db87f4f0a328c469d7a6761f41",
+				"size": 4884
+			},
+			"en_us/piper-voices/en_US-kusal-medium.upstream.model.ort": {
+				"sha256": "66118feaeaafcd45b4d546e8a231e24068dc600ac2fa21f687e7c122b8aa8f88",
+				"size": 1390320
+			},
+			"en_us/piper-voices/en_US-kusal-medium.upstream.weights.ort": {
+				"sha256": "40b28ac6b93a7c567d02eae6d2134379a22e2f9bc6151317e70cefe2dd9e8bf1",
+				"size": 14095424
+			},
+			"en_us/piper-voices/en_US-l2arctic-medium.generator.model.ort": {
+				"sha256": "25a035673b2236b208bfd8cef496a949d98a4fb478639c6dba3d90b703c4846d",
+				"size": 276968
+			},
+			"en_us/piper-voices/en_US-l2arctic-medium.generator.weights.ort": {
+				"sha256": "f7cd422643ec3cdaa035588ec762cfdca2f50f5f5cf60a673ce0823331cc3ca2",
+				"size": 1767400
+			},
+			"en_us/piper-voices/en_US-l2arctic-medium.onnx.json": {
+				"sha256": "a97e2ba653e9efcdc1bdcec64a398c8beb19ae5e8dfdbfe4ad6841983e56c07c",
+				"size": 5252
+			},
+			"en_us/piper-voices/en_US-l2arctic-medium.upstream.model.ort": {
+				"sha256": "20b37f626f611e4b64039db6601937abbd68162686385f5c6ea8ce6985a8edae",
+				"size": 1463136
+			},
+			"en_us/piper-voices/en_US-l2arctic-medium.upstream.weights.ort": {
+				"sha256": "1e7f737b75420b193148dd036ec8a6d86a5c09e7b94c445962fc112017b83b77",
+				"size": 17348840
+			},
+			"en_us/piper-voices/en_US-lessac-high.generator.model.ort": {
+				"sha256": "8f76434f4d932e5aa482547a5ca77557abd0c995668ab633a70b751a65c8b275",
+				"size": 1008368
+			},
+			"en_us/piper-voices/en_US-lessac-high.generator.weights.ort": {
+				"sha256": "2a863c5d6c1bff17a31a54248669169d262d99c08866f7fcb786e87268742b6c",
+				"size": 14213272
+			},
+			"en_us/piper-voices/en_US-lessac-high.onnx.json": {
+				"sha256": "db42b97d9859f257bc1561b8ed980e7fb2398402050a74ddd6cbec931a92412f",
+				"size": 4883
+			},
+			"en_us/piper-voices/en_US-lessac-high.upstream.model.ort": {
+				"sha256": "fe425016c0e8d71c9b345c83e3196a322955b5085d89a7ede08599b3b903a958",
+				"size": 1390352
+			},
+			"en_us/piper-voices/en_US-lessac-high.upstream.weights.ort": {
+				"sha256": "72f747fabcb31e1f228672b43da61c7c7ad612553e1095c0e5dad02b9b3dcec5",
+				"size": 14095392
+			},
+			"en_us/piper-voices/en_US-lessac-low.generator.model.ort": {
+				"sha256": "7d994e09893814f82466e8297a04105819ffc867ddce658e0b2703bd4cf2bc1a",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-lessac-low.generator.weights.ort": {
+				"sha256": "6da6af4b82bc17f55223bacfd673401b844553fcdea4d02ae000e594be765290",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-lessac-low.onnx.json": {
+				"sha256": "45754dfdebb3b8661c3fc564713772deec6e064feeb5b4e9594857dc7305193a",
+				"size": 4882
+			},
+			"en_us/piper-voices/en_US-lessac-low.upstream.model.ort": {
+				"sha256": "6a9f4ff2e0583c5dc58136df46c3a41d14fe226cd1df7b10cba043e9ea1afe30",
+				"size": 1390344
+			},
+			"en_us/piper-voices/en_US-lessac-low.upstream.weights.ort": {
+				"sha256": "f6cc85e98f6aac91fbf22c4f4f95a15584e3f3c15fdefd4dd943d1c6612221b3",
+				"size": 14095432
+			},
+			"en_us/piper-voices/en_US-lessac-medium.generator.model.ort": {
+				"sha256": "6398d3648f60745170ed43c58a52187897bb641f8921ee29a5b1d1c63f02b4e4",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-lessac-medium.generator.weights.ort": {
+				"sha256": "722c3f6311ab9296e520097106145197ff2bc0698715c32fabf0f71f53cb2b5e",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-lessac-medium.onnx.json": {
+				"sha256": "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0",
+				"size": 4885
+			},
+			"en_us/piper-voices/en_US-lessac-medium.upstream.model.ort": {
+				"sha256": "5c259cea4eb381685ced216d5263372d75b323ecc61a85880bdf7571eda6d67b",
+				"size": 1390344
+			},
+			"en_us/piper-voices/en_US-lessac-medium.upstream.weights.ort": {
+				"sha256": "3374d38475ae8572f75e329213d8df94977d6bed560dd5be3f0b116079a9ce5a",
+				"size": 14095432
+			},
+			"en_us/piper-voices/en_US-libritts-high.generator.model.ort": {
+				"sha256": "d9b99a21c1389144ec5b64d4ed3e45284824f5a5b3fdfc2bcb7895c4564e9448",
+				"size": 1002928
+			},
+			"en_us/piper-voices/en_US-libritts-high.generator.weights.ort": {
+				"sha256": "a272ae20af8ba20a9dedd3ba013a07a79ec17a289571f40ec8fc7aae71dcbed8",
+				"size": 14477256
+			},
+			"en_us/piper-voices/en_US-libritts-high.onnx.json": {
+				"sha256": "2efdc6d7f954588b8180132cbd9b8001933fdd00932c92bc92fd0d2028a9eb3d",
+				"size": 20163
+			},
+			"en_us/piper-voices/en_US-libritts-high.upstream.model.ort": {
+				"sha256": "d6b440f82a828a2748c24db1a058a9a50c40fa157f78cc47d864570e3b8b736d",
+				"size": 1290000
+			},
+			"en_us/piper-voices/en_US-libritts-high.upstream.weights.ort": {
+				"sha256": "4d7c4abd256d1b74c39d4c9e2da457b1ae718f33a0f05b7c092155a36eae77e7",
+				"size": 17789168
+			},
+			"en_us/piper-voices/en_US-libritts_r-medium.generator.model.ort": {
+				"sha256": "e6093163455e5c4f2d32fcbd6a52a178292ed9c514dcf77befaf1d4f20e0e78a",
+				"size": 276968
+			},
+			"en_us/piper-voices/en_US-libritts_r-medium.generator.weights.ort": {
+				"sha256": "9bda4ce2e7a71eab7acea1eadb3555a6bb2a4739c36a61cfce9e8b1bccfac275",
+				"size": 1767400
+			},
+			"en_us/piper-voices/en_US-libritts_r-medium.onnx.json": {
+				"sha256": "b471dc60d2d8335e819c393d196d6fbf792817f40051257b269878505bc9afb3",
+				"size": 20123
+			},
+			"en_us/piper-voices/en_US-libritts_r-medium.upstream.model.ort": {
+				"sha256": "c2b8c58b3ad96b181fdfe5e0a31bb217558edd71e8352bf5c924b640ea8ca983",
+				"size": 1413888
+			},
+			"en_us/piper-voices/en_US-libritts_r-medium.upstream.weights.ort": {
+				"sha256": "ab4dbfcf3ab22c3e37dd3e46230e3cbb4fad3c600cd2ca0fadffc2b346c8b4d0",
+				"size": 17813400
+			},
+			"en_us/piper-voices/en_US-ljspeech-high.generator.model.ort": {
+				"sha256": "192f627025318acd58477c28ad4c8e26481df40d9cad1f71d08728556894666a",
+				"size": 1008376
+			},
+			"en_us/piper-voices/en_US-ljspeech-high.generator.weights.ort": {
+				"sha256": "db485bf85f7b71ced49c4e9b726c369feb8b4e700485fb670d53784edf43b8c4",
+				"size": 14213272
+			},
+			"en_us/piper-voices/en_US-ljspeech-high.onnx.json": {
+				"sha256": "7e1f4634af596d83cca997fb7a931ba80b70f8a316a2655ee69c55365e0ace14",
+				"size": 4970
+			},
+			"en_us/piper-voices/en_US-ljspeech-high.upstream.model.ort": {
+				"sha256": "23399131b436e58f427e48ac22674ec8bc76016e49b434aa0be70f7e544f5058",
+				"size": 1415168
+			},
+			"en_us/piper-voices/en_US-ljspeech-high.upstream.weights.ort": {
+				"sha256": "e16d0f602821dc4ba05d464dea4fbc2cbbcdec8a8e0e8c1753ef5ee6f24dfb94",
+				"size": 14095416
+			},
+			"en_us/piper-voices/en_US-ljspeech-medium.generator.model.ort": {
+				"sha256": "d8afa9fd8dd8ff5feb0c70179b53b14389688fe74d60ffcfbd7bbd734951bd2d",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-ljspeech-medium.generator.weights.ort": {
+				"sha256": "4b930fc217af02f7217db90c4af6908e1ec15837780fe6f3e2e095a32a8201c8",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-ljspeech-medium.onnx.json": {
+				"sha256": "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860",
+				"size": 4972
+			},
+			"en_us/piper-voices/en_US-ljspeech-medium.upstream.model.ort": {
+				"sha256": "320ddc560fc531a9757ee441b534d3d2c88d60b8e37148afcfa9ad8328b5cc5b",
+				"size": 1415256
+			},
+			"en_us/piper-voices/en_US-ljspeech-medium.upstream.weights.ort": {
+				"sha256": "cf9b73657dbdc935f4a9f7da6dc31e616ed91cb7c027a621f5dfff9a89c06776",
+				"size": 14095456
+			},
+			"en_us/piper-voices/en_US-norman-medium.generator.model.ort": {
+				"sha256": "5314008e6603769619d5aaa8ac09d1a9f9b94bbd4f102170c4c0bf3905468fd7",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-norman-medium.generator.weights.ort": {
+				"sha256": "a2930a7623f41d77fd466eb44a7457578c727ad81cfd9d59561d6cd7484498e8",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-norman-medium.onnx.json": {
+				"sha256": "6c2db7f558a4a8deb9fe822583c1c5105f6c4e834dd0f9de8ad17a888ee9fe1d",
+				"size": 4968
+			},
+			"en_us/piper-voices/en_US-norman-medium.upstream.model.ort": {
+				"sha256": "81b76ef9949c3a7f601a64fd4cb54a9247814dee683be4a8ae782f8cdef6ef82",
+				"size": 1415288
+			},
+			"en_us/piper-voices/en_US-norman-medium.upstream.weights.ort": {
+				"sha256": "be60c61d1c9990f7af9c4882f9872d1581c90a77408f72d8585a4ca722334ede",
+				"size": 14095440
+			},
+			"en_us/piper-voices/en_US-reza_ibrahim-medium.generator.model.ort": {
+				"sha256": "a9a92646a9cfc5d9e235a017f9f8bb03e1cebf9e42b510c490521bb981560d94",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-reza_ibrahim-medium.generator.weights.ort": {
+				"sha256": "a9b211d21e63ddff8fd000bc4aff3f24039961c3407580abf6129dd36d4250a1",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-reza_ibrahim-medium.onnx.json": {
+				"sha256": "465ddf1702917fe617b7d69ed81301d6a2f39f083a754bd1cf6db8955d09a381",
+				"size": 4976
+			},
+			"en_us/piper-voices/en_US-reza_ibrahim-medium.upstream.model.ort": {
+				"sha256": "dab729b08c801ebf7221f2f2a44868c5a3a2f6e711b3fbe78d0c9a1cf5725c64",
+				"size": 1415184
+			},
+			"en_us/piper-voices/en_US-reza_ibrahim-medium.upstream.weights.ort": {
+				"sha256": "1d756a95e7e7a32ba0df279b865346c5a0d22323f5ad1c16081c5b4fa8d20dad",
+				"size": 14095440
+			},
+			"en_us/piper-voices/en_US-ryan-high.generator.model.ort": {
+				"sha256": "3b1d4cfc4ec088db21826918dd5f79a09a7a6ccd29ec986b5268233d53d35022",
+				"size": 999128
+			},
+			"en_us/piper-voices/en_US-ryan-high.generator.weights.ort": {
+				"sha256": "dc859495b5912f5454b41c536783ef7a1873f6d943fb98df1105025e0353a9cb",
+				"size": 14213264
+			},
+			"en_us/piper-voices/en_US-ryan-high.onnx.json": {
+				"sha256": "c6d3b98f08315cb4bebf0d49d50fc4ff491b503c64b940cd3d5ca28543b48011",
+				"size": 4166
+			},
+			"en_us/piper-voices/en_US-ryan-high.upstream.model.ort": {
+				"sha256": "02578b94cf8f79b29226cb3d642b4ff2948762f0e9d3c54fe42c7b60da2e3e53",
+				"size": 1264344
+			},
+			"en_us/piper-voices/en_US-ryan-high.upstream.weights.ort": {
+				"sha256": "a36bba92b32808b01e1807089c3d1f561471ef3a63c507d1aaa7741b28ddfdda",
+				"size": 14071272
+			},
+			"en_us/piper-voices/en_US-ryan-low.generator.model.ort": {
+				"sha256": "604a27fd1ef0a6baca4540f8fc8860002b3676f63cf1f8079397252cdc19dc6b",
+				"size": 274184
+			},
+			"en_us/piper-voices/en_US-ryan-low.generator.weights.ort": {
+				"sha256": "b28ca779d90406cb06fc9add18a899f8f4462f16451379066d8931dcc3e6eba0",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-ryan-low.onnx.json": {
+				"sha256": "b27147e56b0525962609f82f58171f4618cbf17c6fb043d7d724ff28cc4aed60",
+				"size": 4165
+			},
+			"en_us/piper-voices/en_US-ryan-low.upstream.model.ort": {
+				"sha256": "813960d92696a324e33e6ce4f8ffc00bedc72b96dac6e0103109b24177abe3b5",
+				"size": 1390336
+			},
+			"en_us/piper-voices/en_US-ryan-low.upstream.weights.ort": {
+				"sha256": "593d5d55dd144c894fec3cdf50bc30362bdec93dba03755542aa02f78117844e",
+				"size": 14071232
+			},
+			"en_us/piper-voices/en_US-ryan-medium.generator.model.ort": {
+				"sha256": "b27bd6fe531bc1ee7e1bf42cef22fbeb02d9148933ae9efbe5c9889772dfc57b",
+				"size": 274176
+			},
+			"en_us/piper-voices/en_US-ryan-medium.generator.weights.ort": {
+				"sha256": "fb99671426d2c79d3098660283441bf78bf46b940998a8ccb8cd339b7733e89e",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-ryan-medium.onnx.json": {
+				"sha256": "44034c056cb15681b2ad494307c7f3f2e4499d1253c700c711fa0a4607ffe78d",
+				"size": 4883
+			},
+			"en_us/piper-voices/en_US-ryan-medium.upstream.model.ort": {
+				"sha256": "1d0c868a4e2d245bce5fa58a8e978e77cb9a217e9fbfee9ad7d2ebd7ee79cc1b",
+				"size": 1390336
+			},
+			"en_us/piper-voices/en_US-ryan-medium.upstream.weights.ort": {
+				"sha256": "b9015a15f5b3e8256c7eb93f96fef3737aa37420b81573431aa0445e7e1373e5",
+				"size": 14095408
+			},
+			"en_us/piper-voices/en_US-saikat.generator.ort": {
+				"sha256": "b6a27ef8957895269188fb7d87b97635e68fd5f913f8dd3bb99544a868e7c832",
+				"size": 6697968
+			},
+			"en_us/piper-voices/en_US-saikat.onnx.json": {
+				"sha256": "85370929c0ed1f775b586eb5a1516c30456fe95511f756c6e7951467504e164e",
+				"size": 5293
+			},
+			"en_us/piper-voices/en_US-saikat.upstream.ort": {
+				"sha256": "a74debbfe9d330fd79c6b9df13b7d96ffa579b20adbdc712ac66646eb9ef9cfe",
+				"size": 57578152
+			},
+			"en_us/piper-voices/en_US-sam-medium.generator.model.ort": {
+				"sha256": "15a4f66bd1691b2632361a2e1e8ddfaac46cd8cf031a4b4aebbf3e81cf151641",
+				"size": 270992
+			},
+			"en_us/piper-voices/en_US-sam-medium.generator.weights.ort": {
+				"sha256": "95829b398278ec8abe9ddd64f2d540784fe522eed6e27582d8cc5874c7d1d1ee",
+				"size": 1634472
+			},
+			"en_us/piper-voices/en_US-sam-medium.onnx.json": {
+				"sha256": "8c7fb47f19683b0b81037c5564f9a5ad4699a9da685e0e5da0a72fd3c3f5c1c4",
+				"size": 5040
+			},
+			"en_us/piper-voices/en_US-sam-medium.upstream.model.ort": {
+				"sha256": "c088020922981c7612ac0e07d6e56b52bd9bff2dfa543e20cc68d25c6c16e75d",
+				"size": 1263200
+			},
+			"en_us/piper-voices/en_US-sam-medium.upstream.weights.ort": {
+				"sha256": "a0ea76921bce3a6ed52b6b238d0bfc6fd7e3ab3659f75bff2016a9750457803a",
+				"size": 14095432
+			},
+			"kokoro/config.json": {
+				"sha256": "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f",
+				"size": 2351
+			},
+			"kokoro/decoder.model.ort": {
+				"sha256": "1deaf4c42124a9034e325cf6057ebe58f80f429af68401c573c519a3dd7e56bd",
+				"size": 39257640
+			},
+			"kokoro/decoder.weights.ort": {
+				"sha256": "80272c16d48026641ee0971252be2a3e24ae0bea75a35ad1a822c124cb3a266e",
+				"size": 15299512
+			},
+			"kokoro/prosody.model.ort": {
+				"sha256": "e4f83bf18d786ab8c9cd2ad21e326021b9d7d5fe776458755e075c8574ff876a",
+				"size": 12376656
+			},
+			"kokoro/prosody.weights.ort": {
+				"sha256": "7ead0eed0498a6b8f7abebb7c9bc2867293c5d7cbb71d2bdf442b7ba48ae77e7",
+				"size": 16480288
+			},
+			"kokoro/voices/af_alloy.kokorovoice": {
+				"sha256": "0d4028c8cd15343d00516396426c4cb7a90c769ce857d80a55c7af0d521a56c8",
+				"size": 522252
+			},
+			"kokoro/voices/af_aoede.kokorovoice": {
+				"sha256": "f43fce0480d47b9af884594eaae2bacb12310ec81b4ba98403e7cb3f35a07467",
+				"size": 522252
+			},
+			"kokoro/voices/af_bella.kokorovoice": {
+				"sha256": "2adf09d23249eb9bb9be45e1c9ef65f7f292240e90ad7ec4dc7887481b21e216",
+				"size": 522252
+			},
+			"kokoro/voices/af_heart.kokorovoice": {
+				"sha256": "908e14de5b4709da55562129164e618f5d135fcc34dac419e0c3de5189b72d2c",
+				"size": 522252
+			},
+			"kokoro/voices/af_jessica.kokorovoice": {
+				"sha256": "7b2b29d32a4a292ee222d76768a3ad5d8789c76cbeaad6aeaee6cc27e1f2ec30",
+				"size": 522252
+			},
+			"kokoro/voices/af_kore.kokorovoice": {
+				"sha256": "9cdd710e0b636b9eac35d394b5f398f53a3f0d604e0b2d25022b6deacf3b9a15",
+				"size": 522252
+			},
+			"kokoro/voices/af_nicole.kokorovoice": {
+				"sha256": "3a1fa3a798870036af991dd5818380f3996dc8ed1478e5bfa0f4ac319bcfceba",
+				"size": 522252
+			},
+			"kokoro/voices/af_nova.kokorovoice": {
+				"sha256": "7362730dd196e6216e811dd95a89bd75e6376d4c10f71de2463c285ee12e83cd",
+				"size": 522252
+			},
+			"kokoro/voices/af_river.kokorovoice": {
+				"sha256": "efad2eaa88e01e18c766c828a872047b9105769fb773ea96b6a245b4be5fd73d",
+				"size": 522252
+			},
+			"kokoro/voices/af_sarah.kokorovoice": {
+				"sha256": "4f38350f886419ce78eb058040dfba6d06c6fbe73ca0fccf97157b5ab7597cde",
+				"size": 522252
+			},
+			"kokoro/voices/af_sky.kokorovoice": {
+				"sha256": "9fc39a92cd6f989e50bc38ef95a0ad94fa22816d60867acaae196c9fcf391cd5",
+				"size": 522252
+			},
+			"kokoro/voices/am_adam.kokorovoice": {
+				"sha256": "0031e6b84a18cfb63a16bbf09dec469d3e24494259bd1bc3b87aea318a147a93",
+				"size": 522252
+			},
+			"kokoro/voices/am_echo.kokorovoice": {
+				"sha256": "62bf8b55a7c95d83487af9739b63e799363967bdb6e64bad3c318acba2f5429e",
+				"size": 522252
+			},
+			"kokoro/voices/am_eric.kokorovoice": {
+				"sha256": "74199ac0496647cbfbe008554ba9e61a327cc036aa172202727d7d166fd7ea08",
+				"size": 522252
+			},
+			"kokoro/voices/am_fenrir.kokorovoice": {
+				"sha256": "57e0509083844601a51b5f2d511a6c4b8d73299767621841ff559a0ad8307f96",
+				"size": 522252
+			},
+			"kokoro/voices/am_liam.kokorovoice": {
+				"sha256": "d370afa3729bb29e51ec771aeaeb0403f408089db439c6e5625829259916fa6c",
+				"size": 522252
+			},
+			"kokoro/voices/am_michael.kokorovoice": {
+				"sha256": "5656ad6770d9cce2bddf6c0d0446569151555a7d284971fe3cd763f4f74f726f",
+				"size": 522252
+			},
+			"kokoro/voices/am_onyx.kokorovoice": {
+				"sha256": "4d8ff4ae330688e2675e3cefcb0fbafcf9de53e828f9065124dffa3258b95478",
+				"size": 522252
+			},
+			"kokoro/voices/am_puck.kokorovoice": {
+				"sha256": "afb24c8b7ca685bd0fe60bc2e10fd3b943165f329fb2c70d61418fb9f043b09f",
+				"size": 522252
+			},
+			"kokoro/voices/am_santa.kokorovoice": {
+				"sha256": "1ee337d3554d76612c40f85f5adb920e6dd624398f83da6acdb4c1f5432859bf",
+				"size": 522252
+			},
+			"kokoro/voices/bf_alice.kokorovoice": {
+				"sha256": "cf33cb4b1a203ff46be146dca4d0faee49e3295625f5f9422b2d2f91f43143ef",
+				"size": 522252
+			},
+			"kokoro/voices/bf_emma.kokorovoice": {
+				"sha256": "f956baef58dfb4ef837e805d5954bdc5074131260590220265bc3c2c9f389eea",
+				"size": 522252
+			},
+			"kokoro/voices/bf_isabella.kokorovoice": {
+				"sha256": "2c88a40bd900e2eee7d33e92373563158888d44681348fbcb980a7ff0fdbb1af",
+				"size": 522252
+			},
+			"kokoro/voices/bf_lily.kokorovoice": {
+				"sha256": "f02ce69e75bb27b693b0198da9c96ad30786d17734f1c140f93a8b961aeaf47f",
+				"size": 522252
+			},
+			"kokoro/voices/bm_daniel.kokorovoice": {
+				"sha256": "666538457801c29b982d347d24de5c64a7e1e08a4c2e0d06f58f4c79443f202c",
+				"size": 522252
+			},
+			"kokoro/voices/bm_fable.kokorovoice": {
+				"sha256": "643ebd9df206b82b093b2ed1b0e4d385a1484d7b5c86a832947ea1097ebdae11",
+				"size": 522252
+			},
+			"kokoro/voices/bm_george.kokorovoice": {
+				"sha256": "753b8b7893281d692709c3efadc38182aca49d1de02f74b9d9ca422a81535eb2",
+				"size": 522252
+			},
+			"kokoro/voices/bm_lewis.kokorovoice": {
+				"sha256": "55cb72f70fb64ab46eabb5d9463cece9c8d8c941dded3d0a3202536655e389c2",
+				"size": 522252
+			}
+		},
+		"package": "moonshine-voice==0.1.5",
+		"voices": {
+			"en_gb/kokoro_bf_alice": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/bf_alice.kokorovoice"
+			],
+			"en_gb/kokoro_bf_emma": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/bf_emma.kokorovoice"
+			],
+			"en_gb/kokoro_bf_isabella": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/bf_isabella.kokorovoice"
+			],
+			"en_gb/kokoro_bf_lily": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/bf_lily.kokorovoice"
+			],
+			"en_gb/kokoro_bm_daniel": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/bm_daniel.kokorovoice"
+			],
+			"en_gb/kokoro_bm_fable": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/bm_fable.kokorovoice"
+			],
+			"en_gb/kokoro_bm_george": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/bm_george.kokorovoice"
+			],
+			"en_gb/kokoro_bm_lewis": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/bm_lewis.kokorovoice"
+			],
+			"en_gb/piper_en_GB-alan-low": [
+				"en_gb/piper-voices/en_GB-alan-low.generator.model.ort",
+				"en_gb/piper-voices/en_GB-alan-low.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-alan-low.onnx.json",
+				"en_gb/piper-voices/en_GB-alan-low.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-alan-low.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-alan-medium": [
+				"en_gb/piper-voices/en_GB-alan-medium.generator.model.ort",
+				"en_gb/piper-voices/en_GB-alan-medium.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-alan-medium.onnx.json",
+				"en_gb/piper-voices/en_GB-alan-medium.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-alan-medium.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-alba-medium": [
+				"en_gb/piper-voices/en_GB-alba-medium.generator.model.ort",
+				"en_gb/piper-voices/en_GB-alba-medium.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-alba-medium.onnx.json",
+				"en_gb/piper-voices/en_GB-alba-medium.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-alba-medium.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-aru-medium": [
+				"en_gb/piper-voices/en_GB-aru-medium.generator.model.ort",
+				"en_gb/piper-voices/en_GB-aru-medium.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-aru-medium.onnx.json",
+				"en_gb/piper-voices/en_GB-aru-medium.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-aru-medium.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-cori-high": [
+				"en_gb/piper-voices/en_GB-cori-high.generator.model.ort",
+				"en_gb/piper-voices/en_GB-cori-high.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-cori-high.onnx.json",
+				"en_gb/piper-voices/en_GB-cori-high.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-cori-high.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-cori-medium": [
+				"en_gb/piper-voices/en_GB-cori-medium.generator.model.ort",
+				"en_gb/piper-voices/en_GB-cori-medium.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-cori-medium.onnx.json",
+				"en_gb/piper-voices/en_GB-cori-medium.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-cori-medium.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-jenny_dioco-medium": [
+				"en_gb/piper-voices/en_GB-jenny_dioco-medium.generator.model.ort",
+				"en_gb/piper-voices/en_GB-jenny_dioco-medium.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-jenny_dioco-medium.onnx.json",
+				"en_gb/piper-voices/en_GB-jenny_dioco-medium.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-jenny_dioco-medium.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-northern_english_male-medium": [
+				"en_gb/piper-voices/en_GB-northern_english_male-medium.generator.model.ort",
+				"en_gb/piper-voices/en_GB-northern_english_male-medium.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-northern_english_male-medium.onnx.json",
+				"en_gb/piper-voices/en_GB-northern_english_male-medium.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-northern_english_male-medium.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-semaine-medium": [
+				"en_gb/piper-voices/en_GB-semaine-medium.generator.model.ort",
+				"en_gb/piper-voices/en_GB-semaine-medium.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-semaine-medium.onnx.json",
+				"en_gb/piper-voices/en_GB-semaine-medium.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-semaine-medium.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-southern_english_female-low": [
+				"en_gb/piper-voices/en_GB-southern_english_female-low.generator.model.ort",
+				"en_gb/piper-voices/en_GB-southern_english_female-low.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-southern_english_female-low.onnx.json",
+				"en_gb/piper-voices/en_GB-southern_english_female-low.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-southern_english_female-low.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_gb/piper_en_GB-vctk-medium": [
+				"en_gb/piper-voices/en_GB-vctk-medium.generator.model.ort",
+				"en_gb/piper-voices/en_GB-vctk-medium.generator.weights.ort",
+				"en_gb/piper-voices/en_GB-vctk-medium.onnx.json",
+				"en_gb/piper-voices/en_GB-vctk-medium.upstream.model.ort",
+				"en_gb/piper-voices/en_GB-vctk-medium.upstream.weights.ort",
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json"
+			],
+			"en_us/kokoro_af_alloy": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_alloy.kokorovoice"
+			],
+			"en_us/kokoro_af_aoede": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_aoede.kokorovoice"
+			],
+			"en_us/kokoro_af_bella": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_bella.kokorovoice"
+			],
+			"en_us/kokoro_af_heart": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_heart.kokorovoice"
+			],
+			"en_us/kokoro_af_jessica": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_jessica.kokorovoice"
+			],
+			"en_us/kokoro_af_kore": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_kore.kokorovoice"
+			],
+			"en_us/kokoro_af_nicole": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_nicole.kokorovoice"
+			],
+			"en_us/kokoro_af_nova": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_nova.kokorovoice"
+			],
+			"en_us/kokoro_af_river": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_river.kokorovoice"
+			],
+			"en_us/kokoro_af_sarah": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_sarah.kokorovoice"
+			],
+			"en_us/kokoro_af_sky": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/af_sky.kokorovoice"
+			],
+			"en_us/kokoro_am_adam": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_adam.kokorovoice"
+			],
+			"en_us/kokoro_am_echo": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_echo.kokorovoice"
+			],
+			"en_us/kokoro_am_eric": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_eric.kokorovoice"
+			],
+			"en_us/kokoro_am_fenrir": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_fenrir.kokorovoice"
+			],
+			"en_us/kokoro_am_liam": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_liam.kokorovoice"
+			],
+			"en_us/kokoro_am_michael": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_michael.kokorovoice"
+			],
+			"en_us/kokoro_am_onyx": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_onyx.kokorovoice"
+			],
+			"en_us/kokoro_am_puck": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_puck.kokorovoice"
+			],
+			"en_us/kokoro_am_santa": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"kokoro/config.json",
+				"kokoro/decoder.model.ort",
+				"kokoro/decoder.weights.ort",
+				"kokoro/prosody.model.ort",
+				"kokoro/prosody.weights.ort",
+				"kokoro/voices/am_santa.kokorovoice"
+			],
+			"en_us/piper_en_US-amy-low": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-amy-low.generator.model.ort",
+				"en_us/piper-voices/en_US-amy-low.generator.weights.ort",
+				"en_us/piper-voices/en_US-amy-low.onnx.json",
+				"en_us/piper-voices/en_US-amy-low.upstream.model.ort",
+				"en_us/piper-voices/en_US-amy-low.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-amy-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-amy-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-amy-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-amy-medium.onnx.json",
+				"en_us/piper-voices/en_US-amy-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-amy-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-arctic-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-arctic-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-arctic-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-arctic-medium.onnx.json",
+				"en_us/piper-voices/en_US-arctic-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-arctic-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-bryce-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-bryce-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-bryce-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-bryce-medium.onnx.json",
+				"en_us/piper-voices/en_US-bryce-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-bryce-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-danny-low": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-danny-low.generator.model.ort",
+				"en_us/piper-voices/en_US-danny-low.generator.weights.ort",
+				"en_us/piper-voices/en_US-danny-low.onnx.json",
+				"en_us/piper-voices/en_US-danny-low.upstream.model.ort",
+				"en_us/piper-voices/en_US-danny-low.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-hfc_female-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-hfc_female-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-hfc_female-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-hfc_female-medium.onnx.json",
+				"en_us/piper-voices/en_US-hfc_female-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-hfc_female-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-hfc_male-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-hfc_male-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-hfc_male-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-hfc_male-medium.onnx.json",
+				"en_us/piper-voices/en_US-hfc_male-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-hfc_male-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-joe-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-joe-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-joe-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-joe-medium.onnx.json",
+				"en_us/piper-voices/en_US-joe-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-joe-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-john-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-john-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-john-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-john-medium.onnx.json",
+				"en_us/piper-voices/en_US-john-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-john-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-kathleen-low": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-kathleen-low.generator.model.ort",
+				"en_us/piper-voices/en_US-kathleen-low.generator.weights.ort",
+				"en_us/piper-voices/en_US-kathleen-low.onnx.json",
+				"en_us/piper-voices/en_US-kathleen-low.upstream.model.ort",
+				"en_us/piper-voices/en_US-kathleen-low.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-kristin-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-kristin-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-kristin-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-kristin-medium.onnx.json",
+				"en_us/piper-voices/en_US-kristin-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-kristin-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-kusal-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-kusal-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-kusal-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-kusal-medium.onnx.json",
+				"en_us/piper-voices/en_US-kusal-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-kusal-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-l2arctic-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-l2arctic-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-l2arctic-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-l2arctic-medium.onnx.json",
+				"en_us/piper-voices/en_US-l2arctic-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-l2arctic-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-lessac-high": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-lessac-high.generator.model.ort",
+				"en_us/piper-voices/en_US-lessac-high.generator.weights.ort",
+				"en_us/piper-voices/en_US-lessac-high.onnx.json",
+				"en_us/piper-voices/en_US-lessac-high.upstream.model.ort",
+				"en_us/piper-voices/en_US-lessac-high.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-lessac-low": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-lessac-low.generator.model.ort",
+				"en_us/piper-voices/en_US-lessac-low.generator.weights.ort",
+				"en_us/piper-voices/en_US-lessac-low.onnx.json",
+				"en_us/piper-voices/en_US-lessac-low.upstream.model.ort",
+				"en_us/piper-voices/en_US-lessac-low.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-lessac-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-lessac-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-lessac-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-lessac-medium.onnx.json",
+				"en_us/piper-voices/en_US-lessac-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-lessac-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-libritts-high": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-libritts-high.generator.model.ort",
+				"en_us/piper-voices/en_US-libritts-high.generator.weights.ort",
+				"en_us/piper-voices/en_US-libritts-high.onnx.json",
+				"en_us/piper-voices/en_US-libritts-high.upstream.model.ort",
+				"en_us/piper-voices/en_US-libritts-high.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-libritts_r-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-libritts_r-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-libritts_r-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-libritts_r-medium.onnx.json",
+				"en_us/piper-voices/en_US-libritts_r-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-libritts_r-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-ljspeech-high": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-ljspeech-high.generator.model.ort",
+				"en_us/piper-voices/en_US-ljspeech-high.generator.weights.ort",
+				"en_us/piper-voices/en_US-ljspeech-high.onnx.json",
+				"en_us/piper-voices/en_US-ljspeech-high.upstream.model.ort",
+				"en_us/piper-voices/en_US-ljspeech-high.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-ljspeech-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-ljspeech-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-ljspeech-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-ljspeech-medium.onnx.json",
+				"en_us/piper-voices/en_US-ljspeech-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-ljspeech-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-norman-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-norman-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-norman-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-norman-medium.onnx.json",
+				"en_us/piper-voices/en_US-norman-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-norman-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-reza_ibrahim-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-reza_ibrahim-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-reza_ibrahim-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-reza_ibrahim-medium.onnx.json",
+				"en_us/piper-voices/en_US-reza_ibrahim-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-reza_ibrahim-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-ryan-high": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-ryan-high.generator.model.ort",
+				"en_us/piper-voices/en_US-ryan-high.generator.weights.ort",
+				"en_us/piper-voices/en_US-ryan-high.onnx.json",
+				"en_us/piper-voices/en_US-ryan-high.upstream.model.ort",
+				"en_us/piper-voices/en_US-ryan-high.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-ryan-low": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-ryan-low.generator.model.ort",
+				"en_us/piper-voices/en_US-ryan-low.generator.weights.ort",
+				"en_us/piper-voices/en_US-ryan-low.onnx.json",
+				"en_us/piper-voices/en_US-ryan-low.upstream.model.ort",
+				"en_us/piper-voices/en_US-ryan-low.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-ryan-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-ryan-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-ryan-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-ryan-medium.onnx.json",
+				"en_us/piper-voices/en_US-ryan-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-ryan-medium.upstream.weights.ort"
+			],
+			"en_us/piper_en_US-saikat": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-saikat.generator.ort",
+				"en_us/piper-voices/en_US-saikat.onnx.json",
+				"en_us/piper-voices/en_US-saikat.upstream.ort"
+			],
+			"en_us/piper_en_US-sam-medium": [
+				"en_us/dict_filtered_heteronyms.tsv",
+				"en_us/g2p-config.json",
+				"en_us/oov/model.ort",
+				"en_us/oov/onnx-config.json",
+				"en_us/piper-voices/en_US-sam-medium.generator.model.ort",
+				"en_us/piper-voices/en_US-sam-medium.generator.weights.ort",
+				"en_us/piper-voices/en_US-sam-medium.onnx.json",
+				"en_us/piper-voices/en_US-sam-medium.upstream.model.ort",
+				"en_us/piper-voices/en_US-sam-medium.upstream.weights.ort"
+			]
+		}
+	},
+	"schema": 1
+}

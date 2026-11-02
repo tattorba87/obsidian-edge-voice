@@ -19,6 +19,7 @@ on:
       - scripts/build-engine-release.sh
       - scripts/setup-steps.ts
       - scripts/engine-speaks.py
+      - scripts/lock-voices.py
       - .github/workflows/engine-package.yml
   workflow_dispatch:
 
@@ -135,6 +136,33 @@ jobs:
           _MoonshineLib()
           EOF
           du -sh ~/.edge-voice/engine
+      - name: A tampered cached voice is rejected and removed (Linux)
+        if: runner.os == 'Linux' && runner.arch == 'X64'
+        shell: bash
+        run: |
+          "$PYTHON" -I - <<'EOF'
+          from pathlib import Path
+          from moonshine_voice.download import tts_asset_cache_path
+          path = Path(tts_asset_cache_path()) / "kokoro/decoder.model.ort"
+          with path.open("r+b") as stream:
+              byte = stream.read(1)
+              stream.seek(0)
+              stream.write(bytes([byte[0] ^ 1]))
+          EOF
+          if "$PYTHON" -I -m edge_voice_engine voices get "$VOICE" >tamper.log 2>&1; then
+            cat tamper.log
+            echo "::error::a tampered voice was accepted"
+            exit 1
+          fi
+          cat tamper.log
+          grep -F "SHA-256 verification failed; removed" tamper.log
+          "$PYTHON" -I - <<'EOF'
+          from pathlib import Path
+          from moonshine_voice.download import tts_asset_cache_path
+          if (Path(tts_asset_cache_path()) / "kokoro/decoder.model.ort").exists():
+              raise RuntimeError("tampered file was not removed")
+          EOF
+          "$PYTHON" -I -m edge_voice_engine voices get "$VOICE"
       - name: The engine speaks with the network cut off (Linux)
         if: runner.os == 'Linux'
         run: sudo unshare --net -- sudo -u "$USER" env "HOME=$HOME" "PATH=$PATH" python3 -I steps/engine-speaks.py "$PYTHON" "$VOICE"
