@@ -7,8 +7,10 @@ downloads off: the stubs fail any attempt, so these tests also prove that only
 """
 
 import base64
+import hashlib
 import json
 import os
+import shutil
 import struct
 import subprocess
 import sys
@@ -287,8 +289,39 @@ def test_package_version_matches_the_engine():
     assert f'VERSION = "{project["version"]}"' in SERVER.read_text()
 
 
-def run_command(*args, home=None):
-    env = engine_env(home or engine_home())
+def fixture_voice_manifest():
+    def digest(content):
+        return {"sha256": hashlib.sha256(content).hexdigest(), "size": len(content)}
+
+    voices = ["kokoro_af_heart", "piper_en_US-lessac-medium"]
+    return {
+        "schema": 1,
+        "moonshine": {
+            "files": {"shared.dict": digest(b"dictionary"), **{f"{voice}.ort": digest(b"voice") for voice in voices}},
+            "voices": {"en_us/" + voice: ["shared.dict", f"{voice}.ort"] for voice in voices},
+        },
+        "faster": {
+            "repository": "mlx-community/Kokoro-82M-bf16",
+            "revision": "a71e4d38b236d968966a2002c4c895dbd12b1c3c",
+            "base_files": ["model.safetensors"],
+            "files": {"model.safetensors": digest(b"downloaded"), "voices/af_heart.safetensors": digest(b"downloaded")},
+            "voices": {"kokoro_af_heart": ["model.safetensors", "voices/af_heart.safetensors"]},
+        },
+    }
+
+
+def run_command(*args, home=None, voice_manifest=None, **extra):
+    home = home or engine_home()
+    # Only the test's temporary package has fixture hashes. Production has no env/file override.
+    package = home / "test-package" / "edge_voice_engine"
+    shutil.copytree(
+        PACKAGE / "edge_voice_engine", package, dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__")
+    )
+    (package / "voices.json").write_text(
+        json.dumps(voice_manifest if voice_manifest is not None else fixture_voice_manifest())
+    )
+    env = engine_env(home, **extra)
+    env["PYTHONPATH"] = os.pathsep.join([str(STUB), str(package.parent)])
     return subprocess.run([sys.executable, "-m", "edge_voice_engine", *args], capture_output=True, text=True, env=env)
 
 
@@ -333,3 +366,68 @@ def test_voices_list_shows_what_is_here_and_what_can_be_fetched():
     result = run_command("voices", "list")
     assert "On this computer: kokoro_af_heart" in result.stdout
     assert "Available to get: piper_en_US-lessac-medium" in result.stdout
+
+
+def test_voice_manifest_is_packaged_identically():
+    reviewed = ROOT / "engine/voices.json"
+    assert reviewed.read_bytes() == (PACKAGE / "edge_voice_engine/voices.json").read_bytes()
+    data = json.loads(reviewed.read_text())
+    assert "en_us/kokoro_af_bella" in data["moonshine"]["voices"]
+    assert "en_us/piper_en_US-lessac-medium" in data["moonshine"]["voices"]
+
+
+def test_bad_download_is_deleted_and_never_reported_ready(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    reply = run_command("voices", "get", "kokoro_af_heart", home=home, MOONSHINE_STUB_TAMPER="1")
+    assert reply.returncode == 1 and "SHA-256 verification failed" in reply.stderr
+    assert not (home / "moonshine/kokoro_af_heart.ort").exists()
+    assert "ready" not in reply.stdout
+
+
+def test_cached_voice_and_shared_language_tampering_is_detected(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    assert run_command("voices", "get", "kokoro_af_heart", home=home).returncode == 0
+    for filename in ["kokoro_af_heart.ort", "shared.dict"]:
+        path = home / "moonshine" / filename
+        path.write_bytes(b"tampered")
+        reply = run_command("voices", "get", "kokoro_af_heart", home=home)
+        assert reply.returncode == 1 and "SHA-256 verification failed" in reply.stderr
+        assert not path.exists()
+        assert run_command("voices", "get", "kokoro_af_heart", home=home).returncode == 0
+
+
+def test_unlisted_voice_needs_explicit_unverified_flag(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    data = fixture_voice_manifest()
+    del data["moonshine"]["voices"]["en_us/piper_en_US-lessac-medium"]
+    reply = run_command("voices", "get", "piper_en_US-lessac-medium", home=home, voice_manifest=data)
+    assert reply.returncode == 1 and "--unverified" in reply.stderr
+    assert not (home / "moonshine/piper_en_US-lessac-medium.ort").exists()
+    reply = run_command("voices", "get", "piper_en_US-lessac-medium", "--unverified", home=home, voice_manifest=data)
+    assert reply.returncode == 0 and "WARNING" in reply.stderr
+
+
+def test_unverified_does_not_bypass_hash_for_a_known_voice(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    reply = run_command("voices", "get", "kokoro_af_heart", "--unverified", home=home, MOONSHINE_STUB_TAMPER="1")
+    assert reply.returncode == 1 and "SHA-256" in reply.stderr
+
+
+def test_bad_faster_download_is_deleted_before_model_parsing(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    reply = run_command("voices", "get", "kokoro_af_heart", "--faster", home=home, HF_STUB_TAMPER="model.safetensors")
+    assert reply.returncode == 1 and "SHA-256 verification failed" in reply.stderr
+    assert not (home / ".edge-voice/hf" / MLX_FILES / "model.safetensors").exists()
+
+
+def test_manifest_path_escape_and_incomplete_record_are_refused(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    for change in ["escape", "missing"]:
+        data = fixture_voice_manifest()
+        if change == "escape":
+            data["moonshine"]["files"]["../outside"] = data["moonshine"]["files"]["shared.dict"]
+        else:
+            del data["moonshine"]["files"]["shared.dict"]
+        reply = run_command("voices", "get", "kokoro_af_heart", home=home, voice_manifest=data)
+        assert reply.returncode == 1
+        assert not (home / "moonshine/kokoro_af_heart.ort").exists()

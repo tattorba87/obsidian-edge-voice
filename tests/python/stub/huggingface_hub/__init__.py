@@ -36,9 +36,14 @@ def fetch(repo_id, filename, revision):
         if os.environ.get("HF_HUB_OFFLINE") == "1":
             raise LocalEntryNotFoundError(f"{filename} isn't in the cache and downloads are off")
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("downloaded")
+        path.write_text("tampered" if os.environ.get("HF_STUB_TAMPER") == filename else "downloaded")
     return str(path)
 
 
 def hf_hub_download(repo_id, filename, revision=None):
     return fetch(repo_id, filename, revision)
+
+
+def try_to_load_from_cache(repo_id, filename, revision=None):
+    path = Path(os.environ["HF_HOME"]) / repo_id / revision / filename
+    return str(path) if path.is_file() else None
