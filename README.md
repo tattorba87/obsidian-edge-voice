@@ -253,6 +253,12 @@ The plugin starts the speech engine (`python -I -m edge_voice_engine`, from the 
 
 Edge Voice reads your notes and PDFs on your computer, and the plugin itself never connects to the internet: no telemetry, no account, nothing sent anywhere. Reading works offline.
 
+What the plugin does on your computer, and why (Obsidian's review lists these):
+
+- **Starts the speech engine** as a separate program (Node's `child_process`): the Python in `~/.edge-voice/engine` (or the one you set under Advanced), with fixed arguments, no shell, and Python's isolated mode. To find an engine installed elsewhere, it may also run `edge-voice-engine --python` if that command is on your PATH. It runs nothing else.
+- **Uses the file system** outside Obsidian's vault API (Node's `fs`) only to find that engine, to show the size of downloaded voices, and to delete what you choose in Settings → Storage (voices, or what an earlier version's setup left behind), only inside those known folders. Notes and PDFs are read through Obsidian.
+- **Writes to the clipboard** only when you press a Copy button for a setup or voice command. It never reads the clipboard.
+
 Only the commands you run yourself download anything, and only when you run them:
 
 | What                                  | From                                                                                                    | Why                                                                |
@@ -272,6 +278,16 @@ Edge Voice keeps its engine and voices outside your vault, because they're share
 - Moonshine's voice folder: `~/Library/Caches/moonshine_voice` on macOS, `~/.cache/moonshine_voice` on Linux, a folder under `%LOCALAPPDATA%\moonshine_voice` on Windows.
 
 Settings → Storage shows their sizes and deletes voices. Obsidian has no uninstall step for plugins, so to remove everything after uninstalling Edge Voice, delete those two folders. Inside your vault, Edge Voice only reads the notes and PDFs you ask it to read and stores its settings in its plugin folder.
+
+## Verifying downloads
+
+Each release lists the SHA-256 of its files in `SHA256SUMS`, and from 0.1.1 on carries GitHub's signed build provenance (an artifact attestation), which shows a file was built by this repository's release workflow from a given commit. With the [GitHub CLI](https://cli.github.com/):
+
+```sh
+gh attestation verify main.js --repo tattorba87/obsidian-edge-voice
+```
+
+The community directory also rebuilds `main.js` from the source and checks it matches the release byte for byte.
 
 ## Licences
 

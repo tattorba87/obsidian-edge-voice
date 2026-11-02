@@ -84,12 +84,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       # No checkout or execution of built code; only this run's artifact.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: engine-release
           path: release
+      # What this workflow built. The macOS moonshine-voice wheels come from the
+      # Engine wheels workflow, which attests them itself.
+      - name: Attest the files built here
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            release/edge_voice_engine-*.whl
+            release/docopt-*.whl
+            release/requirements-*.txt
+            release/THIRD-PARTY-NOTICES.txt
       - name: Publish engine-${{ needs.build.outputs.version }}
         env:
           GH_TOKEN: ${{ github.token }}
