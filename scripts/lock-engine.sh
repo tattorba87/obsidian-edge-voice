@@ -11,6 +11,11 @@ set -o pipefail
 # Needs uv and gh (the Mac wheels come from this repository's release).
 #
 #   scripts/lock-engine.sh
+#   scripts/lock-engine.sh --upgrade-package filelock==4.2.1
+#
+# Existing output pins are preserved unless explicitly upgraded. Additional uv
+# compile arguments apply to every platform; a package-specific cooldown
+# exception needs maintainer approval, never a blanket newer cutoff.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOCKS="${ROOT}/locks"
@@ -20,6 +25,7 @@ PYTHON=3.12
 COOLDOWN="$(date -u -v-14d +%Y-%m-%dT00:00:00Z 2>/dev/null || date -u -d '14 days ago' +%Y-%m-%dT00:00:00Z)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
+COMPILE_ARGS=("$@")
 
 # What setup installs, read from src/setup.ts so the two can't disagree.
 setup="${ROOT}/src/setup.ts"
@@ -41,7 +47,7 @@ compile() {
 	echo "[lock-engine] ${name} (${platform})"
 	MACOSX_DEPLOYMENT_TARGET="${macos}" uv pip compile - --quiet --generate-hashes --no-header \
 		--python-version "${PYTHON}" --python-platform "${platform}" --exclude-newer "${COOLDOWN}" \
-		--find-links "${WORK}/wheels" "$@" -o "${LOCKS}/${name}.txt"
+		--find-links "${WORK}/wheels" "$@" "${COMPILE_ARGS[@]}" -o "${LOCKS}/${name}.txt"
 }
 
 mkdir -p "${LOCKS}"
