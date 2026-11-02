@@ -1,4 +1,5 @@
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
+import { homedir } from "os";
 import { dirname, isAbsolute } from "path";
 import { clearTimeout, setTimeout } from "timers";
 import { childEnvironment } from "./environment";
@@ -7,7 +8,7 @@ import { isEngineId } from "./settings";
 export interface SidecarLimits {
 	/** The engine must say it's ready within this (ms), or it's taken to be stuck. */
 	startMs: number;
-	/** A synthesis or a voice list must be answered within this (ms), counted from when it's sent. */
+	/** Any request (loading a voice, a synthesis, a voice list) must be answered within this (ms), counted from when it's sent. */
 	answerMs: number;
 	/** No reply line may be longer (characters): beyond a long sentence's audio, short of exhausting memory. */
 	maxLine: number;
@@ -25,6 +26,16 @@ interface Pending {
 	reject: (error: Error) => void;
 }
 
+/** The voice isn't on this computer; the person gets it with `edge-voice-engine voices get <voice>`. */
+export class MissingVoiceError extends Error {
+	constructor(
+		message: string,
+		readonly voice: string,
+	) {
+		super(message);
+	}
+}
+
 /** Rejects a request that was cancelled before the sidecar started on it. */
 export class CancelledError extends Error {
 	constructor() {
@@ -33,13 +44,13 @@ export class CancelledError extends Error {
 }
 
 /**
- * Runs server.py under the configured Python and speaks its JSON-lines
- * protocol. The server works on one request at a time, so requests wait here
+ * Runs the speech engine (`python -I -u -m edge_voice_engine`, or a script
+ * given for tests) and speaks its JSON-lines protocol. The engine never
+ * downloads anything; it reads voices the person fetched themselves. The server works on one request at a time, so requests wait here
  * and go out one by one; one still waiting can be cancelled, which is what
  * lets a speed change skip audio prepared at the old speed.
  */
 export class Sidecar {
-	onProgress?: (fraction: number, file: string) => void;
 	onExit?: (message: string) => void;
 
 	private proc?: ChildProcessWithoutNullStreams;
@@ -54,7 +65,7 @@ export class Sidecar {
 
 	constructor(
 		private readonly python: string,
-		private readonly script: string,
+		private readonly script?: string,
 		private readonly limits: SidecarLimits = LIMITS,
 	) {}
 
@@ -66,11 +77,13 @@ export class Sidecar {
 		if (this.ready) return this.ready;
 		this.ready = new Promise((resolve, reject) => {
 			let started = false;
-			// -I: isolated mode, so no PYTHON* variable, user site-packages or module next to the
-			// script can change what runs; the engine comes only from the interpreter's environment.
-			const proc = spawn(this.python, ["-I", "-u", this.script], {
+			// -I: isolated mode, so no PYTHON* variable, user site-packages, or module in the
+			// working folder or next to the script can change what runs; the engine comes only
+			// from the interpreter's own environment.
+			const target = this.script ? [this.script] : ["-m", "edge_voice_engine"];
+			const proc = spawn(this.python, ["-I", "-u", ...target], {
 				stdio: "pipe",
-				cwd: dirname(this.script),
+				cwd: this.script ? dirname(this.script) : homedir(),
 				env: childEnvironment(),
 			});
 			this.proc = proc;
@@ -156,13 +169,16 @@ export class Sidecar {
 	}
 
 	/**
-	 * Loads a voice. With `engine: "mlx"` the sidecar tries the faster engine
-	 * and falls back to Moonshine; the result says which loaded, and why not MLX.
+	 * Loads a voice from disk (MissingVoiceError if it isn't there). With
+	 * `engine: "mlx"` the sidecar tries the faster engine and falls back to
+	 * Moonshine; the result says which loaded, and why not MLX.
 	 */
 	async load(language: string, voice: string, engine?: "mlx"): Promise<{ engine: string; fallback?: string }> {
 		if (!isEngineId(language) || !isEngineId(voice)) throw new Error(`Not a voice: ${language}/${voice}`);
 		const reply = await this.request(
 			engine ? { op: "load", language, voice, engine } : { op: "load", language, voice },
+			undefined,
+			this.limits.answerMs,
 		);
 		return {
 			engine: typeof reply.engine === "string" ? reply.engine : "moonshine",
@@ -244,13 +260,6 @@ export class Sidecar {
 	}
 
 	private handle(message: Record<string, unknown>): void {
-		if (message.event === "progress") {
-			const { fraction, file } = message;
-			if (typeof fraction === "number" && Number.isFinite(fraction)) {
-				this.onProgress?.(Math.min(1, Math.max(0, fraction)), typeof file === "string" ? file : "");
-			}
-			return;
-		}
 		const id = message.id;
 		if (typeof id !== "number") return;
 		if (id === this.inFlight) {
@@ -261,7 +270,8 @@ export class Sidecar {
 		const pending = this.pending.get(id);
 		if (!pending) return;
 		this.pending.delete(id);
-		if (typeof message.error === "string") pending.reject(new Error(message.error));
-		else pending.resolve(message);
+		if (typeof message.error !== "string") pending.resolve(message);
+		else if (isEngineId(message.missing)) pending.reject(new MissingVoiceError(message.error, message.missing));
+		else pending.reject(new Error(message.error));
 	}
 }

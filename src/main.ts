@@ -14,19 +14,20 @@ import {
 import { join } from "path";
 import { highlightField, MarkdownSource } from "./markdown";
 import { PdfSource, PdfStart } from "./pdf";
-import { EngineSetup } from "./engine-setup";
 import {
-	installedVersion,
-	installMlx,
-	installServerScript,
-	mlxInstalled,
+	DEFAULT_VOICE,
+	EDGE_VOICE_HOME,
+	enginePython,
+	EngineSearch,
+	findEngine,
 	mlxSupported,
-	SETUP_HOME,
-	VENV_PYTHON,
-} from "./setup";
+	OLD_SETUP,
+	setupSteps,
+	voiceCommand,
+} from "./engine";
 import { StatusIndicator } from "./status";
-import { deleteItem, formatBytes, scanMlxVoices, scanVoices, StorageItem } from "./storage";
-import { SetupModal } from "./setup-modal";
+import { deleteItem, formatBytes, scanMlxVoices, scanOldSetup, scanVoices, StorageItem } from "./storage";
+import { CommandNotice, SetupModal } from "./setup-modal";
 import { InBackground, pausesInBackground } from "./background";
 import { playChime } from "./chime";
 import { clamp, isEngineId, savedSettings } from "./settings";
@@ -41,11 +42,12 @@ import {
 	shortKeyLabel,
 } from "./double-tap";
 import { Reader, ReaderState, SegmentSource } from "./reader";
-import { Sidecar } from "./sidecar";
+import { MissingVoiceError, Sidecar } from "./sidecar";
 import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "./colors";
 import { formatSpeed, nearestSpeed, PlayerBar, PlayerControls, showSpeedMenu, SPEEDS, stepSpeed } from "./player-bar";
 
 interface ReaderSettings {
+	/** A Python with the engine installed, as a full path; empty means the one in ~/.edge-voice/engine. */
 	pythonPath: string;
 	language: string;
 	voice: string;
@@ -53,7 +55,7 @@ interface ReaderSettings {
 	prefetch: number;
 	autoScroll: boolean;
 	preloadVoice: boolean;
-	/** On Apple silicon, run voices on the GPU with MLX (installed in the background). */
+	/** On Apple silicon, run voices on the GPU with MLX, when its packages are installed. */
 	fasterEngine: boolean;
 	skipFootnotes: boolean;
 	pauseOnPageSwitch: boolean;
@@ -71,9 +73,9 @@ interface ReaderSettings {
 }
 
 const DEFAULT_SETTINGS: ReaderSettings = {
-	pythonPath: VENV_PYTHON,
+	pythonPath: "",
 	language: "en_us",
-	voice: "kokoro_af_bella",
+	voice: DEFAULT_VOICE,
 	speed: 1.0,
 	prefetch: 2,
 	autoScroll: true,
@@ -137,17 +139,10 @@ export default class EdgeVoicePlugin extends Plugin {
 	private menuRequest?: MenuRequest;
 	/** While the settings record a custom key, the shortcut stays quiet. */
 	recordingKey = false;
-	private engine!: EngineSetup;
-	/** Installs the faster engine on Apple silicon, once the standard one works. */
-	private mlx!: EngineSetup;
-	/** Whether the faster engine is installed and can be asked for. */
-	private mlxReady = false;
-	/** Why installing the faster engine failed, for the settings. */
-	private mlxProblem?: string;
+	/** The engine found at the last look (see findEngine), or why there's none to use. */
+	engineSearch?: EngineSearch;
 	/** Which engine the loaded voice runs on, and why not the faster one. */
 	private engineInUse?: { engine: string; fallback?: string };
-	/** Whether the setup window is installing the engine. */
-	private settingUp = false;
 	/** The page being read: playback belongs to it, and pauses when you leave it. */
 	private target?: { view: FileView; path: string | undefined; mode?: string };
 
@@ -172,11 +167,6 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.register(() => this.bar.destroy());
 		this.ribbonEl = this.addRibbonIcon("audio-lines", "Read aloud", () => this.toggle("button"));
 		this.showState("idle");
-		this.mlx = new EngineSetup(
-			() => mlxInstalled(this.settings.pythonPath),
-			(signal) => this.installMlx(signal),
-		);
-		this.register(() => this.mlx.cancel());
 
 		this.addCommand({ id: "toggle", name: "Read aloud / pause", callback: () => this.toggle("button") });
 		this.addCommand({
@@ -233,7 +223,10 @@ export default class EdgeVoicePlugin extends Plugin {
 		if (!["pause", "visible", "always"].includes(settings.inBackground)) {
 			settings.inBackground = DEFAULT_SETTINGS.inBackground;
 		}
-		if (!settings.pythonPath.trim()) settings.pythonPath = DEFAULT_SETTINGS.pythonPath;
+		// The Python the old setup installed into ~/.edge-voice/venv was the default; now it's automatic.
+		if (OLD_SETUP.some((name) => settings.pythonPath.startsWith(join(EDGE_VOICE_HOME, name)))) {
+			settings.pythonPath = "";
+		}
 		settings.volume = clamp(settings.volume, 0, 1);
 		// The settings offer 1 to 4.
 		settings.prefetch = Math.round(clamp(settings.prefetch, 1, 4));
@@ -273,25 +266,42 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	/**
 	 * At start-up: with an engine, loads the voice so the first read starts at
-	 * once. Without one, offers to set it up; nothing is installed unless the
-	 * person asks (see SetupModal).
+	 * once. Without one, says how to set it up; Edge Voice never installs or
+	 * downloads anything itself.
 	 */
 	private async prepareEngine(): Promise<void> {
-		if (!(await installedVersion(this.settings.pythonPath))) {
-			this.offerSetup();
+		const search = await this.checkEngine();
+		if (!search.engine) {
+			this.offerSetup(search.problem);
 			return;
 		}
 		if (this.settings.preloadVoice) void this.preloadVoice();
-		void this.prepareFasterEngine(false);
 	}
 
-	/** A notice that stays until dismissed, with a button that opens the setup window. */
-	private offerSetup(): void {
+	/**
+	 * Looks for the engine again (after the person ran the setup steps, or
+	 * changed the Python path), and switches to it if it moved.
+	 */
+	async checkEngine(): Promise<EngineSearch> {
+		const search = await findEngine(this.settings.pythonPath);
+		const before = this.enginePythonInUse();
+		this.engineSearch = search;
+		if (this.enginePythonInUse() !== before) this.restartSidecar();
+		return search;
+	}
+
+	/** The Python the sidecar runs: the engine found, else the configured one or the default place. */
+	private enginePythonInUse(): string {
+		return this.engineSearch?.engine?.python ?? (this.settings.pythonPath.trim() || enginePython());
+	}
+
+	/** A notice that stays until dismissed, with a button that opens the setup steps. */
+	private offerSetup(problem?: string): void {
 		const notice = new Notice(
 			createFragment((fragment) => {
-				fragment.createDiv({ text: "Edge Voice needs its speech engine before it can read aloud." });
+				fragment.createDiv({ text: problem ?? "Edge Voice needs its speech engine before it can read aloud." });
 				fragment
-					.createEl("button", { text: "Set up…", cls: "mod-cta edge-voice-notice-button" })
+					.createEl("button", { text: "How to set it up", cls: "mod-cta edge-voice-notice-button" })
 					.addEventListener("click", () => {
 						notice.hide();
 						this.openSetup();
@@ -301,63 +311,27 @@ export default class EdgeVoicePlugin extends Plugin {
 		);
 	}
 
-	/**
-	 * On Apple silicon, uses the faster engine from the next voice loaded: at
-	 * once if nothing is playing, never by interrupting reading. `install` is
-	 * true only when the person asked (setup, or turning it on); otherwise it's
-	 * used if it's there. Only in the environment setup made.
-	 */
-	private async prepareFasterEngine(install: boolean): Promise<void> {
-		if (!this.settings.fasterEngine || !mlxSupported() || this.settings.pythonPath !== VENV_PYTHON) return;
-		try {
-			if (!install) {
-				this.mlxReady = await mlxInstalled(this.settings.pythonPath);
-				return;
-			}
-			await this.mlx.ensure();
-		} catch (error) {
-			this.mlxProblem = (error as Error).message;
-			return;
-		}
-		this.mlxProblem = undefined;
-		this.mlxReady = true;
-		if (this.reader.state === "idle" && this.settings.preloadVoice) void this.preloadVoice();
-	}
-
-	private async installMlx(signal: AbortSignal): Promise<void> {
-		const log: string[] = [];
-		try {
-			// Its files download with it, so switching to it later doesn't wait on them.
-			const voice = this.settings.voice.startsWith("kokoro_") ? this.settings.voice : DEFAULT_SETTINGS.voice;
-			await installMlx(
-				this.settings.pythonPath,
-				voice,
-				{ step: () => undefined, log: (line) => log.push(line) },
-				signal,
-			);
-		} catch (error) {
-			if (!signal.aborted) console.warn("[edge-voice] setting up the faster engine failed\n" + log.join("\n"));
-			throw error;
-		}
+	/** Whether the faster engine will be asked for: on, supported here, and its packages installed. */
+	private get fasterReady(): boolean {
+		return this.settings.fasterEngine && mlxSupported() && this.engineSearch?.engine?.faster === true;
 	}
 
 	/** Turns the faster engine on or off; it takes effect from the next voice loaded. */
 	setFasterEngine(on: boolean): void {
 		this.settings.fasterEngine = on;
 		void this.saveSettings();
-		if (on) void this.prepareFasterEngine(true);
-		else if (this.reader.state === "idle" && this.settings.preloadVoice) void this.preloadVoice();
+		if (this.reader.state === "idle" && this.settings.preloadVoice) void this.preloadVoice();
 	}
 
 	/** What the faster engine is doing, for the settings. */
 	fasterEngineStatus(): string {
 		if (!this.settings.fasterEngine) return "Off: voices run on the processor.";
-		if (this.settings.pythonPath !== VENV_PYTHON) return "Only works with the Python that Edge Voice sets up.";
-		if (this.mlx.installing) return "Setting up in the background (a few hundred MB, once).";
-		if (this.mlxProblem) return `Couldn't set it up: ${this.mlxProblem} Turn it off and on to try again.`;
+		if (!this.engineSearch?.engine) return "Set up the speech engine first.";
+		if (!this.engineSearch.engine.faster) {
+			return "Its packages aren't installed. The setup steps include them on Apple silicon; run steps 2 to 4 again.";
+		}
 		if (this.engineInUse?.engine === "mlx") return "On: voices run on the GPU, about twice as fast.";
 		if (this.engineInUse?.fallback) return `On, but the standard engine is speaking: ${this.engineInUse.fallback}.`;
-		if (!this.mlxReady) return "Not installed. Turn it off and on to install it (a few hundred MB).";
 		return "On: used from the next voice loaded.";
 	}
 
@@ -383,9 +357,7 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	private createSidecar(): void {
 		if (!(this.app.vault.adapter instanceof FileSystemAdapter)) throw new Error("Edge Voice needs the desktop app");
-		this.sidecar = new Sidecar(this.settings.pythonPath, installServerScript());
-		this.sidecar.onProgress = (fraction) =>
-			this.status.show("download", `Downloading voice ${Math.round(fraction * 100)}%`, fraction);
+		this.sidecar = new Sidecar(this.enginePythonInUse());
 		this.sidecar.onExit = (message) => {
 			this.voice = undefined;
 			console.warn("[edge-voice]", message);
@@ -537,7 +509,8 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	/**
 	 * The voices downloaded, for the Storage settings: the engine's and the
-	 * faster engine's. Only voices: the engine itself isn't offered for deleting.
+	 * faster engine's, and what the old setup left behind. Not the engine
+	 * itself: that's the person's to remove (the ~/.edge-voice folder).
 	 */
 	async storageItems(): Promise<StorageItem[]> {
 		let voices: StorageItem[] = [];
@@ -546,64 +519,37 @@ export default class EdgeVoicePlugin extends Plugin {
 		} catch {
 			// No working engine: then there's nothing it downloaded to list either.
 		}
-		const mlx = await scanMlxVoices(join(SETUP_HOME, "hf"));
-		return (mlx ? [...voices, mlx] : voices).sort((a, b) => b.bytes - a.bytes);
+		const extras = [
+			await scanMlxVoices(join(EDGE_VOICE_HOME, "hf")),
+			await scanOldSetup(EDGE_VOICE_HOME, OLD_SETUP),
+		];
+		return [...voices, ...extras.filter((item) => item !== null)].sort((a, b) => b.bytes - a.bytes);
 	}
 
 	/** Deletes downloads, stopping reading and the engine first so no file is in use. */
 	async deleteStorage(items: StorageItem[]): Promise<void> {
-		// An install writes into the same folder; deleting under it would break it.
-		if (this.installing) {
-			new Notice("Edge Voice is setting up its voice engine. Try again when it's done.");
-			return;
-		}
 		this.stop();
 		this.sidecar.stop();
 		this.voice = undefined;
-		// Without its files, the faster engine would download them on the next press
-		// of play; the standard one speaks until they're fetched again at start-up.
-		if (items.some((item) => item.id === "mlx")) this.mlxReady = false;
 		for (const item of items) await deleteItem(item);
 		const freed = items.reduce((sum, item) => sum + item.bytes, 0);
 		new Notice(`Freed ${formatBytes(freed)}.`);
 	}
 
-	get engineInstalling(): boolean {
-		return this.settingUp;
-	}
-
-	/**
-	 * Whether either install is running. They share ~/.edge-voice (its
-	 * download folder and the environment), so nothing else may change it then.
-	 */
-	private get installing(): boolean {
-		return this.settingUp || this.mlx.installing;
-	}
-
-	/**
-	 * Opens the setup window: what installing the engine downloads, and an
-	 * Install button. Nothing is installed until the person clicks it. When it
-	 * succeeds, the plugin switches to the new engine, downloads the voice and,
-	 * on Apple silicon if listed, the faster engine.
-	 */
+	/** Opens the setup steps for this computer; "Check again" there looks for the engine. */
 	openSetup(onReady?: () => void): void {
-		if (this.installing) {
-			new Notice("Edge Voice is setting up its voice engine. Try again when it's done.");
-			return;
-		}
+		const faster = this.settings.fasterEngine && mlxSupported();
+		const voice = this.settings.voice;
 		new SetupModal(this.app, {
-			fasterEngine: this.settings.fasterEngine && mlxSupported(),
-			running: (on) => (this.settingUp = on),
-			onReady: async (python) => {
-				this.settings.pythonPath = python;
-				await this.saveSettings();
-				this.restartSidecar();
-				onReady?.();
-				await this.preloadVoice();
-				new Notice("Edge Voice is ready. Right-click in a note or PDF to start reading.", 10000);
-				// The voice stays downloaded; this only frees the memory it holds.
-				if (!this.settings.preloadVoice) this.restartSidecar();
-				void this.prepareFasterEngine(true);
+			steps: setupSteps({ platform: process.platform, arch: process.arch, faster }, voice),
+			problem: this.engineSearch?.problem,
+			check: async () => {
+				const search = await this.checkEngine();
+				if (search.engine) {
+					onReady?.();
+					if (this.settings.preloadVoice) void this.preloadVoice();
+				}
+				return search;
 			},
 		}).open();
 	}
@@ -611,8 +557,8 @@ export default class EdgeVoicePlugin extends Plugin {
 	private async startReading(view: FileView, source: SegmentSource): Promise<void> {
 		// The bar and its glow show at once, while the voice loads, not only once synthesis starts.
 		this.bar.update("loading");
-		if (!this.sidecar.running && !(await installedVersion(this.settings.pythonPath))) {
-			// No engine: explain what setting it up involves, and install only if asked.
+		if (!this.sidecar.running && !(await this.checkEngine()).engine) {
+			// No engine: show how to set it up.
 			source.dispose();
 			this.bar.update("idle");
 			this.openSetup();
@@ -623,7 +569,8 @@ export default class EdgeVoicePlugin extends Plugin {
 		} catch (error) {
 			source.dispose();
 			this.showState("idle");
-			new Notice(`Edge Voice could not load the voice: ${(error as Error).message}`, 10000);
+			if (error instanceof MissingVoiceError) this.showMissingVoice(error.voice);
+			else new Notice(`Edge Voice could not load the voice: ${(error as Error).message}`, 10000);
 			return;
 		}
 		this.reader.start(source);
@@ -717,8 +664,17 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.addMenuItems(menu, request.view, request.source);
 	}
 
+	/** The voice isn't on this computer: the command that gets it, to copy. */
+	private showMissingVoice(voice: string): void {
+		const faster = this.fasterReady && voice.startsWith("kokoro_");
+		new CommandNotice(
+			`The voice ${voice} isn't downloaded yet. Run this in ${process.platform === "win32" ? "PowerShell" : "Terminal"} to get it, then start reading again:`,
+			voiceCommand(voice, faster),
+		);
+	}
+
 	private ensureVoice(): Promise<void> {
-		const engine = this.mlxReady && this.settings.fasterEngine ? "mlx" : undefined;
+		const engine = this.fasterReady ? "mlx" : undefined;
 		const key = `${this.settings.language}/${this.settings.voice}/${engine ?? "moonshine"}`;
 		if (this.voice?.key === key && this.sidecar.running) return this.voice.ready;
 		this.status.show("busy", "Loading voice");
@@ -843,9 +799,10 @@ class ReaderSettingTab extends PluginSettingTab {
 
 		const voiceSetting = new Setting(containerEl)
 			.setName("Voice")
-			.setDesc(
-				"Kokoro voices sound the most natural; Piper voices start reading sooner. Downloaded on first use.",
-			);
+			.setDesc("Kokoro voices sound the most natural; Piper voices start reading sooner.");
+		const moreSetting = new Setting(containerEl)
+			.setName("Get another voice")
+			.setDesc("Voices are downloaded by you, with a command; Edge Voice doesn't download anything.");
 		voiceSetting.addDropdown((dropdown) => {
 			dropdown.addOption(settings.voice, settings.voice).setValue(settings.voice);
 			dropdown.onChange((value) => {
@@ -857,12 +814,12 @@ class ReaderSettingTab extends PluginSettingTab {
 				.voices(settings.language)
 				.then(({ present, downloadable }) => {
 					dropdown.selectEl.empty();
-					const all = [...new Set([settings.voice, ...present, ...downloadable])];
-					for (const voice of all) {
-						const mark = present.includes(voice) ? " ✓" : "";
-						dropdown.addOption(voice, voice + mark);
+					// Only voices on this computer, and the chosen one even if it isn't (yet).
+					for (const voice of new Set([settings.voice, ...present])) {
+						dropdown.addOption(voice, present.includes(voice) ? voice : `${voice} (not downloaded)`);
 					}
 					dropdown.setValue(settings.voice);
+					this.anotherVoice(moreSetting, downloadable);
 				})
 				// Braces, not a returned Setting: Setting has a then() method, so a promise
 				// treats it as one and calls it, and it calls back, over and over, freezing Obsidian.
@@ -987,6 +944,32 @@ class ReaderSettingTab extends PluginSettingTab {
 		this.advancedSettings(containerEl);
 	}
 
+	/** A list of voices to get, and the command that downloads the one picked, to copy. */
+	private anotherVoice(setting: Setting, downloadable: string[]): void {
+		if (downloadable.length === 0) return;
+		const command = setting.descEl.createEl("code", { cls: "edge-voice-command" });
+		command.hidden = true;
+		let picked = "";
+		setting.addDropdown((dropdown) => {
+			dropdown.addOption("", "Choose a voice…");
+			for (const voice of downloadable) dropdown.addOption(voice, voice);
+			dropdown.onChange((voice) => {
+				picked = voice;
+				command.setText(voice ? voiceCommand(voice, false) : "");
+				command.hidden = !voice;
+			});
+		});
+		setting.addButton((button) =>
+			button.setButtonText("Copy command").onClick(async () => {
+				if (!picked) return;
+				await navigator.clipboard.writeText(voiceCommand(picked, false));
+				new Notice(
+					`Copied. Run it in ${process.platform === "win32" ? "PowerShell" : "Terminal"}, then choose ${picked} above.`,
+				);
+			}),
+		);
+	}
+
 	/**
 	 * Settings almost nobody needs, folded away at the bottom: the engine, the
 	 * Python it runs in, the faster engine and how far ahead to prepare. It
@@ -1001,25 +984,25 @@ class ReaderSettingTab extends PluginSettingTab {
 			"advanced",
 		);
 
-		const engine = new Setting(containerEl).setName("Voice engine").setDesc("Checking…");
+		const engine = new Setting(containerEl).setName("Speech engine");
+		/** Looks for the engine again and says what was found. */
+		const lookForEngine = () => {
+			engine.setDesc("Looking for it…");
+			void this.plugin.checkEngine().then(({ engine: found, problem }) => {
+				engine.setDesc(
+					found
+						? `Ready: speech engine ${found.version}, in ${found.python}.`
+						: (problem ?? "Not set up yet. See the setup steps."),
+				);
+				if (!found) details.open = true;
+				engine.controlEl.querySelector("button")?.toggleClass("mod-cta", !found);
+			});
+		};
 		engine.addButton((button) =>
-			button.setButtonText("Set up").onClick(() => this.plugin.openSetup(() => this.display())),
+			button.setButtonText("Setup steps").onClick(() => this.plugin.openSetup(() => this.display())),
 		);
-		void installedVersion(settings.pythonPath).then((version) => {
-			engine.setDesc(
-				version
-					? `Ready: speech engine (moonshine-voice ${version}).`
-					: this.plugin.engineInstalling
-						? "Setting up; see the status bar."
-						: "Not set up. Downloads about 100 MB, once.",
-			);
-			if (!version && !this.plugin.engineInstalling) details.open = true;
-			const button = engine.controlEl.querySelector("button");
-			if (button) {
-				button.setText(version ? "Reinstall" : "Set up");
-				button.toggleClass("mod-cta", !version);
-			}
-		});
+		engine.addButton((button) => button.setButtonText("Check again").onClick(lookForEngine));
+		lookForEngine();
 
 		if (mlxSupported()) {
 			const faster = new Setting(containerEl)
@@ -1036,20 +1019,19 @@ class ReaderSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Python interpreter")
 			.setDesc(
-				"The Python the engine runs in. Set up fills this in; change it only to use a Python you set up yourself.",
+				"Leave empty to use the engine in the .edge-voice/engine folder in your home folder. To use another " +
+					"Python with the engine installed, enter its full path.",
 			)
 			.addText((text) =>
-				text.setValue(settings.pythonPath).onChange((value) => {
-					settings.pythonPath = value.trim();
-					void this.plugin.saveSettings();
-				}),
+				text
+					.setPlaceholder("Automatic")
+					.setValue(settings.pythonPath)
+					.onChange((value) => {
+						settings.pythonPath = value.trim();
+						void this.plugin.saveSettings();
+					}),
 			)
-			.addButton((button) =>
-				button.setButtonText("Restart").onClick(() => {
-					this.plugin.restartSidecar();
-					this.display();
-				}),
-			);
+			.addButton((button) => button.setButtonText("Use it").onClick(lookForEngine));
 
 		new Setting(containerEl)
 			.setName("Sentences to prepare ahead")
@@ -1233,7 +1215,6 @@ class ReaderSettingTab extends PluginSettingTab {
 		refresh();
 	}
 
-	/** Lists downloads with their sizes and a Delete button each (click twice to confirm). */
 	/** Lists downloaded voices with their sizes and a Delete button each (click twice to confirm). */
 	private async showStorage(el: HTMLElement, hint: HTMLElement): Promise<void> {
 		const voices = await this.plugin.storageItems();
@@ -1263,7 +1244,9 @@ class ReaderSettingTab extends PluginSettingTab {
 		}
 		const all = new Setting(el)
 			.setName("Downloaded voices")
-			.setDesc(`${formatBytes(total)} in all. A deleted voice downloads again the next time it's used.`);
+			.setDesc(
+				`${formatBytes(total)} in all. To use a deleted voice again, get it again (see Get another voice).`,
+			);
 		if (voices.length > 1) deleteButton(all, voices, "Delete all voices");
 		for (const item of voices) {
 			deleteButton(

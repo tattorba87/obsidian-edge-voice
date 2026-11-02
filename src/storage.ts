@@ -91,9 +91,32 @@ export async function scanMlxVoices(hfDir: string): Promise<StorageItem | null> 
 		id: "mlx",
 		label: "Faster engine voices",
 		description:
-			"The Kokoro model and voices the faster engine uses on Apple silicon. They download again when next used.",
+			"The Kokoro model and voices the faster engine uses on Apple silicon. Get them again with a voice's command and --faster.",
 		paths: [hfDir],
 		root: hfDir,
+		bytes,
+	};
+}
+
+/**
+ * What the setup before engine releases left in ~/.edge-voice (its Python,
+ * environment and downloads), as one item, or null when none of it is there.
+ */
+export async function scanOldSetup(home: string, names: string[]): Promise<StorageItem | null> {
+	const paths = names.map((name) => join(home, name)).filter((path) => existsSync(path));
+	if (paths.length === 0) return null;
+	let bytes = 0;
+	for (const path of paths) {
+		const stat = await fs.lstat(path);
+		if (stat.isDirectory()) for (const size of (await filesUnder(path)).values()) bytes += size;
+		else bytes += stat.size;
+	}
+	return {
+		id: "old-setup",
+		label: "Earlier engine setup",
+		description: "Python and the engine as Edge Voice used to install them. No longer used; your voices are kept.",
+		paths,
+		root: home,
 		bytes,
 	};
 }

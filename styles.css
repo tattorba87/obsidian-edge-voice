@@ -329,40 +329,23 @@ body.theme-dark {
 	background-color: var(--edge-voice-word);
 }
 
-/* One-click setup. */
+/* The setup steps: what each does, and its command with a Copy button. */
 .edge-voice-setup-steps {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
 	margin: 12px 0;
+	padding-inline-start: 1.4em;
 }
 
-.edge-voice-setup-step {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+.edge-voice-setup-steps li {
+	margin-bottom: 14px;
+}
+
+.edge-voice-setup-steps p {
+	margin: 4px 0;
 	color: var(--text-muted);
 }
 
-.edge-voice-setup-step.is-running,
-.edge-voice-setup-step.is-done {
-	color: var(--text-normal);
-}
-
-.edge-voice-setup-step.is-running .edge-voice-setup-icon {
-	animation: edge-voice-spin 1s linear infinite;
-}
-
-.edge-voice-setup-step.is-done .edge-voice-setup-icon {
-	color: var(--color-green);
-}
-
-.edge-voice-setup-step.is-failed .edge-voice-setup-icon {
-	color: var(--color-red);
-}
-
-.edge-voice-setup-icon {
-	display: inline-flex;
+.edge-voice-setup-problem {
+	color: var(--text-error);
 }
 
 .edge-voice-setup-message:not(:empty) {
@@ -370,11 +353,27 @@ body.theme-dark {
 	font-weight: var(--font-semibold);
 }
 
-.edge-voice-setup-log pre {
-	max-height: 200px;
-	overflow: auto;
+.edge-voice-command-box {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 6px 0;
+}
+
+.edge-voice-command {
+	display: block;
+	flex: 1;
+	padding: 6px 8px;
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
 	font-size: var(--font-ui-smaller);
 	white-space: pre-wrap;
+	word-break: break-all;
+	user-select: text;
+}
+
+.edge-voice-setup-link {
+	font-size: var(--font-ui-smaller);
 }
 
 .edge-voice-notice-button {
@@ -466,8 +465,7 @@ body.theme-dark {
 @media (prefers-reduced-motion: reduce) {
 	.edge-voice-eq-bar,
 	.edge-voice-indicator::before,
-	.edge-voice-bar,
-	.edge-voice-setup-icon {
+	.edge-voice-bar {
 		animation: none !important;
 	}
 }
@@ -605,18 +603,4 @@ body.theme-dark {
 
 .edge-voice-fold[open] .edge-voice-fold-title::before {
 	transform: rotate(90deg);
-}
-
-/* The setup window: what will be downloaded, where it goes, then Install. */
-.edge-voice-setup h4 {
-	margin: 1em 0 0.3em;
-}
-
-.edge-voice-setup ul {
-	margin-top: 0;
-	padding-inline-start: 1.2em;
-}
-
-.edge-voice-setup-private {
-	color: var(--text-muted);
 }
