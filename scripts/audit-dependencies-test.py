@@ -88,6 +88,12 @@ class ReportingTests(unittest.TestCase):
         report = self.report("Some_Package==1.0", [{"name": "some-package", "version": "1.0", "vulns": []}])
         self.assertEqual(report["gaps"], [])
 
+    def test_docopt_wheel_is_gap_even_with_pypi_metadata(self):
+        report = self.report(
+            "docopt==0.6.2", [{"name": "docopt", "version": "0.6.2", "vulns": []}], "darwin-arm64-mlx.txt"
+        )
+        self.assertIn("repository-built wheel", report["gaps"][0])
+
     def test_marker_coverage_is_not_silently_assumed(self):
         report = self.report('example==1.0; sys_platform == "win32"', [])
         self.assertTrue(report["gaps"])
