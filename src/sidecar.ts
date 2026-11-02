@@ -4,6 +4,7 @@ import { dirname, isAbsolute } from "path";
 import { clearTimeout, setTimeout } from "timers";
 import { childEnvironment } from "./environment";
 import { isEngineId } from "./settings";
+import { parseCatalog, VoiceInfo } from "./voices";
 
 export interface SidecarLimits {
 	/** The engine must say it's ready within this (ms), or it's taken to be stuck. */
@@ -186,10 +187,19 @@ export class Sidecar {
 		};
 	}
 
-	async voices(language: string): Promise<{ present: string[]; downloadable: string[] }> {
+	/**
+	 * The voices on this computer and the ones to get, for this language; and the
+	 * catalog of every voice with readable names and sizes (empty from an engine
+	 * without one).
+	 */
+	async voices(language: string): Promise<{ present: string[]; downloadable: string[]; catalog: VoiceInfo[] }> {
 		const reply = await this.request({ op: "voices", language }, undefined, this.limits.answerMs);
 		const ids = (value: unknown) => (Array.isArray(value) ? value.filter(isEngineId) : []);
-		return { present: ids(reply.present), downloadable: ids(reply.downloadable) };
+		return {
+			present: ids(reply.present),
+			downloadable: ids(reply.downloadable),
+			catalog: parseCatalog(reply.catalog),
+		};
 	}
 
 	/** Where the engine keeps downloaded voices. */

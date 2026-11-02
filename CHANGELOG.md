@@ -8,6 +8,7 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 - Reads notes and PDFs aloud with on-device voices (Moonshine: Kokoro and Piper), highlighting the sentence and the word being spoken.
 - Never downloads or installs anything itself. Without its speech engine, it shows the setup steps for your computer: install uv, then three commands, each explained, with a Copy button, and _Check again_. Every package is installed hash-checked from the engine release; voices are fetched with `edge-voice-engine voices get`. macOS (Apple Silicon and Intel, 13.4 or later), Windows (x64 and ARM) and Linux.
+- Choosing a voice is easy: _Get another voice_ lists every voice by name, accent and engine, recommended ones first, with the download size and links to hear them; copy its command, run it, then _Check again_. British English voices work too. `edge-voice-engine voices list` shows the same as a table, `voices get` takes several voices at once, and the README lists them all.
 - On Apple silicon (macOS 14 or later), a faster engine that runs voices on the GPU with MLX, included in the setup steps there and used automatically, with the standard engine as fallback.
 - Highlighting in Source mode, Live Preview (including rendered callouts and math) and Reading view, and over PDF pages.
 - Right-click _Start text-to-speech here_ in the editor, Reading view and PDFs.

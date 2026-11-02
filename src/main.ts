@@ -43,6 +43,7 @@ import {
 } from "./double-tap";
 import { Reader, ReaderState, SegmentSource } from "./reader";
 import { MissingVoiceError, Sidecar } from "./sidecar";
+import { megabytes, VOICE_SAMPLES, VoiceInfo, voiceGroups, voiceLabel } from "./voices";
 import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "./colors";
 import { formatSpeed, nearestSpeed, PlayerBar, PlayerControls, showSpeedMenu, SPEEDS, stepSpeed } from "./player-bar";
 
@@ -312,7 +313,7 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	/** Whether the faster engine will be asked for: on, supported here, and its packages installed. */
-	private get fasterReady(): boolean {
+	get fasterReady(): boolean {
 		return this.settings.fasterEngine && mlxSupported() && this.engineSearch?.engine?.faster === true;
 	}
 
@@ -800,33 +801,8 @@ class ReaderSettingTab extends PluginSettingTab {
 		const voiceSetting = new Setting(containerEl)
 			.setName("Voice")
 			.setDesc("Kokoro voices sound the most natural; Piper voices start reading sooner.");
-		const moreSetting = new Setting(containerEl)
-			.setName("Get another voice")
-			.setDesc("Voices are downloaded by you, with a command; Edge Voice doesn't download anything.");
-		voiceSetting.addDropdown((dropdown) => {
-			dropdown.addOption(settings.voice, settings.voice).setValue(settings.voice);
-			dropdown.onChange((value) => {
-				settings.voice = value;
-				void this.plugin.saveSettings();
-				this.plugin.voiceChanged();
-			});
-			this.plugin.sidecar
-				.voices(settings.language)
-				.then(({ present, downloadable }) => {
-					dropdown.selectEl.empty();
-					// Only voices on this computer, and the chosen one even if it isn't (yet).
-					for (const voice of new Set([settings.voice, ...present])) {
-						dropdown.addOption(voice, present.includes(voice) ? voice : `${voice} (not downloaded)`);
-					}
-					dropdown.setValue(settings.voice);
-					this.anotherVoice(moreSetting, downloadable);
-				})
-				// Braces, not a returned Setting: Setting has a then() method, so a promise
-				// treats it as one and calls it, and it calls back, over and over, freezing Obsidian.
-				.catch((error: Error) => {
-					voiceSetting.setDesc(`Could not list voices: ${error.message}`);
-				});
-		});
+		const moreSetting = new Setting(containerEl).setName("Get another voice");
+		this.showVoices(voiceSetting, moreSetting);
 
 		new Setting(containerEl)
 			.setName("Speed")
@@ -944,29 +920,120 @@ class ReaderSettingTab extends PluginSettingTab {
 		this.advancedSettings(containerEl);
 	}
 
-	/** A list of voices to get, and the command that downloads the one picked, to copy. */
-	private anotherVoice(setting: Setting, downloadable: string[]): void {
-		if (downloadable.length === 0) return;
+	/**
+	 * Fills in the voice to read with (those on this computer) and the voices to
+	 * get, asking the engine again each time, so Check again finds a voice just
+	 * downloaded.
+	 */
+	private showVoices(voiceSetting: Setting, moreSetting: Setting): void {
+		const settings = this.plugin.settings;
+		voiceSetting.controlEl.empty();
+		moreSetting.controlEl.empty();
+		moreSetting.descEl.empty();
+		moreSetting.descEl.setText(
+			"Voices are downloaded by you, with a command; Edge Voice doesn't download anything.",
+		);
+		voiceSetting.addDropdown((dropdown) => {
+			dropdown.addOption(settings.voice, settings.voice).setValue(settings.voice);
+			let catalog: VoiceInfo[] = [];
+			dropdown.onChange((value) => {
+				settings.voice = value;
+				// A British voice reads with British English's rules and voice files.
+				const chosen = catalog.find((voice) => voice.id === value);
+				if (chosen) settings.language = chosen.language;
+				void this.plugin.saveSettings();
+				this.plugin.voiceChanged();
+			});
+			this.plugin.sidecar
+				.voices(settings.language)
+				.then((voices) => {
+					catalog = voices.catalog;
+					dropdown.selectEl.empty();
+					if (catalog.length > 0) {
+						// Only voices on this computer, and the chosen one even if it isn't (yet).
+						const here = catalog.filter((voice) => voice.installed);
+						const chosen = catalog.find((voice) => voice.id === settings.voice);
+						if (!chosen?.installed)
+							dropdown.addOption(
+								settings.voice,
+								`${chosen ? voiceLabel(chosen) : settings.voice} (not downloaded)`,
+							);
+						for (const voice of here) dropdown.addOption(voice.id, voiceLabel(voice));
+					} else {
+						// An engine without a catalog: plain IDs.
+						for (const voice of new Set([settings.voice, ...voices.present])) {
+							dropdown.addOption(
+								voice,
+								voices.present.includes(voice) ? voice : `${voice} (not downloaded)`,
+							);
+						}
+					}
+					dropdown.setValue(settings.voice);
+					this.anotherVoice(moreSetting, catalog, voices.downloadable, () =>
+						this.showVoices(voiceSetting, moreSetting),
+					);
+				})
+				// Braces, not a returned Setting: Setting has a then() method, so a promise
+				// treats it as one and calls it, and it calls back, over and over, freezing Obsidian.
+				.catch((error: Error) => {
+					voiceSetting.setDesc(`Could not list voices: ${error.message}`);
+				});
+		});
+	}
+
+	/**
+	 * The voices to get, grouped with their sizes, links to hear them first, the
+	 * command that downloads the one picked (to copy), and Check again.
+	 */
+	private anotherVoice(setting: Setting, catalog: VoiceInfo[], downloadable: string[], refresh: () => void): void {
+		const samples = setting.descEl.createDiv();
+		samples.appendText("Hear them first: ");
+		samples.createEl("a", { text: "Kokoro voices", href: VOICE_SAMPLES.Kokoro });
+		samples.appendText(", ");
+		samples.createEl("a", { text: "Piper voices", href: VOICE_SAMPLES.Piper });
+		samples.appendText(".");
 		const command = setting.descEl.createEl("code", { cls: "edge-voice-command" });
 		command.hidden = true;
 		let picked = "";
-		setting.addDropdown((dropdown) => {
-			dropdown.addOption("", "Choose a voice…");
-			for (const voice of downloadable) dropdown.addOption(voice, voice);
-			dropdown.onChange((voice) => {
-				picked = voice;
-				command.setText(voice ? voiceCommand(voice, false) : "");
-				command.hidden = !voice;
+		const commandFor = (id: string) => {
+			const voice = catalog.find((item) => item.id === id);
+			const faster = this.plugin.fasterReady && (voice ? voice.faster : id.startsWith("kokoro_"));
+			return voiceCommand(id, faster);
+		};
+		const groups = voiceGroups(catalog);
+		if (groups.length > 0 || downloadable.length > 0) {
+			setting.addDropdown((dropdown) => {
+				dropdown.addOption("", "Choose a voice…");
+				if (catalog.length > 0) {
+					for (const group of groups) {
+						const optgroup = dropdown.selectEl.createEl("optgroup", { attr: { label: group.label } });
+						for (const voice of group.voices)
+							optgroup.createEl("option", {
+								value: voice.id,
+								text: `${voiceLabel(voice)} (${megabytes(voice.download)})`,
+							});
+					}
+				} else {
+					for (const voice of downloadable) dropdown.addOption(voice, voice);
+				}
+				dropdown.onChange((voice) => {
+					picked = voice;
+					command.setText(voice ? commandFor(voice) : "");
+					command.hidden = !voice;
+				});
 			});
-		});
+			setting.addButton((button) =>
+				button.setButtonText("Copy command").onClick(async () => {
+					if (!picked) return;
+					await navigator.clipboard.writeText(commandFor(picked));
+					new Notice(
+						`Copied. Run it in ${process.platform === "win32" ? "PowerShell" : "Terminal"}, then click Check again.`,
+					);
+				}),
+			);
+		}
 		setting.addButton((button) =>
-			button.setButtonText("Copy command").onClick(async () => {
-				if (!picked) return;
-				await navigator.clipboard.writeText(voiceCommand(picked, false));
-				new Notice(
-					`Copied. Run it in ${process.platform === "win32" ? "PowerShell" : "Terminal"}, then choose ${picked} above.`,
-				);
-			}),
+			button.setButtonText("Check again").setTooltip("Look for voices you've just downloaded").onClick(refresh),
 		);
 	}
 

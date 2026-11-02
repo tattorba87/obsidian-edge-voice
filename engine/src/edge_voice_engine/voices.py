@@ -1,18 +1,23 @@
 """`edge-voice-engine voices …`: the person fetches voices; the engine never does.
 
-    edge-voice-engine voices list [--language en_us]
-    edge-voice-engine voices get <voice> [--faster] [--language en_us]
+    edge-voice-engine voices list [--installed] [--json]
+    edge-voice-engine voices get <voice> [<voice> …] [--faster]
 
-`get` downloads one voice from Moonshine's server (download.moonshine.ai) into
-its cache. With --faster (Apple silicon), it also fetches that voice and the
-Kokoro model for the faster engine from Hugging Face, at the commit server.py
-pins, into ~/.edge-voice/hf. Nothing else is downloaded, and only when run.
+`list` shows every voice with pinned SHA-256 hashes (see catalog.py): its name,
+accent, engine, whether it's here, and how much `get` would download now.
+`get` downloads voices from Moonshine's server (download.moonshine.ai) into its
+cache, checking every file against voices.json. With --faster (Apple silicon),
+it also fetches each voice and the Kokoro model for the faster engine from
+Hugging Face, at the commit server.py pins, into ~/.edge-voice/hf. Nothing else
+is downloaded, and only when run.
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
+from edge_voice_engine.catalog import SAMPLES, catalog, label, language_of, megabytes
 from edge_voice_engine.server import ENGINE_ID, MLX_REVISION, MLX_WEIGHTS, mlx_refusal, private_hugging_face
 from edge_voice_engine.voice_integrity import IntegrityError, cache_file, check_files, manifest, verify
 
@@ -23,47 +28,108 @@ def voice_id(value: str) -> str:
     return value
 
 
+def symbols() -> tuple[str, str]:
+    """★ and · where the console can show them; Windows' legacy code pages can't."""
+    try:
+        "★·…".encode(sys.stdout.encoding or "ascii")
+        return "★", " · "
+    except (LookupError, UnicodeEncodeError):
+        return "*", " - "
+
+
+def show(voices: list[dict], as_json: bool) -> int:
+    if as_json:
+        print(json.dumps(voices, indent=2))
+        return 0
+    if not voices:
+        print("No voices downloaded yet. See: edge-voice-engine voices list")
+        return 0
+    star, separator = symbols()
+    rows = [("", "Voice", "ID", "Download", "Faster")]
+    for voice in voices:
+        rows.append(
+            (
+                star if voice["recommended"] else "",
+                label(voice, separator),
+                voice["id"],
+                "installed" if voice["installed"] else megabytes(voice["download"]),
+                "yes" if voice["faster"] else "",
+            )
+        )
+    widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))]
+    for row in rows:
+        print("  ".join(cell.ljust(width) for cell, width in zip(row, widths, strict=True)).rstrip())
+    print()
+    print(f"{star} recommended. Get one with: edge-voice-engine voices get <ID>  (several IDs at once work too)")
+    print("Faster: also works with --faster, the faster engine on Apple silicon.")
+    print("Hear them first: Kokoro", SAMPLES["Kokoro"], " Piper", SAMPLES["Piper"])
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="edge-voice-engine voices", description="List or download voices.")
     commands = parser.add_subparsers(dest="command", required=True)
-    listing = commands.add_parser("list", help="voices on this computer, and ones you can get")
-    listing.add_argument("--language", type=voice_id, default="en_us")
-    get = commands.add_parser("get", help="download a voice")
-    get.add_argument("voice", type=voice_id)
-    get.add_argument("--language", type=voice_id, default="en_us")
+    listing = commands.add_parser("list", help="voices you can get, and which are on this computer")
+    listing.add_argument("--installed", action="store_true", help="only voices on this computer")
+    listing.add_argument("--json", action="store_true", help="for scripts")
+    listing.add_argument("--language", type=voice_id, help="only American (en_us) or British (en_gb) voices")
+    get = commands.add_parser("get", help="download voices")
+    get.add_argument("voices", nargs="+", type=voice_id, metavar="voice")
+    get.add_argument("--language", type=voice_id, help="needed only for voices not in the list")
     get.add_argument(
         "--unverified", action="store_true", help="allow an unlisted voice without a pinned SHA-256 (prints a warning)"
     )
     get.add_argument("--faster", action="store_true", help="also get it for the faster engine (Apple silicon)")
     args = parser.parse_args(argv)
+    # Never fail over a character the console can't show (Windows' legacy code pages).
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
 
+    from moonshine_voice.download import tts_asset_cache_path
+
+    if args.command == "list":
+        voices = catalog(Path(tts_asset_cache_path()))
+        if args.language:
+            voices = [voice for voice in voices if voice["language"] == args.language]
+        if args.installed:
+            voices = [voice for voice in voices if voice["installed"]]
+        return show(voices, args.json)
+
+    failed = [voice for voice in args.voices if get_voice(voice, args) != 0]
+    if len(args.voices) > 1:
+        print(
+            f"Got {len(args.voices) - len(failed)} of {len(args.voices)} voices.",
+            file=sys.stderr if failed else sys.stdout,
+        )
+    return 1 if failed else 0
+
+
+def get_voice(voice: str, args: argparse.Namespace) -> int:
+    """Downloads one voice and checks every file it needs; 0 when it's ready."""
     from moonshine_voice import list_tts_voices
     from moonshine_voice.download import download_tts_assets, list_tts_dependency_keys, tts_asset_cache_path
 
-    voices = list_tts_voices(args.language, root_path=tts_asset_cache_path())
-    if args.command == "list":
-        print("On this computer:", ", ".join(voices["present"]) or "none")
-        print("Available to get:", ", ".join(voices["downloadable"]) or "none")
-        return 0
-
-    if args.voice not in voices["present"] + voices["downloadable"]:
-        print(f"There's no voice {args.voice} for {args.language}. See: edge-voice-engine voices list", file=sys.stderr)
+    language = args.language or language_of(voice) or "en_us"
+    voices = list_tts_voices(language, root_path=tts_asset_cache_path())
+    if voice not in voices["present"] + voices["downloadable"]:
+        print(f"There's no voice {voice} for {language}. See: edge-voice-engine voices list", file=sys.stderr)
         return 1
     try:
         data = manifest()
-        language = args.language.lower().replace("-", "_")
+        language = language.lower().replace("-", "_")
         language = {"en": "en_us", "en_uk": "en_gb"}.get(language, language)
-        key = language + "/" + args.voice
+        key = language + "/" + voice
         known = data["moonshine"]["voices"].get(key)
         if known is None and not args.unverified:
             raise IntegrityError(
-                f"No pinned SHA-256 manifest for {args.voice} ({args.language}); "
+                f"No pinned SHA-256 manifest for {voice} ({language}); "
                 "use --unverified only if you accept unverified model files."
             )
         used_unverified = known is None
         if known is None:
-            print(f"WARNING: {args.voice} is unverified; some model files have no pinned SHA-256.", file=sys.stderr)
-        dependencies = sorted(set(list_tts_dependency_keys(args.language, voice=args.voice)))
+            print(f"WARNING: {voice} is unverified; some model files have no pinned SHA-256.", file=sys.stderr)
+        dependencies = sorted(set(list_tts_dependency_keys(language, voice=voice)))
         if known is not None and set(dependencies) != set(known):
             raise IntegrityError(
                 "Voice dependencies differ from the pinned manifest; update the engine before downloading."
@@ -72,19 +138,19 @@ def main(argv: list[str]) -> int:
         # Catch tampering before the upstream downloader can silently repair it.
         check_files(root, dependencies, data["moonshine"]["files"], existing_only=True)
         if args.faster:
-            refusal = mlx_refusal(args.language, args.voice)
+            refusal = mlx_refusal(language, voice)
             if refusal:
                 raise IntegrityError(f"Not for the faster engine: {refusal}.")
             faster = data["faster"]
             if (faster["repository"], faster["revision"]) != (MLX_WEIGHTS, MLX_REVISION):
                 raise IntegrityError("Faster engine revision differs from the pinned voice manifest")
-            files = faster["voices"].get(args.voice)
+            files = faster["voices"].get(voice)
             if files is None and not args.unverified:
                 raise IntegrityError(
-                    f"No pinned faster-engine voice {args.voice}; use --unverified only if you accept unverified files."
+                    f"No pinned faster-engine voice {voice}; use --unverified only if you accept unverified files."
                 )
-        print(f"Preparing {args.voice} from Moonshine (download.moonshine.ai)…")
-        download_tts_assets(args.language, voice=args.voice, show_progress=True)
+        print(f"Preparing {voice} from Moonshine (download.moonshine.ai)…")
+        download_tts_assets(language, voice=voice, show_progress=True)
         check_files(root, dependencies, data["moonshine"]["files"])
         if args.faster:
             # Fetch bytes without constructing MlxVoice or parsing model weights.
@@ -94,8 +160,8 @@ def main(argv: list[str]) -> int:
             hf_root = Path.home() / ".edge-voice" / "hf"
             if files is None:
                 used_unverified = True
-                files = faster["base_files"] + ["voices/" + args.voice.removeprefix("kokoro_") + ".safetensors"]
-                print(f"WARNING: faster voice {args.voice} is unverified.", file=sys.stderr)
+                files = faster["base_files"] + ["voices/" + voice.removeprefix("kokoro_") + ".safetensors"]
+                print(f"WARNING: faster voice {voice} is unverified.", file=sys.stderr)
             for name in files:
                 cache_file(hf_root, name)
                 record = faster["files"].get(name)
@@ -107,9 +173,9 @@ def main(argv: list[str]) -> int:
                 if record:
                     verify(path, record, hf_root)
         if used_unverified:
-            print(f"Done. {args.voice} is ready; unverified files were explicitly allowed.")
+            print(f"Done. {voice} is ready; unverified files were explicitly allowed.")
         else:
-            print(f"Done. {args.voice} is ready; all required files passed SHA-256 verification.")
+            print(f"Done. {voice} is ready; all required files passed SHA-256 verification.")
         return 0
     except (IntegrityError, OSError, ValueError, KeyError, ImportError) as error:
         print(f"Voice setup failed: {error}", file=sys.stderr)
