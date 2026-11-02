@@ -1,4 +1,8 @@
-"""server.py's JSON-lines protocol, run as a subprocess against a stub engine."""
+"""The engine's JSON-lines protocol, run as a subprocess against a stub engine.
+
+The engine runs as the package users install (python -m edge_voice_engine);
+one test also runs server.py as a plain script, as today's in-plugin setup does.
+"""
 
 import base64
 import json
@@ -12,13 +16,16 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 STUB = Path(__file__).resolve().parent / "stub"
+PACKAGE = ROOT / "engine" / "src"
+SERVER = PACKAGE / "edge_voice_engine" / "server.py"
 
 
 class Server:
-    def __init__(self, **env_extra):
-        env = {**os.environ, "PYTHONPATH": str(STUB), **env_extra}
+    def __init__(self, *, script=False, **env_extra):
+        env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(STUB), str(PACKAGE)]), **env_extra}
+        command = [str(SERVER)] if script else ["-m", "edge_voice_engine"]
         self.proc = subprocess.Popen(
-            [sys.executable, "-u", str(ROOT / "server.py")],
+            [sys.executable, "-u", *command],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -138,9 +145,18 @@ def test_mlx_falls_back_to_moonshine_when_it_cannot_load():
     server.close()
 
 
-def test_mlx_downloads_stay_private_whatever_the_environment_says():
+def test_mlx_downloads_stay_private_whatever_the_environment_says(tmp_path):
     # As if Obsidian had been started with someone's own Hugging Face settings.
-    server = Server(HF_HOME="/elsewhere/hf", USER_HF_HOME="/elsewhere/hf", HF_TOKEN="hf_secret")
+    # Wherever the engine is installed, the files go to ~/.edge-voice/hf, which
+    # the plugin's storage list shows and can delete.
+    server = Server(
+        HOME=str(tmp_path),
+        USERPROFILE=str(tmp_path),
+        HF_HOME="/elsewhere/hf",
+        USER_HF_HOME="/elsewhere/hf",
+        EXPECTED_HF_HOME=str(tmp_path / ".edge-voice" / "hf"),
+        HF_TOKEN="hf_secret",
+    )
     assert server.read() == {"event": "ready"}
     reply = loaded(server, language="en_us", voice="kokoro_af_heart", engine="mlx")
     assert reply["engine"] == "mlx", reply
@@ -192,3 +208,35 @@ def test_synth_refuses_text_and_speeds_it_shouldnt_take(server, body, message):
 def test_valid_ids_with_capitals_still_load(server):
     # Piper voices carry their locale, e.g. en_US.
     assert answer(server, op="load", language="en_us", voice="piper_en_US-lessac-medium") == {"id": 1, "ok": True}
+
+
+def test_hello_names_the_engine_and_its_protocol(server):
+    reply = answer(server, op="hello")
+    assert reply == {"id": reply["id"], "ok": True, "engine": "edge-voice-engine", "version": "0.2.0", "protocol": 1}
+
+
+def test_runs_as_a_plain_script_too():
+    # Today's in-plugin setup copies server.py next to its environment and runs it.
+    server = Server(script=True)
+    assert server.read() == {"event": "ready"}
+    assert answer(server, op="hello")["ok"]
+    server.close()
+
+
+def test_package_version_matches_the_engine():
+    import tomllib
+
+    project = tomllib.loads((ROOT / "engine" / "pyproject.toml").read_text())["project"]
+    assert f'VERSION = "{project["version"]}"' in SERVER.read_text()
+
+
+def run_command(*args):
+    env = {**os.environ, "PYTHONPATH": str(PACKAGE)}
+    return subprocess.run([sys.executable, "-m", "edge_voice_engine", *args], capture_output=True, text=True, env=env)
+
+
+def test_command_prints_its_python_and_version():
+    assert run_command("--python").stdout.strip() == sys.executable
+    assert run_command("--version").stdout.strip() == "0.2.0"
+    wrong = run_command("--install")
+    assert wrong.returncode != 0 and "unknown arguments" in wrong.stderr

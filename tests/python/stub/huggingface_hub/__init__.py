@@ -1,7 +1,7 @@
 """A stand-in for huggingface_hub that refuses what server.py must never do.
 
 It fails unless downloads are pinned to a commit, kept in the engine's own
-folder, and anonymous, so the tests check server.py's settings for real.
+folder, and anonymous, so the tests check the engine's settings for real.
 """
 
 import os
@@ -13,6 +13,9 @@ def check_private(revision):
         raise RuntimeError("download not pinned to a revision")
     if not os.environ.get("HF_HOME", "").endswith("hf") or os.environ.get("HF_HOME") == os.environ.get("USER_HF_HOME"):
         raise RuntimeError(f"HF_HOME not forced: {os.environ.get('HF_HOME')}")
+    expected = os.environ.get("EXPECTED_HF_HOME")
+    if expected and os.environ.get("HF_HOME") != expected:
+        raise RuntimeError(f"HF_HOME is {os.environ.get('HF_HOME')}, not {expected}")
     if os.environ.get("HF_TOKEN") or os.environ.get("HF_HUB_DISABLE_IMPLICIT_TOKEN") != "1":
         raise RuntimeError("downloads would send a token")
     if os.environ.get("HF_HUB_DISABLE_TELEMETRY") != "1":

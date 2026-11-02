@@ -1,9 +1,10 @@
-# Python tooling for server.py, the speech sidecar. The plugin itself is
-# TypeScript (package.json); this file only configures ruff and pytest.
+# Python tooling for the speech engine (engine/, its own package) and the
+# scripts. The plugin itself is TypeScript (package.json); this file only
+# configures ruff and pytest.
 [project]
 name = "edge-voice-sidecar"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [tool.ruff]
 line-length = 120

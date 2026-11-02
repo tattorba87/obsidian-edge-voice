@@ -1,0 +1,21 @@
+# The speech engine as an installable package. Users install it from this
+# repository's engine release with the hash-locked requirements files that
+# scripts/engine-requirements.py writes, never from PyPI. The pins below must
+# match src/setup.ts (PACKAGE, MLX_PACKAGES); a test checks they do.
+[project]
+name = "edge-voice-engine"
+version = "0.2.0"
+description = "Local speech engine for the Edge Voice Obsidian plugin"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = ["moonshine-voice==0.1.5"]
+
+[project.optional-dependencies]
+mlx = ["mlx-audio==0.5.9", "misaki[en]==0.9.4"]
+
+[project.scripts]
+edge-voice-engine = "edge_voice_engine.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14"]
+build-backend = "uv_build"

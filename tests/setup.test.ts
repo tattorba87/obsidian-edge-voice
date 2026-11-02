@@ -63,7 +63,7 @@ describe("setup", () => {
 	});
 
 	it("looks for the faster engine's model at the commit server.py pins", () => {
-		const server = readFileSync(join(__dirname, "..", "server.py"), "utf8");
+		const server = readFileSync(join(__dirname, "..", "engine", "src", "edge_voice_engine", "server.py"), "utf8");
 		const revision = /^MLX_REVISION = "([0-9a-f]{40})"/m.exec(server)?.[1];
 		expect(revision).toBeDefined();
 		expect(mlxModelDir()).toBe(
@@ -94,5 +94,16 @@ describe("setup", () => {
 	it("locks the faster engine's packages at the versions setup names", () => {
 		const lock = readFileSync(join(__dirname, "..", "locks", "darwin-arm64-mlx.txt"), "utf8");
 		for (const spec of MLX_PACKAGES) expect(lock).toContain(`${spec.replace("[en]", "")} \\`);
+	});
+
+	it("pins the engine package to what setup installs", () => {
+		// Both routes, in-plugin setup and the engine release, must install the same engine.
+		const project = readFileSync(join(__dirname, "..", "engine", "pyproject.toml"), "utf8");
+		const list = (name: string) =>
+			[...(project.match(new RegExp(`^${name} = \\[(.*)\\]$`, "m"))?.[1] ?? "").matchAll(/"([^"]+)"/g)].map(
+				(match) => match[1],
+			);
+		expect(list("dependencies")).toEqual([PACKAGE]);
+		expect(list("mlx")).toEqual(MLX_PACKAGES);
 	});
 });
