@@ -777,6 +777,9 @@ class ReaderSettingTab extends PluginSettingTab {
 	/** Which folded sections are open, kept when the page is drawn again. */
 	private open = new Set<string>();
 
+	/** Asks the engine for the voices again and redraws the voice rows (set by display). */
+	private refreshVoices?: () => void;
+
 	/** A section folded away under a heading with a hint beside it, closed unless opened. */
 	private fold(
 		parentEl: HTMLElement,
@@ -803,6 +806,7 @@ class ReaderSettingTab extends PluginSettingTab {
 			.setDesc("Kokoro voices sound the most natural; Piper voices start reading sooner.");
 		const moreSetting = new Setting(containerEl).setName("Get another voice");
 		this.showVoices(voiceSetting, moreSetting);
+		this.refreshVoices = () => this.showVoices(voiceSetting, moreSetting);
 
 		new Setting(containerEl)
 			.setName("Speed")
@@ -1066,7 +1070,13 @@ class ReaderSettingTab extends PluginSettingTab {
 			});
 		};
 		engine.addButton((button) =>
-			button.setButtonText("Setup steps").onClick(() => this.plugin.openSetup(() => this.display())),
+			button.setButtonText("Setup steps").onClick(() =>
+				// Once the engine is found, refresh what depends on it, not the whole tab.
+				this.plugin.openSetup(() => {
+					lookForEngine();
+					this.refreshVoices?.();
+				}),
+			),
 		);
 		engine.addButton((button) => button.setButtonText("Check again").onClick(lookForEngine));
 		lookForEngine();

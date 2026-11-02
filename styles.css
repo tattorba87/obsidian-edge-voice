@@ -462,11 +462,13 @@ body.theme-dark {
 	transition: width 200ms ease;
 }
 
+/* Each selector is as specific as the rule that starts its animation and
+   comes after it, so it wins without needing to be marked important. */
 @media (prefers-reduced-motion: reduce) {
 	.edge-voice-eq-bar,
-	.edge-voice-indicator::before,
-	.edge-voice-bar {
-		animation: none !important;
+	.edge-voice-bar.edge-voice-synthesizing,
+	.edge-voice-status[data-state] .edge-voice-indicator::before {
+		animation: none;
 	}
 }
 

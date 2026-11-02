@@ -1,5 +1,8 @@
-import builtins from "builtin-modules";
 import esbuild from "esbuild";
+import { builtinModules } from "node:module";
+
+// Node's own modules, also under the node: prefix: Obsidian's Electron provides them.
+const builtins = [...builtinModules, ...builtinModules.map((name) => `node:${name}`)];
 
 /** How main.js is built; the sandbox (scripts/sandbox) builds with these too. */
 export function buildOptions(production) {
