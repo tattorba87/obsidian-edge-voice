@@ -1,16 +1,13 @@
 # Records the README's demo (demo.mp4 with sound, demo.gif without) on an
 # Apple silicon runner: the engine set up with the steps people are shown,
 # the real voice, and a sandbox Obsidian reading a note and a PDF. Run by hand
-# (Actions → Demo → Run workflow); the videos come back as an artifact to
+# (Actions → Demo → Run workflow; about 15 macOS minutes, billed at 10x while
+# the repository is private); the videos come back as an artifact to
 # review before they go into docs/media.
 name: Demo
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - scripts/demo/**
-      - .github/workflows/demo.yml
 
 permissions:
   contents: read
