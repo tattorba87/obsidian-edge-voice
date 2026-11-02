@@ -493,3 +493,10 @@ def test_readme_voice_tables_match_the_catalog():
         [sys.executable, "-I", str(ROOT / "scripts" / "voice-table.py"), "--check"], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_voices_list_works_on_a_legacy_windows_console(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    result = run_command("voices", "list", home=home, voice_manifest=catalog_manifest(), PYTHONIOENCODING="cp1252")
+    assert result.returncode == 0, result.stderr
+    assert "* " in result.stdout and "Heart - American English - female - Kokoro" in result.stdout

@@ -148,9 +148,9 @@ def megabytes(size: int) -> str:
     return f"{round(size / 1_000_000)} MB"
 
 
-def label(voice: dict) -> str:
+def label(voice: dict, separator: str = " · ") -> str:
     """'Heart · American English · female · Kokoro', for lists."""
     parts = [voice["name"], voice["accent"], voice["gender"], voice["engine"]]
     if voice["quality"]:
         parts.append(voice["quality"] + " quality")
-    return " · ".join(part for part in parts if part)
+    return separator.join(part for part in parts if part)

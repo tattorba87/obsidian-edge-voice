@@ -28,6 +28,15 @@ def voice_id(value: str) -> str:
     return value
 
 
+def symbols() -> tuple[str, str]:
+    """★ and · where the console can show them; Windows' legacy code pages can't."""
+    try:
+        "★·…".encode(sys.stdout.encoding or "ascii")
+        return "★", " · "
+    except (LookupError, UnicodeEncodeError):
+        return "*", " - "
+
+
 def show(voices: list[dict], as_json: bool) -> int:
     if as_json:
         print(json.dumps(voices, indent=2))
@@ -35,12 +44,13 @@ def show(voices: list[dict], as_json: bool) -> int:
     if not voices:
         print("No voices downloaded yet. See: edge-voice-engine voices list")
         return 0
+    star, separator = symbols()
     rows = [("", "Voice", "ID", "Download", "Faster")]
     for voice in voices:
         rows.append(
             (
-                "★" if voice["recommended"] else "",
-                label(voice),
+                star if voice["recommended"] else "",
+                label(voice, separator),
                 voice["id"],
                 "installed" if voice["installed"] else megabytes(voice["download"]),
                 "yes" if voice["faster"] else "",
@@ -50,7 +60,7 @@ def show(voices: list[dict], as_json: bool) -> int:
     for row in rows:
         print("  ".join(cell.ljust(width) for cell, width in zip(row, widths, strict=True)).rstrip())
     print()
-    print("★ recommended. Get one with: edge-voice-engine voices get <ID>  (several IDs at once work too)")
+    print(f"{star} recommended. Get one with: edge-voice-engine voices get <ID>  (several IDs at once work too)")
     print("Faster: also works with --faster, the faster engine on Apple silicon.")
     print("Hear them first: Kokoro", SAMPLES["Kokoro"], " Piper", SAMPLES["Piper"])
     return 0
@@ -71,6 +81,10 @@ def main(argv: list[str]) -> int:
     )
     get.add_argument("--faster", action="store_true", help="also get it for the faster engine (Apple silicon)")
     args = parser.parse_args(argv)
+    # Never fail over a character the console can't show (Windows' legacy code pages).
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
 
     from moonshine_voice.download import tts_asset_cache_path
 
