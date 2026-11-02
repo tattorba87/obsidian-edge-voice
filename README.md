@@ -1,12 +1,12 @@
 # Edge Voice
 
-An Obsidian plugin that reads notes and PDFs aloud with speech models running on your own computer, highlighting each sentence and word as it is spoken. Nothing leaves your machine once a voice has downloaded.
+An Obsidian plugin that reads notes and PDFs aloud with speech models running on your own computer, highlighting each sentence and word as it is spoken. Your notes never leave your computer, and the plugin itself never downloads or installs anything: you set up its speech engine yourself, with a few commands it shows you.
 
 The speech engine today is [Moonshine](https://github.com/moonshine-ai/moonshine) (Kokoro and Piper voices, on the CPU). The plugin talks to it through a small engine interface, so other engines can be added.
 
 ## How it works
 
-The plugin starts `server.py` in a private Python environment that has `moonshine_voice` installed, and asks it for one sentence of audio at a time over stdin/stdout. It plays the audio with Web Audio and synthesizes a couple of sentences ahead, so there is no gap between them.
+The plugin starts the speech engine (`python -I -m edge_voice_engine`, from the environment you set up) and asks it for one sentence of audio at a time over stdin/stdout. The engine reads voices from disk only; it never downloads. It plays the audio with Web Audio and synthesizes a couple of sentences ahead, so there is no gap between them.
 
 - **PDFs**: text comes from pdf.js (Obsidian's `loadPdfJs`), page by page. The sentence and the word being spoken are drawn as boxes over the page, positioned from the viewer's text layer, and the view follows along onto the next page.
 - **Notes**: reads from the cursor to the end of the note. It skips frontmatter, code, comments, embeds, tables and URLs. Highlighting works in Source mode, Live Preview (including rendered callouts and math blocks) and Reading view: rendered text is matched word by word and painted with the CSS Custom Highlight API.
@@ -15,24 +15,34 @@ The plugin starts `server.py` in a private Python environment that has `moonshin
 
 Works in Obsidian desktop on macOS, Windows and Linux.
 
-Install and enable the plugin. It installs nothing by itself: a notice offers to set up its speech engine, and pressing play does the same. The setup window lists what will be downloaded, from where, and where it goes; nothing is installed until you click **Install**. It then downloads the default voice (Kokoro, `kokoro_af_bella`) and tells you when it's ready to read. If setup fails, the window shows the log and a way to try again.
+Obsidian plugins can't install programs, so Edge Voice doesn't: you set up its speech engine yourself, once. Install and enable the plugin; when it can't find the engine, it shows the steps for your computer, each with what it does, where its downloads come from, and a Copy button. On a Mac:
 
-Setup downloads about 100 MB into `~/.edge-voice`, once: [uv](https://docs.astral.sh/uv/) (a pinned release, checked against its published SHA-256), a private Python 3.12 that uv installs, and the [moonshine-voice](https://pypi.org/project/moonshine-voice/) package. Every package is installed from a lock with exact versions and hashes, so nothing changed or substituted can be installed. The voice adds a few hundred MB. Nothing else is installed, nothing runs at login, and your notes never leave your computer. Delete `~/.edge-voice` to remove it all.
+1. **Install [uv](https://docs.astral.sh/uv/getting-started/installation/)**, Astral's widely used tool for installing Python programs, by following their instructions. Skip this if you have it.
+2. **Create the engine's folder**, with its own Python 3.12 from uv:
+   `uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12`
+3. **Install the engine** from this repository's engine release:
+   `uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.2.0/requirements-darwin-arm64.txt`
+   The file at the end lists every package at an exact version with its fingerprint (SHA-256); read it first if you like. If anything downloaded differs, nothing is installed. Nothing is compiled, and nothing needs administrator rights.
+4. **Download a voice** from Moonshine's server (download.moonshine.ai):
+   `~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella`
+5. Back in Obsidian, press **Check again**.
 
-On Apple silicon Macs with macOS 14 or later, Edge Voice then sets up a faster engine in the background: Kokoro on the GPU with [MLX](https://github.com/ml-explore/mlx), through [mlx-audio](https://pypi.org/project/mlx-audio/) (pinned). On GitHub's Apple silicon runners it synthesized about 2.2 times as fast as the standard engine and started speaking about 1.6 times sooner (`scripts/bench_engines.py`). It downloads a few hundred MB more, once: mlx-audio and what it needs (PyTorch, spaCy), spaCy's English model (pinned and checked against its SHA-256), and the Kokoro voice files from [Hugging Face](https://huggingface.co/mlx-community/Kokoro-82M-bf16), into `~/.edge-voice` like the rest. Reading carries on with the standard engine until it's ready, and goes back to it if the faster one can't load. Turn it off under Settings → Edge Voice → Advanced → Faster voice engine. Advanced, folded away at the bottom of the settings, also has the engine itself (Reinstall), the Python it runs in, and how many sentences to prepare ahead; none of them need changing normally.
+Windows uses the same steps in PowerShell, and Linux and Intel Macs name their own requirements file; Edge Voice shows the right ones, and so do the engine release's notes. Everything goes into `~/.edge-voice` (about 100 MB for the engine, plus each voice); nothing runs at login. Delete that folder to remove it all.
 
-| Platform                       | Needs               | Engine package                                                              |
-| ------------------------------ | ------------------- | --------------------------------------------------------------------------- |
-| macOS, Apple Silicon and Intel | macOS 13.4 or later | Built by this repository from the moonshine release (PyPI has no Intel one) |
-| Windows x64                    | Windows 10 or later | PyPI                                                                        |
-| Windows on ARM                 | Windows 11          | PyPI's x64 package, run with Windows' built-in x64 emulation                |
-| Linux x64 and ARM64            | glibc 2.34 or later | PyPI                                                                        |
+On Apple silicon Macs with macOS 14 or later there's a faster engine: Kokoro on the GPU with [MLX](https://github.com/ml-explore/mlx), through [mlx-audio](https://pypi.org/project/mlx-audio/). On GitHub's Apple silicon runners it synthesized about 2.2 times as fast as the standard engine and started speaking about 1.6 times sooner (`scripts/bench_engines.py`). Edge Voice's steps include it there: step 3 installs `requirements-darwin-arm64-mlx.txt` (a few hundred MB more: mlx-audio and what it needs, and spaCy's English model), and step 4 adds `--faster`, which also fetches the Kokoro voice files from [Hugging Face](https://huggingface.co/mlx-community/Kokoro-82M-bf16) at a pinned commit. The standard engine speaks if the faster one can't. Turn it off under Settings → Edge Voice → Advanced → Faster voice engine. Advanced, folded away at the bottom of the settings, also shows the engine Edge Voice found, a Python path to use another installation (a full path), and how many sentences to prepare ahead.
 
-The macOS packages come from this repository's `moonshine-voice-*` release, built by `.github/workflows/engine-wheels.yml`, and setup checks each against a pinned SHA-256 like uv.
+| Platform                       | Needs               | Engine package                                                              | Tested                          |
+| ------------------------------ | ------------------- | --------------------------------------------------------------------------- | ------------------------------- |
+| macOS, Apple Silicon and Intel | macOS 13.4 or later | Built by this repository from the moonshine release (PyPI has no Intel one) | macOS 14 and 15, in CI          |
+| Windows x64                    | Windows 10 or later | PyPI                                                                        | In CI                           |
+| Windows on ARM                 | Windows 11          | PyPI's x64 package, run with Windows' built-in x64 emulation                | Not yet                         |
+| Linux x64 and ARM64            | glibc 2.34 or later | PyPI                                                                        | Ubuntu, in CI; Flatpak/Snap not |
+
+The macOS packages come from this repository's `moonshine-voice-*` release, built by `.github/workflows/engine-wheels.yml`. Engine releases (`engine-*`) are built by `.github/workflows/engine-release.yml`; nothing is published to PyPI.
 
 ### Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md): setup, the sandbox (`bun run sandbox`, a separate Obsidian for trying changes), the checks (`bun run check`), the rules, and how releases are made. Use the plugin's setup window for the locked speech engine installation described above.
+See [CONTRIBUTING.md](CONTRIBUTING.md): setup, the sandbox (`bun run sandbox`, a separate Obsidian for trying changes), the checks (`bun run check`), the rules, and how releases are made.
 
 ## Use
 
@@ -63,19 +73,19 @@ Reading belongs to the page it started on.
 
 When reading starts, a player bar floats above the status bar: previous / play-pause / next / stop, the speed with − and + buttons (1×, 1.5× or 2×; click the speed to pick one), and a speaker icon with a vertical volume slider that pops up on hover (click the icon to mute, or scroll over it). A new speed is heard from the next sentence; volume changes at once. While a sentence is being synthesized, a glow runs around the bar's edge. The ⌄ button shrinks the bar to a small pill in the corner, and _Show player controls_ in settings turns it off.
 
-The status bar shows what's happening: a spinner while a voice loads or a sentence is prepared (with a progress bar while a voice downloads), moving bars while reading, and resting bars while paused, with the page position and speed. Click it for the speed presets.
+The status bar shows what's happening: a spinner while a voice loads or a sentence is prepared, moving bars while reading, and resting bars while paused, with the page position and speed. Click it for the speed presets.
 
 ### Look and storage
 
 Pick the highlight colour under Settings → Highlight colour: amber, blue, green, pink, purple, red or grey. Each sets a soft tint for the sentence and a deeper shade for the spoken word; a preview shows the result.
 
-Settings → Storage (folded away at the bottom, with the total beside it) lists the downloaded voices, each with its size and a button to delete it, to keep them from piling up. A deleted voice downloads again the next time it's used. The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
+Settings → Storage (folded away at the bottom, with the total beside it) lists the downloaded voices, each with its size and a button to delete it, to keep them from piling up, and what an earlier version's setup left in `~/.edge-voice`. Get a deleted voice again with its command (see Voices). The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
 
 Bind the commands you use to hotkeys under Settings → Hotkeys.
 
 ## Voices
 
-Kokoro voices (`kokoro_*`, the default is `kokoro_af_bella`) sound the most natural and synthesize about twice as fast as they play, even on a 2020 Intel i5. Piper voices (`piper_*`) are faster still, so reading starts sooner. Pick one under Settings → Edge Voice → Voice; the list marks downloaded voices with ✓.
+Kokoro voices (`kokoro_*`, the default is `kokoro_af_bella`) sound the most natural and synthesize about twice as fast as they play, even on a 2020 Intel i5. Piper voices (`piper_*`) are faster still, so reading starts sooner. Pick one under Settings → Edge Voice → Voice, which lists the voices on your computer. To get another, choose it under _Get another voice_ and run the command shown (`edge-voice-engine voices get <voice>`; `voices list` shows them all).
 
 ## Limits
 

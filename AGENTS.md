@@ -15,8 +15,8 @@ Follow [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code rules, tests, manual c
 - `src/reader.ts` handles playback and synthesis ahead of playback. Keep engine-specific behavior out of it.
 - `src/markdown.ts`, `src/rendered.ts` and `src/pdf.ts` handle note text, rendered highlights and PDF reading. Preserve source positions when transforming text; verify highlighting in real Obsidian when changing these integrations.
 - `src/normalize.ts` and `src/sentences.ts` prepare speech text. Pronunciation changes need both automated coverage and listening with the real engine.
-- `src/sidecar.ts` owns the JSON-lines connection to the engine (`engine/src/edge_voice_engine/server.py`, also an installable package; see `engine/`). Keep the protocol backward compatible within a minor version and document new requests in the server docstring.
-- `src/setup.ts` installs the engines from `locks/`; `src/engine-setup.ts` coordinates setup. The engine's `server.py` and the locks are bundled into `main.js` as text by esbuild. Preserve pinned versions and checksum verification.
+- `src/sidecar.ts` owns the JSON-lines connection to the engine (the `edge-voice-engine` package in `engine/`, run as `python -I -u -m edge_voice_engine`). Keep the protocol backward compatible within a minor version and document new requests in the server docstring.
+- The plugin installs and downloads nothing. `src/engine.ts` finds the engine the person installed and writes the setup steps shown to them; `engine/` is the engine package, `engine/pins.json` and `locks/` what its releases install. Preserve pinned versions, checksum verification, and setup commands that stay readable and safe-looking.
 - Prefer documented Obsidian APIs and plugin lifecycle cleanup. Where rendering integrations rely on Obsidian DOM structure or internals, keep the dependency isolated and verify it with `tests/obsidian/` and manual testing.
 
 ## Validation and handoff
@@ -30,5 +30,5 @@ Follow [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code rules, tests, manual c
 
 - Preserve local processing of notes and the documented setup/voice downloads. Do not add telemetry, undisclosed network calls or logging of note contents or secrets.
 - Consult current [developer policies](https://docs.obsidian.md/community-directory/developer-policies), [submission requirements](https://docs.obsidian.md/community-directory/submission-requirements-for-plugins) and [release guidance](https://docs.obsidian.md/Plugins/Releasing/Submit%20your%20plugin) when preparing a Community directory submission. Disclose anything that could not be verified.
-- Community directory policy currently prohibits installing or updating plugin dependencies. The existing automatic Python/engine setup needs policy clarification before submission; documented downloads alone do not establish compliance. Do not silently redesign setup or claim publication readiness.
+- Community directory policy prohibits installing or updating plugin dependencies. Edge Voice installs and downloads nothing itself; people run the setup commands it shows. Keep it that way: never add in-plugin downloads or installs. The Obsidian team hasn't confirmed this approach; don't claim publication readiness.
 - Do not create releases, push tags, submit directory listings, change repository settings, commit or push unless asked. The release instructions describe the process; they do not authorize executing it.
