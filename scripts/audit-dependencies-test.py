@@ -129,5 +129,66 @@ class ReportingTests(unittest.TestCase):
         self.assertIn("Coverage incomplete", audit.markdown({"test": report}))
 
 
+class ReleaseGateTests(unittest.TestCase):
+    def setUp(self):
+        self.policy = {
+            "reviewed": "2026-11-02",
+            "reviewBy": "2026-12-02",
+            "advisories": [{"package": "moment", "id": "GHSA-4p3w-j4w9-5jqw", "reason": "dev SDK pin"}],
+        }
+        self.manifest = {"devDependencies": {"obsidian": "1.14.4"}}
+        self.today = audit.date(2026, 11, 2)
+
+    def reports(self, package="moment", advisory="GHSA-4p3w-j4w9-5jqw", severity="moderate"):
+        bun = audit.bun_report({package: [{"url": "https://github.com/advisories/" + advisory, "severity": severity}]})
+        bun["errors"] = []
+        return {
+            "linux-x64.txt": {"packages": 1, "findings": [], "gaps": ["native library gap"], "errors": []},
+            "bun.lock": bun,
+        }
+
+    def gate(self, reports):
+        return audit.release_gate(reports, self.policy, self.manifest, self.today)
+
+    def test_reviewed_dev_exception_passes_without_hiding_gaps(self):
+        blocked, accepted = self.gate(self.reports())
+        self.assertEqual(blocked, [])
+        self.assertEqual(len(accepted), 1)
+
+    def test_any_python_advisory_blocks_even_if_id_allowed_for_bun(self):
+        reports = self.reports()
+        reports["linux-x64.txt"]["findings"] = ["moment: GHSA-4p3w-j4w9-5jqw"]
+        self.assertTrue(self.gate(reports)[0])
+
+    def test_new_bun_advisory_blocks_even_on_same_package(self):
+        self.assertTrue(self.gate(self.reports(advisory="GHSA-aaaa-bbbb-cccc"))[0])
+        self.assertTrue(self.gate(self.reports(package="other"))[0])
+
+    def test_high_severity_or_production_dependency_disables_exception(self):
+        self.assertTrue(self.gate(self.reports(severity="high"))[0])
+        self.manifest["dependencies"] = {"something": "1.0"}
+        self.assertTrue(self.gate(self.reports())[0])
+
+    def test_expired_future_or_missing_review_fails(self):
+        for changes in [{"reviewBy": "2026-11-01"}, {"reviewed": "2026-11-03"}, {"reviewed": "invalid"}]:
+            with self.subTest(changes=changes):
+                policy = {**self.policy, **changes}
+                with self.assertRaises(ValueError):
+                    audit.release_gate(self.reports(), policy, self.manifest, self.today)
+
+    def test_missing_reason_or_wildcard_advisory_rejected(self):
+        for changes in [{"reason": ""}, {"id": "*"}]:
+            with self.subTest(changes=changes):
+                self.policy["advisories"][0].update(changes)
+                with self.assertRaises(ValueError):
+                    self.gate(self.reports())
+
+    def test_scanner_errors_bun_gaps_and_missing_records_block(self):
+        for field, value in [("errors", ["network error"]), ("gaps", ["unmapped registry"]), ("advisories", [])]:
+            reports = self.reports()
+            reports["bun.lock"][field] = value
+            self.assertTrue(self.gate(reports)[0])
+
+
 if __name__ == "__main__":
     unittest.main()
