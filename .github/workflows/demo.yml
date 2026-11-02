@@ -1,0 +1,70 @@
+# Records the README's demo (demo.mp4 with sound, demo.gif without) on an
+# Apple silicon runner: the engine set up with the steps people are shown,
+# the real voice, and a sandbox Obsidian reading a note and a PDF. Run by hand
+# (Actions → Demo → Run workflow; about 15 macOS minutes, billed at 10x while
+# the repository is private); the videos come back as an artifact to
+# review before they go into docs/media.
+name: Demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BASE: http://127.0.0.1:8765
+  VOICE: kokoro_af_heart
+  OBSIDIAN_VERSION: 1.14.5
+  OBSIDIAN_SHA256: be79e6410d80fa705218aa4e8cb24ce8418cf16e13be4036227a5659b1f6aab2
+
+jobs:
+  record:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Build the engine release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/build-engine-release.sh release "$BASE"
+      - name: Set up the engine with the steps Edge Voice shows
+        run: |
+          (cd release && nohup python3 -m http.server 8765 >/dev/null 2>&1 &)
+          for _ in $(seq 30); do curl -sSf "$BASE/SHA256SUMS" >/dev/null && break; sleep 1; done
+          bun scripts/setup-steps.ts darwin arm64 false "$VOICE" "$BASE" > steps.json
+          python3 -I -c "import json, sys; print('\n'.join(json.load(open(sys.argv[1]))))" steps.json |
+            while IFS= read -r command; do
+              echo "+ $command"
+              bash -ec "$command" < /dev/null
+            done
+      - name: Install Obsidian and ffmpeg
+        run: |
+          dmg="Obsidian-${OBSIDIAN_VERSION}.dmg"
+          curl -fsSLO "https://github.com/obsidianmd/obsidian-releases/releases/download/v${OBSIDIAN_VERSION}/${dmg}"
+          echo "${OBSIDIAN_SHA256}  ${dmg}" | shasum -a 256 -c -
+          hdiutil attach -nobrowse -quiet -mountpoint /Volumes/Obsidian "$dmg"
+          cp -R /Volumes/Obsidian/Obsidian.app /Applications/
+          hdiutil detach -quiet /Volumes/Obsidian
+          brew install --quiet ffmpeg
+      - name: Record
+        run: bun scripts/demo/record.ts demo-out
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: demo
+          path: |
+            demo-out/demo.mp4
+            demo-out/demo.gif
+            demo-out/last.png
+            demo-out/timing.json
+          if-no-files-found: ignore
