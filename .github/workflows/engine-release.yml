@@ -1,0 +1,90 @@
+name: Engine release
+
+# Builds an engine release (scripts/build-engine-release.sh) and, only when
+# "publish" is ticked, publishes it as engine-<version>, with the version
+# from engine/pyproject.toml. Its notes carry the install commands and the
+# files' checksums. The Engine package workflow tests the same build first.
+# Downloads only work once the repository is public.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the release (otherwise build and check only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: false
+      - id: version
+        run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' engine/pyproject.toml)" >> "$GITHUB_OUTPUT"
+      - name: Build the release's files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/engine-${VERSION}"
+          scripts/build-engine-release.sh release "$base"
+          {
+            echo "The Edge Voice speech engine ${VERSION}. Install it with uv (https://docs.astral.sh/uv/getting-started/installation/), using the line for your computer. Every package is checked against the hash in the requirements file."
+            echo
+            for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do
+              echo "**${platform}:**"
+              echo '```'
+              echo "uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12 && uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r ${base}/requirements-${platform}.txt"
+              echo '```'
+            done
+            echo "**darwin-arm64, with the faster engine (macOS 14 or later):** the same, with \`requirements-darwin-arm64-mlx.txt\`."
+            echo
+            echo "**Windows (PowerShell, x64 and ARM):**"
+            echo '```'
+            echo "uv venv --clear --managed-python \"\$HOME\\.edge-voice\\engine\" --python 3.12; uv pip install --python \"\$HOME\\.edge-voice\\engine\" --require-hashes --no-build -r ${base}/requirements-win32-x64.txt"
+            echo '```'
+            echo
+            echo "SHA-256 of the files:"
+            echo '```'
+            cat release/SHA256SUMS
+            echo '```'
+          } > release/release-notes.md
+          cat release/release-notes.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: engine-release
+          path: release/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # No checkout or execution of built code; only this run's artifact.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: engine-release
+          path: release
+      - name: Publish engine-${{ needs.build.outputs.version }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          cd release
+          sha256sum -c SHA256SUMS
+          # Not marked latest, so it never stands in for a plugin release. Fails if the tag exists.
+          gh release create "engine-${VERSION}" ./*.whl ./requirements-*.txt SHA256SUMS \
+            --title "Speech engine ${VERSION}" --notes-file release-notes.md --latest=false --target "$GITHUB_SHA"
