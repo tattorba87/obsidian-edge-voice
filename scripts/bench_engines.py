@@ -24,7 +24,9 @@ import json
 import platform
 import resource
 import statistics
-import subprocess
+
+# Benchmark uses a fixed sysctl binary and argument arrays.
+import subprocess  # nosec B404
 import sys
 import time
 import wave
@@ -136,7 +138,13 @@ ENGINES = {"moonshine": Moonshine, "mlx": Mlx}
 def machine() -> dict:
     def sysctl(key: str) -> str:
         try:
-            return subprocess.run(["sysctl", "-n", key], capture_output=True, text=True, check=True).stdout.strip()
+            # Absolute binary; keys are the fixed machine properties below, never user text.
+            return subprocess.run(  # nosec B603
+                ["/usr/sbin/sysctl", "-n", key],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
         except (OSError, subprocess.CalledProcessError):
             return "unknown"
 

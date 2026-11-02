@@ -76,7 +76,8 @@ def private_hugging_face(offline: bool = True) -> None:
     else:
         os.environ.pop("HF_HUB_OFFLINE", None)
     os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
-    os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+    # Boolean opt-out of implicit authentication, not a password or token.
+    os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"  # nosec B105
     os.environ.pop("HF_TOKEN", None)
     os.environ.pop("HUGGING_FACE_HUB_TOKEN", None)
 
@@ -91,7 +92,10 @@ class MlxVoice:
 
         # The voice file at the pinned commit, given to mlx-audio by path.
         name = voice.removeprefix("kokoro_")
-        self.voice = hf_hub_download(MLX_WEIGHTS, f"voices/{name}.safetensors", revision=MLX_REVISION)
+        # CI checks MLX_REVISION is a full commit SHA; Bandit cannot follow the constant.
+        self.voice = hf_hub_download(  # nosec B615
+            MLX_WEIGHTS, f"voices/{name}.safetensors", revision=MLX_REVISION
+        )
         self.model = load_model(MLX_WEIGHTS, revision=MLX_REVISION)
 
     def synthesize(self, text, speed=None):

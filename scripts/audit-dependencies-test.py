@@ -1,7 +1,9 @@
 """Reporting checks: findings, skipped artifacts and tool failures must stay visible."""
 
 import importlib.util
-import subprocess
+
+# Tests construct CompletedProcess records; no external process input.
+import subprocess  # nosec B404
 import tempfile
 import unittest
 from pathlib import Path
