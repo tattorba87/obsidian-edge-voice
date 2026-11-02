@@ -15,7 +15,7 @@ OUT="$1"
 BASE="$2"
 [ -n "$OUT" ] && [ -n "$BASE" ] || { echo "usage: $0 <out dir> <base url>" >&2; exit 2; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ENGINE_TAG=$(sed -n 's/^const ENGINE_TAG = "\(.*\)";$/\1/p' "${ROOT}/src/setup.ts")
+ENGINE_TAG=$(python3 -I -c "import json, sys; print(json.load(open(sys.argv[1]))['moonshine']['release'])" "${ROOT}/engine/pins.json")
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 

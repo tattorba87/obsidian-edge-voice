@@ -5,7 +5,7 @@ name: Engine wheels
 # release for macOS 13.4, the floor of the ONNX Runtime it bundles, and
 # attached to a release here (moonshine-voice-<version>) that the plugin's
 # setup downloads from. Copy the checksums from that release's notes into
-# ENGINE_WHEELS in src/setup.ts.
+# moonshine.macWheels in engine/pins.json.
 on:
   workflow_dispatch:
     inputs:

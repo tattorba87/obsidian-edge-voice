@@ -6,7 +6,7 @@ exact version with its hashes) plus the engine wheel, so one
 and refuses anything whose bytes differ. What isn't on PyPI as a wheel is
 named by URL with its hash: the engine wheel, the Mac moonshine-voice wheels
 and a docopt wheel (all in the release), and spaCy's English model (from
-spaCy's own release). A URL can't be answered by a same-named package from
+spaCy's own release, as engine/pins.json names it). A URL can't be answered by a same-named package from
 PyPI, which matters because we don't publish there.
 
     python scripts/engine-requirements.py <dist dir> <base url> <out dir>
@@ -17,6 +17,7 @@ Windows on ARM uses the x64 file, as setup uses the x64 lock there.
 """
 
 import hashlib
+import json
 import re
 import sys
 from pathlib import Path
@@ -87,14 +88,11 @@ def docopt_wheel(blocks: dict[str, str], dist: Path, base: str) -> None:
 
 
 def spacy_model(blocks: dict[str, str]) -> None:
-    """Names spaCy's English model by its URL in src/setup.ts; it isn't on PyPI."""
-    setup = (ROOT / "src" / "setup.ts").read_text()
-    model = re.search(r'const SPACY_MODEL = \{\s*url: "([^"]+)",\s*asset: "[^"]+",\s*sha256: "([0-9a-f]{64})"', setup)
-    if not model:
-        fail("SPACY_MODEL not found in src/setup.ts")
-    if model.group(2) not in locked_hashes(blocks["en-core-web-sm"]):
-        fail("SPACY_MODEL's checksum in src/setup.ts isn't the one the lock pins")
-    blocks["en-core-web-sm"] = by_url("en-core-web-sm", model.group(1), model.group(2))
+    """Names spaCy's English model by its URL in engine/pins.json; it isn't on PyPI."""
+    model = json.loads((ROOT / "engine" / "pins.json").read_text())["mlx"]["spacyModel"]
+    if model["sha256"] not in locked_hashes(blocks["en-core-web-sm"]):
+        fail("the spaCy model's checksum in engine/pins.json isn't the one the lock pins")
+    blocks["en-core-web-sm"] = by_url("en-core-web-sm", model["url"], model["sha256"])
 
 
 def main() -> None:

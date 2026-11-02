@@ -6,7 +6,7 @@ set -o pipefail
 # Setup installs them with --require-hashes, so a changed or substituted
 # package fails to install instead of running. Run again after changing the
 # engine's version, the Mac wheels or the faster engine's packages in
-# src/setup.ts, and commit the result.
+# engine/pins.json, and commit the result.
 #
 # Needs uv and gh (the Mac wheels come from this repository's release).
 #
@@ -27,19 +27,32 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 COMPILE_ARGS=("$@")
 
-# What setup installs, read from src/setup.ts so the two can't disagree.
-setup="${ROOT}/src/setup.ts"
-engine=$(sed -n 's/^export const PACKAGE = "\(.*\)";$/\1/p' "${setup}")
-engine_tag=$(sed -n 's/^const ENGINE_TAG = "\(.*\)";$/\1/p' "${setup}")
-mlx_packages=$(sed -n 's/^export const MLX_PACKAGES = \[\(.*\)\];$/\1/p' "${setup}" | grep -o '"[^"]*"' | tr -d '"')
-model_url=$(sed -n '/^const SPACY_MODEL = {/,/};/s/^\turl: "\(.*\)",$/\1/p' "${setup}")
+# What the engine installs, from engine/pins.json.
+eval "$(python3 -I - "${ROOT}/engine/pins.json" <<'PINS'
+import json, shlex, sys
+pins = json.load(open(sys.argv[1]))
+values = {
+    "engine": pins["moonshine"]["package"],
+    "engine_tag": pins["moonshine"]["release"],
+    "mlx_packages": "\n".join(pins["mlx"]["packages"]),
+    "model_url": pins["mlx"]["spacyModel"]["url"],
+    "model_sha256": pins["mlx"]["spacyModel"]["sha256"],
+    "wheel_sums": "\n".join(f"{w['sha256']}  {w['asset']}" for w in pins["moonshine"]["macWheels"].values()),
+}
+for name, value in values.items():
+    print(f"{name}={shlex.quote(value)}")
+PINS
+)"
 version=$(echo "${engine}" | grep -o '[0-9][0-9.]*' | head -1)
 
 # The Mac wheels (built here, not on PyPI) and spaCy's English model (not on
-# PyPI either), for uv to find and hash.
+# PyPI either), for uv to find and hash. Each is checked against the checksum
+# reviewed into pins.json first, so a changed download can't become a new
+# trusted hash in the locks.
 mkdir -p "${WORK}/wheels"
 gh release download "${engine_tag}" -R tattorba87/obsidian-edge-voice -p '*.whl' -D "${WORK}/wheels"
 curl -sSLf -o "${WORK}/wheels/${model_url##*/}" "${model_url}"
+printf '%s\n%s  %s\n' "${wheel_sums}" "${model_sha256}" "${model_url##*/}" | (cd "${WORK}/wheels" && shasum -a 256 -c -)
 
 compile() {
 	local name="$1" platform="$2" macos="$3"
