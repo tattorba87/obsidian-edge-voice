@@ -1,5 +1,5 @@
 import { existsSync, promises as fs } from "fs";
-import { join, relative, sep } from "path";
+import { basename, dirname, isAbsolute, join, relative, sep } from "path";
 
 /** Something on disk the person can delete: a voice or a model family. */
 export interface StorageItem {
@@ -7,6 +7,8 @@ export interface StorageItem {
 	label: string;
 	description: string;
 	paths: string[];
+	/** The folder it was found in; deleting never reaches outside it. */
+	root: string;
 	bytes: number;
 }
 
@@ -42,7 +44,7 @@ export async function scanVoices(cacheDir: string): Promise<StorageItem[]> {
 	const root = join(cacheDir, TTS_DIR);
 	const groups = new Map<string, StorageItem>();
 	const add = (id: string, label: string, description: string, path: string, bytes: number) => {
-		const item = groups.get(id) ?? { id, label, description, paths: [], bytes: 0 };
+		const item = groups.get(id) ?? { id, label, description, paths: [], root, bytes: 0 };
 		item.paths.push(path);
 		item.bytes += bytes;
 		groups.set(id, item);
@@ -91,12 +93,39 @@ export async function scanMlxVoices(hfDir: string): Promise<StorageItem | null> 
 		description:
 			"The Kokoro model and voices the faster engine uses on Apple silicon. They download again when next used.",
 		paths: [hfDir],
+		root: hfDir,
 		bytes,
 	};
 }
 
+/**
+ * Deletes the item's files. Each must be inside the item's root (or the root
+ * itself) once links in the folders above it are resolved, so a wrong path or
+ * a folder replaced by a link can't make it delete anything else. A link
+ * inside the root is removed as a link; what it points to stays.
+ */
 export async function deleteItem(item: StorageItem): Promise<void> {
-	for (const path of item.paths) await fs.rm(path, { recursive: true, force: true });
+	const root = await fs.realpath(item.root).catch(() => null);
+	if (!root) return; // Nothing there to delete.
+	for (const path of item.paths) {
+		// The root itself (the faster engine's voices) is deleted where it really is.
+		const real = path === item.root ? root : await realLocation(path);
+		if (!real) continue;
+		if (!isWithin(real, root)) throw new Error(`Refusing to delete ${path}: it isn't inside ${item.root}.`);
+		await fs.rm(real, { recursive: true, force: true });
+	}
+}
+
+/** Where `path` really is: its folder with links resolved, and its own name (a link stays a link). */
+async function realLocation(path: string): Promise<string | null> {
+	const parent = await fs.realpath(dirname(path)).catch(() => null);
+	return parent && join(parent, basename(path));
+}
+
+/** Whether `path` is `root` or inside it. */
+function isWithin(path: string, root: string): boolean {
+	const rel = relative(root, path);
+	return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
 export function formatBytes(bytes: number): string {
