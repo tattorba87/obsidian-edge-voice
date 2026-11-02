@@ -1,23 +1,34 @@
-"""A stand-in for moonshine_voice, so server.py can be tested without the engine.
+"""A stand-in for moonshine_voice, so the engine can be tested without the real one.
 
 Like the real native library, it prints to stdout (fd 1) while loading; the
-server must keep that out of its protocol.
+server must keep that out of its protocol. Voices live as files in a cache
+folder (MOONSHINE_STUB_CACHE), and loading one that isn't there fails, as the
+real library does when told not to download. Loading without
+models_from(..., download=False) fails too: the engine must never download.
 """
 
 import os
+from pathlib import Path
 
-VOICES = {"en_us": ["kokoro_af_heart", "piper_en_US-lessac-medium"]}
+CATALOG = {"en_us": ["kokoro_af_heart", "piper_en_US-lessac-medium"]}
 
 
-def list_tts_voices(language):
-    return {"present": VOICES.get(language, [])[:1], "downloadable": VOICES.get(language, [])[1:]}
+def cache() -> Path:
+    return Path(os.environ["MOONSHINE_STUB_CACHE"])
+
+
+def list_tts_voices(language, root_path=None):
+    known = CATALOG.get(language, [])
+    present = [voice for voice in known if (Path(root_path or cache()) / f"{voice}.ort").exists()]
+    return {"present": present, "downloadable": [voice for voice in known if voice not in present]}
 
 
 class TextToSpeech:
     def __init__(self):
         self._language = "en_us"
         self._voice = None
-        self.loaded = False
+        self._root = None
+        self._download = True
         self.closed = False
 
     def language(self, code):
@@ -28,16 +39,17 @@ class TextToSpeech:
         self._voice = voice_id
         return self
 
-    def on_progress(self, handler):
-        self._progress = handler
+    def models_from(self, directory, *, download=False):
+        self._root = Path(directory)
+        self._download = download
         return self
 
     def load(self):
-        if self._voice and self._voice not in VOICES.get(self._language, []):
-            raise ValueError(f"no voice {self._voice!r}")
+        if self._download:
+            raise RuntimeError("the engine tried to download (no models_from(..., download=False))")
+        if self._voice and not (self._root / f"{self._voice}.ort").exists():
+            raise RuntimeError(f"voice {self._voice!r} not on disk")
         os.write(1, b"native library noise on stdout\n")
-        self._progress(1.0, "voice.ort")
-        self.loaded = True
         return self
 
     def synthesize(self, text, speed=None):

@@ -2,7 +2,7 @@
 
 import os
 
-from huggingface_hub import check_private
+from huggingface_hub import fetch
 
 
 class Audio:
@@ -32,7 +32,7 @@ class Model:
 
 
 def load_model(path, revision=None):
-    check_private(revision)
+    fetch(path, "model.safetensors", revision)
     if os.environ.get("MLX_STUB_FAIL"):
         raise RuntimeError("no Metal GPU")
     return Model()

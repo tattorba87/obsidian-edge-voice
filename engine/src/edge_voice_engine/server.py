@@ -23,8 +23,12 @@ previous one; additions within a protocol keep older plugins working.
   {"id": 4, "op": "paths"}
   -> {"id": 4, "ok": true, "cache": "/path/to/moonshine_voice/cache"}
 
-A failed request gets {"id": n, "error": "..."}. While a voice downloads, the
-server also emits {"event": "progress", "fraction": 0.4, "file": "..."}.
+A failed request gets {"id": n, "error": "..."}. The engine never downloads:
+voices are fetched beforehand by the person, with `edge-voice-engine voices get
+<voice>` (see voices.py). Loading a voice that isn't on disk fails with
+{"id": n, "error": "...", "missing": "<voice>"}, so the plugin can show that
+command. "voices" lists what's on disk ("present") and what the command can
+fetch ("downloadable").
 
 On Apple silicon, "load" can ask for Kokoro on MLX (the GPU, via mlx-audio):
 
@@ -56,15 +60,21 @@ MLX_WEIGHTS = "mlx-community/Kokoro-82M-bf16"
 MLX_REVISION = "a71e4d38b236d968966a2002c4c895dbd12b1c3c"
 
 
-def private_hugging_face() -> None:
-    """Keeps Hugging Face downloads in ~/.edge-voice, anonymous and without telemetry.
+def private_hugging_face(offline: bool = True) -> None:
+    """Keeps Hugging Face files in ~/.edge-voice, anonymous, without telemetry, and offline.
 
     Set before huggingface_hub is imported, since it reads these then. HF_HOME
     is forced, not defaulted: one set for other tools would put the files where
-    deleting ~/.edge-voice doesn't reach. Tokens are dropped, so nothing ties the
-    downloads to anyone's account.
+    deleting ~/.edge-voice doesn't reach. Tokens are dropped, so nothing ties
+    downloads to anyone's account. Offline unless the person is fetching a
+    voice themselves (`voices get --faster`): the engine the plugin runs only
+    reads what's already there.
     """
     os.environ["HF_HOME"] = str(Path.home() / ".edge-voice" / "hf")
+    if offline:
+        os.environ["HF_HUB_OFFLINE"] = "1"
+    else:
+        os.environ.pop("HF_HUB_OFFLINE", None)
     os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
     os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
     os.environ.pop("HF_TOKEN", None)
@@ -74,8 +84,8 @@ def private_hugging_face() -> None:
 class MlxVoice:
     """Kokoro on MLX, behind the same synthesize/close calls as moonshine-voice."""
 
-    def __init__(self, voice: str):
-        private_hugging_face()
+    def __init__(self, voice: str, offline: bool = True):
+        private_hugging_face(offline)
         from huggingface_hub import hf_hub_download
         from mlx_audio.tts.utils import load_model
 
@@ -92,6 +102,36 @@ class MlxVoice:
 
     def close(self):
         pass
+
+
+class MissingVoice(Exception):
+    """The voice isn't on disk; the person fetches it with `edge-voice-engine voices get`."""
+
+    def __init__(self, voice: str, faster: bool = False):
+        self.voice = voice
+        command = f"edge-voice-engine voices get {voice}" + (" --faster" if faster else "")
+        super().__init__(f"The voice {voice} isn't downloaded. Get it with: {command}")
+
+
+def moonshine_voice(language: str, voice: str):
+    """Opens a moonshine-voice voice from disk only; MissingVoice if it isn't there."""
+    from moonshine_voice import TextToSpeech, list_tts_voices
+    from moonshine_voice.download import tts_asset_cache_path
+
+    root = tts_asset_cache_path()
+    if voice and voice not in list_tts_voices(language, root_path=root)["present"]:
+        raise MissingVoice(voice)
+    tts = TextToSpeech().language(language)
+    if voice:
+        tts.voice(voice)
+    return tts.models_from(root, download=False).load()
+
+
+def mlx_missing(error: Exception) -> bool:
+    """Whether MLX failed only because its files aren't downloaded (Hugging Face is offline here)."""
+    seen = [error, error.__cause__, error.__context__]
+    names = {type(e).__name__ for e in seen if e is not None}
+    return bool(names & {"LocalEntryNotFoundError", "OfflineModeIsEnabled", "FileNotFoundError"})
 
 
 def mlx_refusal(language: str, voice: str):
@@ -141,14 +181,12 @@ def main() -> None:
     os.dup2(2, 1)
     sys.stdout = sys.stderr
 
-    from moonshine_voice import TextToSpeech, list_tts_voices
+    from moonshine_voice import list_tts_voices
+    from moonshine_voice.download import tts_asset_cache_path
 
     def send(message: dict) -> None:
         protocol.write(json.dumps(message) + "\n")
         protocol.flush()
-
-    def on_progress(fraction: float, file: str) -> None:
-        send({"event": "progress", "fraction": fraction, "file": str(file)})
 
     tts = None
     send({"event": "ready"})
@@ -175,14 +213,14 @@ def main() -> None:
                             candidate.synthesize("Ready.")
                         except Exception as error:  # Any MLX trouble: Moonshine speaks instead.
                             candidate = None
-                            fallback = f"the faster engine failed to load ({type(error).__name__}: {error})"
+                            fallback = (
+                                str(MissingVoice(voice, faster=True))
+                                if mlx_missing(error)
+                                else f"the faster engine failed to load ({type(error).__name__}: {error})"
+                            )
                 if candidate is None:
                     # Open the new voice first, so a bad choice keeps the old one.
-                    candidate = TextToSpeech().language(language)
-                    if voice:
-                        candidate.voice(voice)
-                    candidate.on_progress(on_progress)
-                    candidate.load()
+                    candidate = moonshine_voice(language, voice)
                     # ONNX Runtime's first run is slow; pay for it here, not on
                     # the first sentence someone is waiting to hear.
                     candidate.synthesize("Ready.")
@@ -227,10 +265,13 @@ def main() -> None:
 
                 send({"id": request_id, "ok": True, "cache": str(get_cache_dir())})
             elif op == "voices":
-                voices = list_tts_voices(engine_id(request.get("language"), "language", "en_us"))
+                language = engine_id(request.get("language"), "language", "en_us")
+                voices = list_tts_voices(language, root_path=tts_asset_cache_path())
                 send({"id": request_id, "ok": True, **voices})
             else:
                 raise ValueError(f"unknown op {op!r}")
+        except MissingVoice as error:
+            send({"id": request_id, "error": str(error), "missing": error.voice})
         except Exception as error:  # Reported to the plugin, which keeps going.
             send({"id": request_id, "error": f"{type(error).__name__}: {error}"})
 
