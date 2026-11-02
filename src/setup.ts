@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, promises as fs, readFileSync, writeFileSync } fr
 import { homedir, release } from "os";
 import { dirname, join } from "path";
 import { requestUrl } from "obsidian";
+import { childEnvironment } from "./environment";
 import lockDarwinArm64Mlx from "../locks/darwin-arm64-mlx.txt";
 import lockDarwinArm64 from "../locks/darwin-arm64.txt";
 import lockDarwinX64 from "../locks/darwin-x64.txt";
@@ -233,7 +234,7 @@ export async function installMlx(
 			"-c",
 			"import mlx.core as mx, mlx_audio.tts.utils, misaki.en; assert mx.metal.is_available(), 'no Metal GPU'",
 		],
-		process.env,
+		childEnvironment(),
 		progress,
 		signal,
 	);
@@ -266,7 +267,11 @@ function sidecarRequest(
 	signal: AbortSignal,
 ): Promise<Record<string, unknown>> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(python, ["-I", script], { stdio: ["pipe", "pipe", "pipe"] });
+		const child = spawn(python, ["-I", script], {
+			stdio: ["pipe", "pipe", "pipe"],
+			cwd: dirname(script),
+			env: childEnvironment(),
+		});
 		const onAbort = () => child.kill();
 		signal.addEventListener("abort", onAbort, { once: true });
 		let buffer = "";
@@ -316,7 +321,7 @@ async function writeLock(name: string, lock: string): Promise<string> {
 
 function uvEnv(): NodeJS.ProcessEnv {
 	return {
-		...process.env,
+		...childEnvironment(),
 		UV_PYTHON_INSTALL_DIR: join(SETUP_HOME, "python"),
 		UV_CACHE_DIR: join(SETUP_HOME, "cache"),
 		UV_NO_PROGRESS: "1",
@@ -367,7 +372,7 @@ export async function setUpEngine(progress: SetupProgress, signal: AbortSignal):
 	await runChecked(
 		VENV_PYTHON,
 		["-I", "-c", "from moonshine_voice.moonshine_api import _MoonshineLib; _MoonshineLib()"],
-		process.env,
+		childEnvironment(),
 		progress,
 		signal,
 	);
@@ -396,7 +401,7 @@ async function ensureUv(progress: SetupProgress, signal: AbortSignal): Promise<v
 		signal,
 	);
 	// tar ships with macOS, Linux and Windows 10+, and reads zip as well.
-	await runChecked("tar", ["-xf", archive, "-C", workDir], process.env, progress, signal);
+	await runChecked("tar", ["-xf", archive, "-C", workDir], childEnvironment(), progress, signal);
 	const found = await findFile(workDir, process.platform === "win32" ? "uv.exe" : "uv");
 	if (!found) throw new Error("The uv download didn't contain uv.");
 	await fs.mkdir(dirname(UV_PATH), { recursive: true });
@@ -447,8 +452,11 @@ async function runChecked(
 	progress: SetupProgress,
 	signal: AbortSignal,
 ): Promise<void> {
-	progress.log(`$ ${[command, ...args].join(" ")}`);
-	const code = await run(command, args, (line) => progress.log(line), env, signal);
+	// uv reads uv.toml and pyproject.toml settings from the working directory up, and the
+	// user's; --no-config keeps those from changing where packages come from.
+	const full = command === UV_PATH ? ["--no-config", ...args] : args;
+	progress.log(`$ ${[command, ...full].join(" ")}`);
+	const code = await run(command, full, (line) => progress.log(line), env, signal);
 	if (signal.aborted) throw new Error("Cancelled");
 	if (code !== 0) throw new Error(`${command.split(/[/\\]/).pop()} exited with code ${code}; see the log.`);
 }
@@ -458,7 +466,7 @@ function run(
 	command: string,
 	args: string[],
 	onLine: (line: string) => void,
-	env: NodeJS.ProcessEnv = process.env,
+	env: NodeJS.ProcessEnv = childEnvironment(),
 	signal?: AbortSignal,
 ): Promise<number> {
 	return new Promise((resolve, reject) => {

@@ -1,5 +1,8 @@
+import { copyFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import { fileURLToPath } from "url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CancelledError, Sidecar } from "../src/sidecar";
 
 const FAKE_SERVER = fileURLToPath(new URL("./fixtures/fake_server.py", import.meta.url));
@@ -60,5 +63,30 @@ describe("Sidecar", () => {
 		sidecar = new Sidecar("/nonexistent/python", FAKE_SERVER);
 		await expect(sidecar.synthesize("hi", 1)).rejects.toThrow(/Could not start/);
 		expect(sidecar.running).toBe(false);
+	});
+
+	it("starts the engine isolated: no module next to the script or on PYTHONPATH is loaded", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "edge-voice-isolation-"));
+		const planted = mkdtempSync(join(tmpdir(), "edge-voice-pythonpath-"));
+		try {
+			// Modules named like ones the server imports, which leave a marker if Python ever loads them.
+			const plant = (folder: string, module: string) =>
+				writeFileSync(
+					join(folder, `${module}.py`),
+					`open(${JSON.stringify(join(folder, `${module}-loaded`))}, "w").close()\n`,
+				);
+			copyFileSync(FAKE_SERVER, join(dir, "server.py"));
+			plant(dir, "base64");
+			plant(planted, "struct");
+			vi.stubEnv("PYTHONPATH", planted);
+			sidecar = new Sidecar(PYTHON, join(dir, "server.py"));
+			expect((await sidecar.synthesize("ok", 1)).samples.length).toBe(2);
+			expect(existsSync(join(dir, "base64-loaded"))).toBe(false);
+			expect(existsSync(join(planted, "struct-loaded"))).toBe(false);
+		} finally {
+			vi.unstubAllEnvs();
+			rmSync(dir, { recursive: true, force: true });
+			rmSync(planted, { recursive: true, force: true });
+		}
 	});
 });
