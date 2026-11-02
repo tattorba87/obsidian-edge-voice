@@ -1,0 +1,42 @@
+name: Dependency advisories
+
+on:
+  schedule:
+    - cron: "23 9 * * 1"
+  workflow_dispatch:
+  # Also validates new scanner changes before the workflow exists on main.
+  pull_request:
+    paths:
+      - .github/workflows/advisory-scan.yml
+      - scripts/audit-dependencies*.py
+      - locks/**
+      - bun.lock
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Check scanner reporting
+        run: uv run --no-project --python 3.12 scripts/audit-dependencies-test.py
+      - name: Query advisories for every Python lock and bun.lock
+        # --disable-pip queries pinned identities without installing engine/model packages.
+        # A nonzero result means advisories, gaps or a scanner error; inspect the report.
+        run: uv run --no-project --python 3.12 --with pip-audit==2.10.1 scripts/audit-dependencies.py
+      - name: Save reports even when findings or coverage gaps make the job fail
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-advisories
+          path: .scratch/security-audit/
+          if-no-files-found: error

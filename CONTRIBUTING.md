@@ -43,6 +43,21 @@ The sandbox lives in `.sandbox/` (gitignored): its own Obsidian profile, its own
 
 `bun run check` does not run `bun run format`, `bun run build` or `bun run test:obsidian`. CI runs the same checks plus a production build; secret scanning runs in a separate job. Run `bun run build` for changes to shipped code, bundling or dependencies.
 
+### Dependency advisories
+
+The **Dependency advisories** workflow runs weekly, by hand, and on pull requests changing its scanner or lock inputs. Start it with `gh workflow run advisory-scan.yml --ref <branch>` (the workflow must first exist on the default branch for manual dispatch). Read the run summary and download the `dependency-advisories` artifact for raw JSON and diagnostics.
+
+To run the same report locally:
+
+```bash
+uv run --no-project --python 3.12 scripts/audit-dependencies-test.py
+uv run --no-project --python 3.12 --with pip-audit==2.10.1 scripts/audit-dependencies.py
+```
+
+Reports go to `.scratch/security-audit/`. The scanner queries every `locks/*.txt`, including MLX, using pinned pip-audit with `--disable-pip --require-hashes`, and runs `bun audit --json` over all of `bun.lock`, including development dependencies. It queries advisory services with package names/versions; it does not install engine/model packages, validate artifact contents, change locks, apply fixes or open update PRs. Bun and uv must be available locally. Network access is required.
+
+Advisories, skipped/unmapped packages and scanner errors are reported separately. Custom Mac Moonshine wheels remain explicit coverage gaps even when a PyPI name/version query succeeds; bundled native libraries and externally downloaded model assets need separate review. A missing result, skipped package or failed query must not be interpreted as a clean audit. Exit 1 means advisories or gaps need review; exit 2 means a scanner/input error. Reports are uploaded even for nonzero results. A maintainer reviews findings and proposes any dependency changes separately; this reporting workflow does not alter the release gate.
+
 Use `bun run test`, not `bun test`: the latter is Bun's own test runner, not Vitest.
 
 The pre-commit hook formats and lint-fixes staged files and type-checks; the pre-push hook runs both test suites. Don't skip them (`--no-verify`) except to commit work in progress on a branch of your own.
