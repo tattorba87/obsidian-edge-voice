@@ -13,6 +13,14 @@ describe("normalizeForSpeech", () => {
 		["at 1.4 GHz", "at 1.4 gigahertz"],
 		["from 120 ms to 45ms", "from 120 milliseconds to 45 milliseconds"],
 		["a 2.7x speedup", "a 2.7 times speedup"],
+		// Plain decimals are read right as written; dotted runs and prices weren't.
+		["0.75 of it, and 2.4. Results", "0.75 of it, and 2.4. Results"],
+		["Version 1.2.3 and 10.0.1 are out", "Version 1 point 2 point 3 and 10 point 0 point 1 are out"],
+		["Server 192.168.0.1 is down", "Server 192 dot 168 dot 0 dot 1 is down"],
+		[
+			"$4.99 each, $1 or $1.01, £2.50 and €3.00",
+			"4 dollars 99 cents each, 1 dollar or 1 dollar 1 cent, 2 pounds 50 pence and 3 euros",
+		],
 		["in the 1990s and the 80s", "in the nineteen nineties and the eighties"],
 		["the 1st and 22nd runs", "the first and twenty second runs"],
 		["e.g. this, i.e. that", "for example, this, that is, that"],
