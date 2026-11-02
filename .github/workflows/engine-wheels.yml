@@ -12,6 +12,10 @@ on:
       moonshine-ref:
         description: moonshine tag to build (match the PyPI version setup installs elsewhere)
         default: v0.1.5
+      publish:
+        description: Publish the built wheels as a release (leave off for validation)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,13 +40,13 @@ jobs:
       UV_PYTHON: "3.12"
       UV_PYTHON_PREFERENCE: only-managed
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: moonshine-ai/moonshine
           ref: ${{ inputs.moonshine-ref }}
       # Only the LFS files a macOS build reads; the rest (Android, iOS, wasm) are hundreds of MB.
       - run: git lfs pull --include "core/cpp-annote/**,core/moonshine-tts/**,core/third-party/onnxruntime/lib/macos/${{ matrix.arch }}/**"
-      - uses: astral-sh/setup-uv@v10.2.0 # no moving major tags after v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - run: scripts/build-pip.sh
       - name: Check the wheel installs and its library loads on this processor
         working-directory: language-bindings/python
@@ -57,7 +61,7 @@ jobs:
             echo "$lib: macOS $minos"
             [ "$(printf '%s\n' "$minos" "$MACOSX_DEPLOYMENT_TARGET" | sort -V | tail -1)" = "$MACOSX_DEPLOYMENT_TARGET" ] || exit 1
           done
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheel-${{ matrix.arch }}
           path: language-bindings/python/dist/moonshine_voice-*.whl
@@ -65,11 +69,12 @@ jobs:
 
   release:
     needs: build
+    if: inputs.publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: wheel-*
           merge-multiple: true
