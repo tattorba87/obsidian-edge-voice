@@ -3,7 +3,7 @@ set -o pipefail
 
 # Assembles an engine release's files in <out dir>: the edge-voice-engine
 # wheel, the Mac moonshine-voice wheels this repository builds, a docopt wheel,
-# one hash-locked requirements file per platform, and SHA256SUMS. Users install
+# one hash-locked requirements file per platform, THIRD-PARTY-NOTICES.txt and SHA256SUMS. Users install
 # with one of the requirements files (see README); <base url> is where the
 # release's files will be downloadable from, and is written into those files.
 #
@@ -35,5 +35,7 @@ uv pip install -q --python "${WORK}/pip" --require-hashes --no-build -r "${ROOT}
 "${WORK}/pip/bin/python" -I -m pip wheel -q --no-build-isolation --no-deps --require-hashes -r "${WORK}/docopt.txt" -w "${OUT}"
 
 python3 -I "${ROOT}/scripts/engine-requirements.py" "${OUT}" "${BASE}" "${OUT}"
-(cd "${OUT}" && shasum -a 256 -- *.whl requirements-*.txt > SHA256SUMS)
+# The licences of what the release redistributes (scripts/third-party-notices.py).
+cp "${ROOT}/engine/THIRD-PARTY-NOTICES.txt" "${OUT}/"
+(cd "${OUT}" && shasum -a 256 -- *.whl requirements-*.txt THIRD-PARTY-NOTICES.txt > SHA256SUMS)
 cat "${OUT}/SHA256SUMS"

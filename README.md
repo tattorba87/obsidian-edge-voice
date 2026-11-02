@@ -279,6 +279,8 @@ Edge Voice is MIT licensed ([LICENSE](LICENSE)). It doesn't include the speech e
 - Faster engine: [MLX](https://github.com/ml-explore/mlx) and [mlx-audio](https://github.com/Blaizzy/mlx-audio) (MIT), [misaki](https://github.com/hexgrad/misaki) (Apache 2.0), [spaCy](https://github.com/explosion/spaCy) and its English model (MIT).
 - [uv](https://github.com/astral-sh/uv): MIT or Apache 2.0.
 
+The engine release includes macOS wheels of Moonshine that this repository builds; they contain ONNX Runtime (MIT) and other open-source libraries, whose licences are in the release's `THIRD-PARTY-NOTICES.txt` (from [`engine/THIRD-PARTY-NOTICES.txt`](engine/THIRD-PARTY-NOTICES.txt)).
+
 ## Security
 
 See [SECURITY.md](SECURITY.md) for security scope and private reporting instructions.
