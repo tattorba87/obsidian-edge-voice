@@ -7,3 +7,5 @@ Include the affected version, Obsidian version, operating system, reproduction s
 Reports are in scope for the Obsidian plugin; the `edge-voice-engine` package and its local stdin/stdout protocol; engine releases and their requirements files; the setup commands the plugin shows; voice downloads (`edge-voice-engine voices get`); storage handling; and the build and release workflows, including upstream components that affect Edge Voice.
 
 The plugin downloads and installs nothing. People run the setup and voice-download commands themselves. During reading, the engine runs offline and processes note and PDF text locally.
+
+Releases list SHA-256 checksums (`SHA256SUMS`) and, from plugin 0.1.1 and the next engine release on, carry artifact attestations. Verify a download with `gh attestation verify <file> --repo tattorba87/obsidian-edge-voice`. A file that fails verification, or a release without them where one is expected, is worth reporting.
