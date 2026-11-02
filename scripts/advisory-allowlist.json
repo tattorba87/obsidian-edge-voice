@@ -6,11 +6,6 @@
 			"package": "minimatch",
 			"id": "GHSA-g3hv-75wg-m249",
 			"reason": "Development-only lint stack: ESLint 9 and its lint plugins require affected minimatch majors; no compatible upstream update is available. No production Bun dependencies are permitted for this exception."
-		},
-		{
-			"package": "moment",
-			"id": "GHSA-4p3w-j4w9-5jqw",
-			"reason": "Development-only Obsidian SDK nested under eslint-plugin-obsidianmd pins moment 2.29.4; the direct SDK already uses fixed moment. No compatible lint-plugin update is available."
 		}
 	]
 }
