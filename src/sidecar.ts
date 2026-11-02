@@ -1,4 +1,6 @@
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
+import { dirname } from "path";
+import { childEnvironment } from "./environment";
 
 export interface Synthesis {
 	samples: Float32Array<ArrayBuffer>;
@@ -49,7 +51,13 @@ export class Sidecar {
 		if (this.ready) return this.ready;
 		this.ready = new Promise((resolve, reject) => {
 			let started = false;
-			const proc = spawn(this.python, ["-u", this.script], { stdio: "pipe" });
+			// -I: isolated mode, so no PYTHON* variable, user site-packages or module next to the
+			// script can change what runs; the engine comes only from the interpreter's environment.
+			const proc = spawn(this.python, ["-I", "-u", this.script], {
+				stdio: "pipe",
+				cwd: dirname(this.script),
+				env: childEnvironment(),
+			});
 			this.proc = proc;
 
 			proc.stdout.setEncoding("utf8");
