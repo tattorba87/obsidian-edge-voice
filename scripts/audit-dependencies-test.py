@@ -51,6 +51,39 @@ class ReportingTests(unittest.TestCase):
         )
         self.assertIn("custom Mac wheel", report["gaps"][0])
 
+    def test_skipped_or_missing_mac_package_has_one_wheel_gap(self):
+        for dependencies in [
+            [],
+            [{"name": "moonshine-voice", "skip_reason": "not on PyPI"}],
+            [{"name": "moonshine_voice", "skip_reason": "not on PyPI"}] * 2,
+        ]:
+            for platform in ["darwin-arm64.txt", "darwin-x64.txt"]:
+                with self.subTest(dependencies=dependencies, platform=platform):
+                    report = self.report("moonshine-voice==0.1.5", dependencies, platform)
+                    wheel_gaps = [gap for gap in report["gaps"] if gap.startswith("moonshine-voice:")]
+                    self.assertEqual(len(wheel_gaps), 1)
+                    self.assertIn("custom Mac wheel", wheel_gaps[0])
+                    self.assertIn("scanner:", wheel_gaps[0])
+                    self.assertEqual(len(report["gaps"]), 2)  # wheel plus native libraries
+
+    def test_native_libraries_are_gap_on_every_engine_platform(self):
+        for platform in ["darwin-arm64.txt", "darwin-x64.txt", "linux-arm64.txt", "linux-x64.txt", "win32-x64.txt"]:
+            with self.subTest(platform=platform):
+                report = self.report(
+                    "moonshine-voice==0.1.5",
+                    [{"name": "moonshine-voice", "version": "0.1.5", "vulns": []}],
+                    platform,
+                )
+                native_gaps = [gap for gap in report["gaps"] if gap.startswith("Native library coverage:")]
+                self.assertEqual(len(native_gaps), 1)
+                self.assertIn("ONNX Runtime and libmoonshine", native_gaps[0])
+
+    def test_lock_without_moonshine_does_not_claim_bundled_library_coverage(self):
+        report = self.report(
+            "example==1.0", [{"name": "example", "version": "1.0", "vulns": []}], "darwin-arm64-mlx.txt"
+        )
+        self.assertEqual(report["gaps"], [])
+
     def test_names_are_normalized(self):
         report = self.report("Some_Package==1.0", [{"name": "some-package", "version": "1.0", "vulns": []}])
         self.assertEqual(report["gaps"], [])

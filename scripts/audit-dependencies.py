@@ -27,13 +27,13 @@ def python_report(lock, data):
     if not isinstance(dependencies, list):
         raise ValueError("Invalid pip-audit dependencies")
     covered = set()
-    gaps = []
+    package_gaps = {}
     findings = []
     seen_advisories = set()
     for item in dependencies:
         name = item["name"]
         if "skip_reason" in item:
-            gaps.append(f"{name}: {item['skip_reason']}")
+            package_gaps[canonical(name)] = item["skip_reason"]
         else:
             covered.add(canonical(name))
             for vulnerability in item["vulns"]:
@@ -44,15 +44,21 @@ def python_report(lock, data):
                 fixes = ", ".join(vulnerability.get("fix_versions", [])) or "none listed"
                 findings.append(f"{name} {item['version']}: {vulnerability['id']} (fix: {fixes})")
     for name in sorted(expected - covered):
-        if not any(canonical(item["name"]) == name and "skip_reason" in item for item in dependencies):
-            gaps.append(f"{name}: absent from scanner results")
+        package_gaps.setdefault(name, "absent from scanner results")
+    if "moonshine-voice" in expected and lock.name in {"darwin-arm64.txt", "darwin-x64.txt"}:
+        scanner_reason = package_gaps.get("moonshine-voice")
+        # A skipped/missing package and the custom wheel are one package gap.
+        package_gaps["moonshine-voice"] = "PyPI name/version lookup does not audit the custom Mac wheel" + (
+            f"; scanner: {scanner_reason}" if scanner_reason else ""
+        )
+    gaps = [f"{name}: {reason}" for name, reason in sorted(package_gaps.items())]
+    if "moonshine-voice" in expected:
+        gaps.append(
+            "Native library coverage: ONNX Runtime and libmoonshine bundled inside moonshine-voice "
+            "are not audited by a PyPI name/version lookup"
+        )
     if ";" in re.sub(r"#.*", "", text):
         gaps.append("Environment markers need platform-specific coverage review")
-    if lock.name in {"darwin-arm64.txt", "darwin-x64.txt"}:
-        gaps.append(
-            "moonshine-voice: PyPI name/version lookup does not audit the custom Mac wheel "
-            "or its bundled native libraries"
-        )
     return {"packages": len(covered), "findings": findings, "gaps": gaps}
 
 
