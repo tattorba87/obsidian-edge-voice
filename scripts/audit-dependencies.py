@@ -5,7 +5,9 @@ import importlib.metadata
 import json
 import os
 import re
-import subprocess
+
+# Runs fixed audit tool argv without a shell.
+import subprocess  # nosec B404
 import sys
 from datetime import date
 from pathlib import Path
@@ -85,7 +87,15 @@ def bun_report(data):
 def run_scan(name, command, parser):
     report = {"packages": 0, "findings": [], "gaps": [], "errors": []}
     try:
-        completed = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, timeout=180, check=False)
+        completed = subprocess.run(
+            # command is built from fixed audit tools and paths, never note text.
+            command,  # nosec B603
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=180,
+            check=False,
+        )
         (OUTPUT / f"{name}.json").write_text(completed.stdout)
         (OUTPUT / f"{name}.log").write_text(completed.stderr)
         if completed.returncode not in (0, 1):

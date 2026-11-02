@@ -43,6 +43,8 @@ The sandbox lives in `.sandbox/` (gitignored): its own Obsidian profile, its own
 
 `bun run check` does not run `bun run format`, `bun run build` or `bun run test:obsidian`. CI runs the same checks plus a production build; secret scanning runs in a separate job. Run `bun run build` for changes to shipped code, bundling or dependencies.
 
+CI also runs Bandit 1.8.6 via uvx over every Python file in `engine/` and `scripts/`. Suppressions name a single check at a single expression, with the reason beside it; new findings fail CI. The Hugging Face revision suppression has a separate full-commit check. Raw findings are uploaded as `bandit-report`.
+
 ### Dependency advisories
 
 The **Dependency advisories** workflow runs weekly, by hand, and on pull requests changing its scanner or lock inputs. Start it with `gh workflow run advisory-scan.yml --ref <branch>`. If GitHub cannot resolve a new workflow by filename before merge, use its numeric workflow ID from a PR run instead. Read the run summary and download the `dependency-advisories` artifact for raw JSON and diagnostics.
