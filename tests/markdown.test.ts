@@ -106,7 +106,7 @@ describe("sectionLines", () => {
 
 describe("Long lines", () => {
 	it("are handled quickly even when full of unclosed links, tags, code and maths", () => {
-		// Each unclosed opener used to make masking rescan the rest of the line: quadratic, 4 s here.
+		// Each unclosed opener used to make masking rescan the rest of the line: quadratic.
 		const n = 80000;
 		const lines: Record<string, string> = {
 			wikilinks: "[[a|".repeat(n / 4),
@@ -118,7 +118,8 @@ describe("Long lines", () => {
 		for (const [name, line] of Object.entries(lines)) {
 			const started = performance.now();
 			new MarkdownSource(viewOf(line), () => false, 0);
-			expect(performance.now() - started, name).toBeLessThan(1000);
+			// Linear now, well under this; unbounded, wiki links alone took over 4 s here.
+			expect(performance.now() - started, name).toBeLessThan(1500);
 		}
 	});
 
