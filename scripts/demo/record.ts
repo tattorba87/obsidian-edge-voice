@@ -5,6 +5,11 @@
  * demo.mp4 (with sound) and demo.gif (silent, short, for the top of the README).
  *
  *     bun scripts/demo/record.ts [output folder]
+ *     DEMO_PDF=paper.pdf DEMO_PDF_FROM="We explore how" bun scripts/demo/record.ts [output folder]
+ *
+ * DEMO_PDF reads another PDF instead of the sample, starting at the first text
+ * containing DEMO_PDF_FROM. Use only a PDF that's free to show (CC BY, say), and
+ * credit it wherever the recording or a frame of it is used.
  *
  * Needs the engine set up (~/.edge-voice/engine) with the voice below, Obsidian
  * installed, and ffmpeg. It runs in CI (the Demo workflow), on a runner, so
