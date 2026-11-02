@@ -84,3 +84,7 @@ Kokoro voices (`kokoro_*`, the default is `kokoro_af_bella`) sound the most natu
 - Obsidian mobile can't start the Python sidecar, so phones and tablets aren't supported yet.
 - In PDFs, rotated margin text (like arXiv's sidebar stamp), page numbers, header or footer lines that repeat on neighbouring pages, and footnotes with their superscript marks are skipped. Footnotes are recognised as small print at the bottom of a page that starts with a footnote mark; turn this off under Settings → Skip footnotes in PDFs.
 - Scanned PDFs without a text layer have nothing to read.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for security scope and private reporting instructions. GitHub private reporting is pending maintainer activation; the policy records Steven's setup task. Please keep vulnerability details out of public issues.
