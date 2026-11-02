@@ -110,6 +110,10 @@ For Community directory submission, resolve the engine installation against the 
 
 Only perform these steps when a maintainer has authorized a release. Start with a clean working tree and passing checks.
 
+The Release workflow builds and tests with read-only repository permissions. Only its final publishing job has `contents: write`; it downloads the named artifact from that same run and drafts the release without checking out or executing project code. A manual run (`gh workflow run release.yml --ref <branch>`) checks the build and real Obsidian gate without publishing. The Engine wheels workflow also defaults to build/test only: explicitly enable its **publish** input only when a wheel release is authorized.
+
+Third-party actions are pinned to full commit SHAs with release versions in comments, selected from releases at least two weeks old. Weekly Dependabot checks propose GitHub Actions updates; maintainers must verify release age and the referenced commit before merging an update.
+
 1. Move the _Unreleased_ entries in `CHANGELOG.md` under the new version.
    Commit the changelog change before running the version script; the script only stages the three version files.
 2. `bun run release 0.2.0` (updates `package.json`, `manifest.json` and `versions.json`, commits and tags `0.2.0`).
