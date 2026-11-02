@@ -606,3 +606,17 @@ body.theme-dark {
 .edge-voice-fold[open] .edge-voice-fold-title::before {
 	transform: rotate(90deg);
 }
+
+/* The setup window: what will be downloaded, where it goes, then Install. */
+.edge-voice-setup h4 {
+	margin: 1em 0 0.3em;
+}
+
+.edge-voice-setup ul {
+	margin-top: 0;
+	padding-inline-start: 1.2em;
+}
+
+.edge-voice-setup-private {
+	color: var(--text-muted);
+}
