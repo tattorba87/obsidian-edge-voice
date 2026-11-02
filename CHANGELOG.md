@@ -4,9 +4,18 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-02
+
 ### Fixed
 
 - PDFs: lines set with ligatures ("fi", "fl", as in most typeset papers) are highlighted again; they were skipped. Highlight boxes on one line are joined, without seams where italics start.
+- Settings: after the setup steps find the engine, only the engine and voice rows refresh, instead of the whole page.
+- With Reduce motion turned on, the player bar's glow and the status bar's animation stay still, without forcing styles.
+
+### Security
+
+- Releases carry GitHub artifact attestations (signed build provenance): check a download with `gh attestation verify main.js --repo tattorba87/obsidian-edge-voice`. The README explains, in a line each, why the plugin starts a program, reads files outside the vault and writes to the clipboard.
+- Development tools: moment is pinned to its fixed version. Neither it nor the remaining development-only advisory (minimatch, in ESLint) is in `main.js`.
 
 ## [0.1.0] - 2026-11-02
 
@@ -28,5 +37,6 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - The speech engine starts isolated: Python and linker settings in your environment (`PYTHONPATH`, `DYLD_*`/`LD_*`) can't change what runs. It never downloads: a voice that isn't on your computer gets a notice with the command that fetches it.
 - The speech engine and its connection check what passes between them: voice IDs, text length, speed, audio and reply size; a stuck engine is restarted instead of blocking reading, and settings of the wrong type fall back to their defaults.
 
-[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/tattorba87/obsidian-edge-voice/releases/tag/0.1.0
