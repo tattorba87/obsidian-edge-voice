@@ -13,6 +13,7 @@ is downloaded, and only when run.
 """
 
 import argparse
+import errno
 import json
 import os
 import sys
@@ -99,8 +100,11 @@ def main(argv: list[str]) -> int:
             status = show(voices, args.json)
             sys.stdout.flush()  # Here, not at exit, so a closed pipe is caught below.
             return status
-        except BrokenPipeError:
+        except OSError as error:
             # `voices list | head`: the reader has what it wanted. Stop quietly.
+            # A closed pipe is EPIPE, or EINVAL on Windows.
+            if not isinstance(error, BrokenPipeError) and error.errno != errno.EINVAL:
+                raise
             os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
             return 0
 
