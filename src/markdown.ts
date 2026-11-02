@@ -253,6 +253,8 @@ function maskUnspoken(text: string): string {
 	// Keeps `length` characters of a match starting at `at`, blanking the rest.
 	const keep = (match: string, at: number, length: number) =>
 		blank(match.slice(0, at)) + match.slice(at, at + length) + blank(match.slice(at + length));
+	// Inline patterns scan at most 300 characters for their closing mark (1000 for a link's URL): unbounded, a long line
+	// with many unclosed openers ("[[", "<", "[") took quadratic time, seconds for 80k characters.
 	return (
 		text
 			// Whole regions.
@@ -263,16 +265,16 @@ function maskUnspoken(text: string): string {
 			.replace(/<!--[\s\S]*?-->/g, blank)
 			.replace(/^\|.*\|$/gm, blank)
 			// Embeds, inline code and math, footnote refs, block ids, tags, HTML.
-			.replace(/!\[\[[^\]\n]*\]\]|!\[[^\]\n]*\]\([^)\n]*\)/g, blank)
-			.replace(/`[^`\n]*`|\$[^$\n]+\$/g, blank)
-			.replace(/\[\^[^\]\n]*\]|\s\^[\w-]+$/gm, blank)
-			.replace(/<\/?[a-zA-Z][^>\n]*>/g, blank)
+			.replace(/!\[\[[^\]\n]{0,300}\]\]|!\[[^\]\n]{0,300}\]\([^)\n]{0,1000}\)/g, blank)
+			.replace(/`[^`\n]{0,300}`|\$[^$\n]{1,300}\$/g, blank)
+			.replace(/\[\^[^\]\n]{0,300}\]|\s\^[\w-]+$/gm, blank)
+			.replace(/<\/?[a-zA-Z][^>\n]{0,300}>/g, blank)
 			.replace(/(?<=^|\s)#[\p{L}\p{N}_/-]+/gu, blank)
 			// Links keep only the words a reader sees.
-			.replace(/\[\[(?:[^\]|\n]*\|)?([^\]\n]*)\]\]/g, (match, shown: string) =>
+			.replace(/\[\[(?:[^\]|\n]{0,300}\|)?([^\]\n]{0,300})\]\]/g, (match, shown: string) =>
 				keep(match, match.length - 2 - shown.length, shown.length),
 			)
-			.replace(/\[([^\]\n]*)\]\([^)\n]*\)/g, (match, shown: string) => keep(match, 1, shown.length))
+			.replace(/\[([^\]\n]{0,300})\]\([^)\n]{0,1000}\)/g, (match, shown: string) => keep(match, 1, shown.length))
 			.replace(/https?:\/\/[^\s)>\]]+/g, blank)
 			// Line prefixes: headings, quotes, list bullets, task boxes, callout headers.
 			.replace(/^[ \t]*(?:>[ \t]*)*(?:\[![\w-]+\][+-]?)?/gm, blank)
