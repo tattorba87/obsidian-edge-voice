@@ -1,3 +1,5 @@
+import { ChildProcess } from "child_process";
+import { once } from "events";
 import { copyFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -86,8 +88,12 @@ describe("Sidecar", () => {
 			expect(existsSync(join(planted, "struct-loaded"))).toBe(false);
 		} finally {
 			vi.unstubAllEnvs();
-			// Windows won't remove a folder a running process has as its working directory.
+			// Windows won't remove a folder a running process has as its working directory,
+			// so wait for the engine to exit before deleting it.
+			const proc = (sidecar as unknown as { proc?: ChildProcess } | undefined)?.proc;
+			const exited = proc && proc.exitCode === null && proc.signalCode === null ? once(proc, "exit") : undefined;
 			sidecar?.stop();
+			await exited;
 			for (const folder of [dir, planted])
 				rmSync(folder, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
 		}
