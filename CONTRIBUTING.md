@@ -29,19 +29,27 @@ The sandbox lives in `.sandbox/` (gitignored): its own Obsidian profile, its own
 
 ## Checks
 
-| Command                 | What it does                                                                                   |
-| ----------------------- | ---------------------------------------------------------------------------------------------- |
-| `bun run check`         | Type-check, lint, format check, Vitest and pytest; excludes build and real Obsidian            |
-| `bun run typecheck`     | TypeScript, including tests                                                                    |
-| `bun run lint`          | ESLint with Obsidian's community-review rules (`eslint-plugin-obsidianmd`)                     |
-| `bun run format`        | Prettier for TypeScript, CSS, JSON and Markdown; ruff for Python                               |
-| `bun run format:check`  | The same, checking only                                                                        |
-| `bun run test`          | Vitest: text processing, PDF reading (generated PDFs), sidecar protocol, storage               |
-| `bun run test:python`   | pytest: the engine (`engine/`) against a stub of moonshine-voice                               |
-| `bun run build`         | Type-check and bundle `main.js`                                                                |
-| `bun run test:obsidian` | The tests against real Obsidian (opens a test Obsidian for a few seconds; not part of `check`) |
+| Command                 | What it does                                                                                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run check`         | Type-check, lint, format check, Vitest and pytest; excludes build and real Obsidian                                                                |
+| `bun run typecheck`     | TypeScript, including tests                                                                                                                        |
+| `bun run lint`          | ESLint with Obsidian's community-review rules (`eslint-plugin-obsidianmd`)                                                                         |
+| `bun run format`        | Prettier for TypeScript, CSS, JSON and Markdown; ruff for Python                                                                                   |
+| `bun run format:check`  | The same, checking only                                                                                                                            |
+| `bun run test`          | Vitest: text processing, PDF reading (generated PDFs), sidecar protocol, storage                                                                   |
+| `bun run test:python`   | pytest: the engine (`engine/`) against a stub of moonshine-voice                                                                                   |
+| `bun run build`         | Type-check and bundle `main.js`                                                                                                                    |
+| `bun run test:obsidian` | The tests against real Obsidian (opens a test Obsidian for a few seconds; not part of `check`)                                                     |
+| `bun run check:engine`  | Builds an engine release and runs the setup steps for this computer into a throwaway home, then speaks offline (about 30 s once cached; no window) |
 
 `bun run check` does not run `bun run format`, `bun run build` or `bun run test:obsidian`. CI runs the same checks plus a production build; secret scanning runs in a separate job. Run `bun run build` for changes to shipped code, bundling or dependencies.
+
+**GitHub Actions minutes while the repository is private.** Private repositories get a monthly allowance, and GitHub bills macOS minutes at 10× and Windows at 2×. Until the repository is public, pull requests run only the Linux jobs: lint, tests and build, secret scanning, Bandit, advisories, and the Engine package workflow's build, tamper check and Linux x64 setup. The macOS and Windows test runs, the other five platforms' setup and the faster engine run only when a workflow is started by hand (`gh workflow run ci.yml --ref <branch>`, `gh workflow run engine-package.yml --ref <branch>`), and turn on by themselves once the repository is public. Documentation-only changes skip CI. So while it's private:
+
+- Run `bun run check` (and `bun run build`) before pushing; the commit hook runs most of it.
+- For engine or setup changes, run `bun run check:engine` on your Mac (add `--faster` on Apple silicon with macOS 14 or later).
+- Start the Obsidian, Demo and other macOS workflows only when a change needs them, and at most once per pull request; prefer `bun run test:obsidian` locally.
+- Before a release, start CI and Engine package by hand once on `main` so every platform is covered.
 
 CI also runs Bandit 1.8.6 via uvx over every Python file in `engine/` and `scripts/`. Suppressions name a single check at a single expression, with the reason beside it; new findings fail CI. The Hugging Face revision suppression has a separate full-commit check. Raw findings are uploaded as `bandit-report`.
 
@@ -85,7 +93,7 @@ What to try in the sandbox, by what you changed:
 | The engine (`engine/`) or the sidecar           | Read a note and a PDF. `bun run sandbox:errors` shows errors the plugin raised; the sidecar's own output is in the sandbox's developer console (⌥⌘I, with Verbose shown).                                                            |
 | Setup (`src/engine.ts`, `engine/`, `locks/`)    | `bun run sandbox --fresh` shows the setup steps, as for a new user. Running them needs a downloadable engine release (public repository); until then, build one with `scripts/build-engine-release.sh` and point step 3 at it.       |
 
-Other platforms, in CI: the **Engine package** workflow builds an engine release and, on each platform (macOS Intel and Apple silicon on 14 and 15, Windows, Linux x64 and ARM), runs the exact setup steps Edge Voice shows (`scripts/setup-steps.ts`), downloads a real voice with step 4, and has the engine speak with the network cut off (`scripts/engine-speaks.py`); the faster engine does the same on Apple silicon. It runs on pull requests touching `engine/`, `locks/`, `src/engine.ts` or its scripts, and can be started by hand from the Actions tab.
+Other platforms, in CI: the **Engine package** workflow builds an engine release and, on each platform (macOS Intel and Apple silicon on 14 and 15, Windows, Linux x64 and ARM), runs the exact setup steps Edge Voice shows (`scripts/setup-steps.ts`), downloads a real voice with step 4, and has the engine speak with the network cut off (`scripts/engine-speaks.py`); the faster engine does the same on Apple silicon. It runs on pull requests touching `engine/`, `locks/`, `src/engine.ts` or its scripts (Linux x64 only while the repository is private; see Checks), and can be started by hand from the Actions tab for every platform. `bun run check:engine` does the same on your own computer.
 
 Every bug gets a test at the cheapest layer that catches it: a unit test if it can, real Obsidian if only Obsidian shows it.
 
