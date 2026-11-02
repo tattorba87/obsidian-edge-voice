@@ -36,6 +36,8 @@ jobs:
       HF_HOME: ${{ github.workspace }}/.bench/hf
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - name: Install Moonshine
         env:
@@ -109,6 +111,8 @@ jobs:
       WHEEL_SHA256: a3a5d827cbb31339808ba0cba0f0082bd26550f0a6a2d5577fc8bf65f382ad23
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - name: Install Moonshine
         env:
