@@ -1,20 +1,23 @@
 name: Engine package
 
-# Users install the engine from an engine release with one line of two uv
-# commands (see the release notes, written by engine-release.yml). This builds
-# such a release, serves it from localhost (the repository's releases can't be
-# downloaded anonymously while it's private) and runs that exact line on every
-# platform: everything must install hash-checked, from wheels, with our Mac
-# wheels, and the engine must answer. It also checks that changed files are
-# refused, and that the faster engine speaks on Apple silicon.
+# People set up the engine themselves, with the steps Edge Voice shows
+# (src/engine.ts). This builds an engine release, serves it from localhost
+# (the repository's releases can't be downloaded anonymously while it's
+# private), and on every platform runs exactly those steps: create the
+# engine's folder, install the engine hash-checked from wheels, download a
+# voice. Then it has the engine speak with the network cut off, which proves
+# the engine Edge Voice runs reads only what's on disk. It also checks changed
+# files are refused, and that the faster engine speaks on Apple silicon.
 on:
   pull_request:
     paths:
       - engine/**
       - locks/**
-      - src/setup.ts
+      - src/engine.ts
       - scripts/engine-requirements.py
       - scripts/build-engine-release.sh
+      - scripts/setup-steps.ts
+      - scripts/engine-speaks.py
       - .github/workflows/engine-package.yml
   workflow_dispatch:
 
@@ -23,6 +26,7 @@ permissions:
 
 env:
   BASE: http://127.0.0.1:8765
+  VOICE: kokoro_af_bella
 
 jobs:
   build:
@@ -34,32 +38,47 @@ jobs:
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - name: Build the release's files
         env:
           GH_TOKEN: ${{ github.token }}
         run: scripts/build-engine-release.sh release "$BASE"
+      - name: Write the setup steps Edge Voice shows on each platform
+        run: |
+          mkdir steps
+          for target in "linux x64 false" "linux arm64 false" "win32 x64 false" "darwin x64 false" "darwin arm64 false" "darwin arm64 true"; do
+            set -- $target
+            bun scripts/setup-steps.ts "$1" "$2" "$3" "$VOICE" "$BASE" > "steps/$1-$2-$3.json"
+          done
+          cat steps/*.json
+          cp scripts/engine-speaks.py steps/
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: engine-release
           path: release/
           if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: setup-steps
+          path: steps/
+          if-no-files-found: error
 
   install:
-    name: Install (${{ matrix.lock }}, ${{ matrix.runner }})
+    name: Set up and speak offline (${{ matrix.steps }}, ${{ matrix.runner }})
     needs: build
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { lock: linux-x64, runner: ubuntu-latest }
-          - { lock: linux-arm64, runner: ubuntu-24.04-arm }
-          - { lock: win32-x64, runner: windows-latest }
-          - { lock: darwin-x64, runner: macos-15-intel, tag: macosx_13_0_x86_64 }
-          - { lock: darwin-arm64, runner: macos-14, tag: macosx_13_0_arm64 }
-          - { lock: darwin-arm64, runner: macos-15, tag: macosx_13_0_arm64 }
+          - { steps: linux-x64-false, runner: ubuntu-latest }
+          - { steps: linux-arm64-false, runner: ubuntu-24.04-arm }
+          - { steps: win32-x64-false, runner: windows-latest }
+          - { steps: darwin-x64-false, runner: macos-15-intel, tag: macosx_13_0_x86_64 }
+          - { steps: darwin-arm64-false, runner: macos-14, tag: macosx_13_0_arm64 }
+          - { steps: darwin-arm64-false, runner: macos-15, tag: macosx_13_0_arm64 }
     runs-on: ${{ matrix.runner }}
     steps:
-      # Whatever uv users have today, and no cache: a cached, already-verified
+      # Whatever uv people have today, and no cache: a cached, already-verified
       # file would hide what a first install downloads.
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
@@ -69,44 +88,67 @@ jobs:
         with:
           name: engine-release
           path: release
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: setup-steps
+          path: steps
       - name: Serve the release
         shell: bash
         run: |
           cd release && nohup python3 -m http.server 8765 >/dev/null 2>&1 &
           for _ in $(seq 30); do curl -sSf "$BASE/SHA256SUMS" >/dev/null && exit 0; sleep 1; done; exit 1
-      - name: The user's command (macOS and Linux)
+      - name: The setup steps, as shown (Terminal)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12 && uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r "$BASE/requirements-${{ matrix.lock }}.txt"
+          python3 -I -c "import json, sys; print('\n'.join(json.load(open(sys.argv[1]))))" "steps/${{ matrix.steps }}.json" |
+            while IFS= read -r command; do
+              echo "+ $command"
+              bash -ec "$command" < /dev/null
+            done
           echo "PYTHON=$HOME/.edge-voice/engine/bin/python" >> "$GITHUB_ENV"
-      - name: The user's command (Windows PowerShell)
+      - name: The setup steps, as shown (PowerShell)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          uv venv --clear --managed-python "$HOME\.edge-voice\engine" --python 3.12; uv pip install --python "$HOME\.edge-voice\engine" --require-hashes --no-build -r "$env:BASE/requirements-win32-x64.txt"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          foreach ($command in (Get-Content "steps/${{ matrix.steps }}.json" -Raw | ConvertFrom-Json)) {
+            Write-Host "+ $command"
+            Invoke-Expression $command
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
           "PYTHON=$HOME\.edge-voice\engine\Scripts\python.exe" >> $env:GITHUB_ENV
-      - name: The engine runs isolated and answers
+      - name: The engine is ours, and its native library loads
         shell: bash
         env:
           MAC_TAG: ${{ matrix.tag }}
         run: |
           "$PYTHON" -I - <<'EOF'
-          import importlib.metadata as m, json, os, subprocess, sys
+          import importlib.metadata as m, os, sys
           print(sys.version, sys.base_prefix)
           wheel = m.distribution("moonshine-voice").read_text("WHEEL")
           if os.environ["MAC_TAG"]:
               assert f"Tag: py3-none-{os.environ['MAC_TAG']}" in wheel, "not our Mac wheel"
           from moonshine_voice.moonshine_api import _MoonshineLib
           _MoonshineLib()
-          proc = subprocess.run([sys.executable, "-I", "-u", "-m", "edge_voice_engine"],
-                                input='{"id": 1, "op": "hello"}\n', capture_output=True, text=True, timeout=120)
-          replies = [json.loads(line) for line in proc.stdout.splitlines()]
-          print(replies)
-          assert replies[0] == {"event": "ready"} and replies[1]["engine"] == "edge-voice-engine", proc.stderr
           EOF
           du -sh ~/.edge-voice/engine
+      - name: The engine speaks with the network cut off (Linux)
+        if: runner.os == 'Linux'
+        run: sudo unshare --net -- sudo -u "$USER" env "HOME=$HOME" "PATH=$PATH" python3 -I steps/engine-speaks.py "$PYTHON" "$VOICE"
+      - name: The engine speaks with the network cut off (macOS)
+        if: runner.os == 'macOS'
+        run: sandbox-exec -p '(version 1)(allow default)(deny network*)' python3 -I steps/engine-speaks.py "$PYTHON" "$VOICE"
+      - name: The engine speaks with every download pointed nowhere (Windows)
+        # Windows has no per-process network switch on these runners; a dead proxy
+        # stops anything that downloads through Python, which is how both do.
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          HTTP_PROXY: http://127.0.0.1:9
+          HTTPS_PROXY: http://127.0.0.1:9
+          ALL_PROXY: http://127.0.0.1:9
+          NO_PROXY: ""
+        run: python -I steps/engine-speaks.py "$PYTHON" "$VOICE"
 
   tamper:
     name: Changed files are refused
@@ -138,11 +180,9 @@ jobs:
           echo "Both refused; the unchanged release installs."
 
   mlx:
-    name: Faster engine speaks (macos-15)
+    name: Faster engine set up and speaking offline (macos-15)
     needs: build
     runs-on: macos-15
-    env:
-      HF_HUB_DISABLE_TELEMETRY: "1"
     steps:
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
@@ -152,33 +192,19 @@ jobs:
         with:
           name: engine-release
           path: release
-      - name: The user's command, with the faster engine
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: setup-steps
+          path: steps
+      - name: The setup steps, as shown, with the faster engine
         run: |
           (cd release && nohup python3 -m http.server 8765 >/dev/null 2>&1 &)
           for _ in $(seq 30); do curl -sSf "$BASE/SHA256SUMS" >/dev/null && break; sleep 1; done
-          uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12 && uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r "$BASE/requirements-darwin-arm64-mlx.txt"
-          du -sh ~/.edge-voice/engine
-      - name: Load a voice with MLX and speak
-        run: |
-          ~/.edge-voice/engine/bin/python -I - <<'EOF'
-          import base64, json, subprocess, sys
-          proc = subprocess.Popen([sys.executable, "-I", "-u", "-m", "edge_voice_engine"],
-                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
-          def ask(**body):
-              proc.stdin.write(json.dumps(body) + "\n"); proc.stdin.flush()
-              while True:
-                  reply = json.loads(proc.stdout.readline())
-                  if reply.get("id") == body["id"]:
-                      return reply
-          assert json.loads(proc.stdout.readline()) == {"event": "ready"}
-          loaded = ask(id=1, op="load", language="en_us", voice="kokoro_am_santa", engine="mlx")
-          print("load:", loaded)
-          assert loaded.get("ok") and loaded.get("engine") == "mlx", loaded
-          spoken = ask(id=2, op="synth", text="The faster engine is speaking.", speed=1.0)
-          seconds = len(base64.b64decode(spoken["audio"])) / 4 / spoken["sampleRate"]
-          print(f"synth: {seconds:.2f} s of audio")
-          assert seconds > 1, spoken
-          proc.stdin.close(); proc.wait(timeout=30)
-          EOF
-      - name: The voice files went to ~/.edge-voice/hf, which the plugin can show and delete
-        run: du -sh ~/.edge-voice/hf
+          python3 -I -c "import json, sys; print('\n'.join(json.load(open(sys.argv[1]))))" steps/darwin-arm64-true.json |
+            while IFS= read -r command; do
+              echo "+ $command"
+              bash -ec "$command" < /dev/null
+            done
+          du -sh ~/.edge-voice/engine ~/.edge-voice/hf
+      - name: The faster engine speaks with the network cut off
+        run: sandbox-exec -p '(version 1)(allow default)(deny network*)' python3 -I steps/engine-speaks.py ~/.edge-voice/engine/bin/python "$VOICE" mlx

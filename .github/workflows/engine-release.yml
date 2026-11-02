@@ -28,6 +28,7 @@ jobs:
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - id: version
         run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' engine/pyproject.toml)" >> "$GITHUB_OUTPUT"
       - name: Build the release's files
@@ -36,22 +37,21 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           base="https://github.com/${GITHUB_REPOSITORY}/releases/download/engine-${VERSION}"
+          # The steps Edge Voice shows point at this release; it must be the one being built.
+          grep -q "export const ENGINE_VERSION = \"${VERSION}\";" src/engine.ts
           scripts/build-engine-release.sh release "$base"
           {
-            echo "The Edge Voice speech engine ${VERSION}. Install it with uv (https://docs.astral.sh/uv/getting-started/installation/), using the line for your computer. Every package is checked against the hash in the requirements file."
+            echo "The Edge Voice speech engine ${VERSION}. Edge Voice shows these steps when it can't find the engine; they're here too. First install uv (https://docs.astral.sh/uv/getting-started/installation/), then run the lines for your computer, in order. Every package is checked against the hash in the requirements file the second line names; read that file first if you like."
             echo
-            for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do
-              echo "**${platform}:**"
+            for target in "darwin arm64 false Mac (Apple silicon)" "darwin arm64 true Mac (Apple silicon, with the faster engine; macOS 14 or later)" "darwin x64 false Mac (Intel)" "linux x64 false Linux (x64)" "linux arm64 false Linux (ARM)" "win32 x64 false Windows (PowerShell)" "win32 arm64 false Windows on ARM (PowerShell)"; do
+              set -- $target
+              platform=$1 arch=$2 faster=$3
+              shift 3
+              echo "**$*:**"
               echo '```'
-              echo "uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12 && uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r ${base}/requirements-${platform}.txt"
+              bun scripts/setup-steps.ts "$platform" "$arch" "$faster" kokoro_af_bella | python3 -I -c "import json, sys; print('\n'.join(json.load(sys.stdin)))"
               echo '```'
             done
-            echo "**darwin-arm64, with the faster engine (macOS 14 or later):** the same, with \`requirements-darwin-arm64-mlx.txt\`."
-            echo
-            echo "**Windows (PowerShell, x64 and ARM):**"
-            echo '```'
-            echo "uv venv --clear --managed-python \"\$HOME\\.edge-voice\\engine\" --python 3.12; uv pip install --python \"\$HOME\\.edge-voice\\engine\" --require-hashes --no-build -r ${base}/requirements-win32-x64.txt"
-            echo '```'
             echo
             echo "SHA-256 of the files:"
             echo '```'
