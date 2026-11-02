@@ -85,8 +85,10 @@ describe("Sidecar", () => {
 			expect(existsSync(join(planted, "struct-loaded"))).toBe(false);
 		} finally {
 			vi.unstubAllEnvs();
-			rmSync(dir, { recursive: true, force: true });
-			rmSync(planted, { recursive: true, force: true });
+			// Windows won't remove a folder a running process has as its working directory.
+			sidecar?.stop();
+			for (const folder of [dir, planted])
+				rmSync(folder, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
 		}
 	});
 });
