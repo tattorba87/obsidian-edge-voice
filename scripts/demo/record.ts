@@ -26,9 +26,8 @@ const VOICE = "kokoro_af_heart";
 const PYTHON = join(homedir(), ".edge-voice", "engine", process.platform === "win32" ? "Scripts" : "bin", "python");
 const SIZE = { width: 1280, height: 800 };
 
-const NOTE = `# Reading along
-
-Edge Voice reads your notes aloud, right here in Obsidian. The sentence being read is highlighted, and so is each word as it's spoken.
+// No heading: Obsidian already shows the note's name above it.
+const NOTE = `Edge Voice reads your notes aloud, right here in Obsidian. The sentence being read is highlighted, and so is each word as it's spoken.
 
 Everything runs on your own computer. Your notes never leave it, there's no account, and it's free.
 
