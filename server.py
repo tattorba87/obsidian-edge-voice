@@ -33,7 +33,9 @@ A "load" without "engine" uses moonshine-voice and replies as above.
 import array
 import base64
 import json
+import math
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -90,6 +92,37 @@ def mlx_refusal(language: str, voice: str):
     return None
 
 
+# What the plugin may send: voice and language IDs (they become file and model names), text
+# for one sentence or clause, and a playback speed. Anything else is refused, not passed on.
+ENGINE_ID = re.compile(r"[A-Za-z0-9_-]{1,100}")
+MAX_TEXT = 20000
+
+
+def engine_id(value, name: str, default: str = "") -> str:
+    """`value` as a voice or language ID, or `default` when it's missing."""
+    if value is None or value == "":
+        return default
+    if not isinstance(value, str) or not ENGINE_ID.fullmatch(value):
+        raise ValueError(f"invalid {name} {value!r}")
+    return value
+
+
+def synth_text(value) -> str:
+    if not isinstance(value, str) or len(value) > MAX_TEXT:
+        raise ValueError(f"text must be a string of at most {MAX_TEXT} characters")
+    return value
+
+
+def synth_speed(value):
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise ValueError(f"invalid speed {value!r}")
+    if not 0.25 <= value <= 4:
+        raise ValueError(f"speed {value} is outside 0.25 to 4")
+    return value
+
+
 def main() -> None:
     # The native library logs to fd 1, which would corrupt the protocol, so
     # replies go to a private copy of stdout and fd 1 is pointed at stderr.
@@ -118,8 +151,8 @@ def main() -> None:
             request_id = request.get("id")
             op = request.get("op")
             if op == "load":
-                language = request.get("language") or "en_us"
-                voice = request.get("voice") or ""
+                language = engine_id(request.get("language"), "language", "en_us")
+                voice = engine_id(request.get("voice"), "voice")
                 engine = request.get("engine")
                 candidate = None
                 fallback = None
@@ -154,7 +187,8 @@ def main() -> None:
             elif op == "synth":
                 if tts is None:
                     raise RuntimeError("no voice loaded")
-                samples, sample_rate = tts.synthesize(request["text"], speed=request.get("speed"))
+                text = synth_text(request.get("text"))
+                samples, sample_rate = tts.synthesize(text, speed=synth_speed(request.get("speed")))
                 if hasattr(samples, "astype"):
                     pcm = samples.astype("<f4").tobytes()
                 else:
@@ -172,7 +206,7 @@ def main() -> None:
 
                 send({"id": request_id, "ok": True, "cache": str(get_cache_dir())})
             elif op == "voices":
-                voices = list_tts_voices(request.get("language") or "en_us")
+                voices = list_tts_voices(engine_id(request.get("language"), "language", "en_us"))
                 send({"id": request_id, "ok": True, **voices})
             else:
                 raise ValueError(f"unknown op {op!r}")

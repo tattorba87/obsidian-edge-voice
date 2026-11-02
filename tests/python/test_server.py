@@ -150,3 +150,45 @@ def test_mlx_downloads_stay_private_whatever_the_environment_says():
 def test_load_without_an_engine_replies_as_before(server):
     reply = loaded(server, language="en_us", voice="kokoro_af_heart")
     assert reply == {"id": reply["id"], "ok": True}
+
+
+def answer(server, **body):
+    request_id = server.request(**body)
+    while True:
+        reply = server.read()
+        if reply.get("id") == request_id:
+            return reply
+
+
+@pytest.mark.parametrize(
+    "voice",
+    ["../../etc/passwd", "kokoro_af_heart/../x", "a b", "x" * 101, 12],
+)
+def test_load_refuses_a_voice_id_that_isnt_one(server, voice):
+    # The faster engine builds a file name from it; a path in it must never get that far.
+    reply = answer(server, op="load", language="en_us", voice=voice)
+    assert "invalid voice" in reply["error"]
+
+
+def test_load_refuses_a_language_id_that_isnt_one(server):
+    assert "invalid language" in answer(server, op="load", language="en_us/..", voice="kokoro_af_heart")["error"]
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ({"text": "x" * 20001}, "at most 20000"),
+        ({"text": None}, "at most 20000"),
+        ({"text": "Hi.", "speed": float("nan")}, "invalid speed"),
+        ({"text": "Hi.", "speed": "fast"}, "invalid speed"),
+        ({"text": "Hi.", "speed": 10}, "outside 0.25 to 4"),
+    ],
+)
+def test_synth_refuses_text_and_speeds_it_shouldnt_take(server, body, message):
+    answer(server, op="load", language="en_us", voice="kokoro_af_heart")
+    assert message in answer(server, op="synth", **body)["error"]
+
+
+def test_valid_ids_with_capitals_still_load(server):
+    # Piper voices carry their locale, e.g. en_US.
+    assert answer(server, op="load", language="en_us", voice="piper_en_US-lessac-medium") == {"id": 1, "ok": True}

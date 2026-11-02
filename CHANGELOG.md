@@ -19,3 +19,4 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - Seven highlight colour themes.
 - Storage settings to see and delete downloaded voices and the engine.
 - The speech engine and its installer start isolated: Python, linker and installer settings in your environment (`PYTHONPATH`, `DYLD_*`/`LD_*`, uv configuration) can't change what runs or where packages come from.
+- The speech engine and its connection check what passes between them: voice IDs, text length, speed, audio and reply size; a stuck engine is restarted instead of blocking reading, and settings of the wrong type fall back to their defaults.
