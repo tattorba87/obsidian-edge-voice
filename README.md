@@ -6,11 +6,7 @@
 
 ![Edge Voice reading a note aloud in Obsidian, highlighting the sentence and the word being spoken](docs/media/demo.gif)
 
-
-
 https://github.com/user-attachments/assets/0ab2984c-49eb-4444-8074-2f25ff312abe
-
-
 
 - **Read along.** The sentence and the word being spoken are highlighted as you listen, in notes (editing, Live Preview and Reading view) and in PDFs.
 - **Natural voices.** 66 English voices, American and British, from [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) and [Piper](https://github.com/rhasspy/piper). On Apple silicon, a faster engine runs the Kokoro voices on the GPU.
@@ -282,6 +278,8 @@ Edge Voice is MIT licensed ([LICENSE](LICENSE)). It doesn't include the speech e
 - [Piper](https://github.com/rhasspy/piper) voices: each voice's licence and dataset credit are in its model card in [piper-voices](https://huggingface.co/rhasspy/piper-voices).
 - Faster engine: [MLX](https://github.com/ml-explore/mlx) and [mlx-audio](https://github.com/Blaizzy/mlx-audio) (MIT), [misaki](https://github.com/hexgrad/misaki) (Apache 2.0), [spaCy](https://github.com/explosion/spaCy) and its English model (MIT).
 - [uv](https://github.com/astral-sh/uv): MIT or Apache 2.0.
+
+The engine release includes macOS wheels of Moonshine that this repository builds; they contain ONNX Runtime (MIT) and other open-source libraries, whose licences are in the release's `THIRD-PARTY-NOTICES.txt` (from [`engine/THIRD-PARTY-NOTICES.txt`](engine/THIRD-PARTY-NOTICES.txt)).
 
 ## Security
 

@@ -64,6 +64,8 @@ jobs:
               echo '```'
             done
             echo
+            echo "The macOS moonshine-voice wheels are built by this repository and contain ONNX Runtime and other open-source libraries; their licences are in THIRD-PARTY-NOTICES.txt."
+            echo
             echo "SHA-256 of the files:"
             echo '```'
             cat release/SHA256SUMS
@@ -97,5 +99,5 @@ jobs:
           cd release
           sha256sum -c SHA256SUMS
           # Not marked latest, so it never stands in for a plugin release. Fails if the tag exists.
-          gh release create "engine-${VERSION}" ./*.whl ./requirements-*.txt SHA256SUMS \
+          gh release create "engine-${VERSION}" ./*.whl ./requirements-*.txt THIRD-PARTY-NOTICES.txt SHA256SUMS \
             --title "Speech engine ${VERSION}" --notes-file release-notes.md --latest=false --target "$GITHUB_SHA"
