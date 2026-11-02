@@ -12,9 +12,9 @@
  */
 import esbuild from "esbuild";
 import { execFileSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "fs";
 import { homedir } from "os";
-import { join, resolve } from "path";
+import { basename, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { buildOptions } from "../../esbuild.config.mjs";
 import { Sandbox } from "../sandbox/obsidian";
@@ -25,6 +25,10 @@ const FRAMES = join(OUT, "frames");
 const VOICE = "kokoro_af_heart";
 const PYTHON = join(homedir(), ".edge-voice", "engine", process.platform === "win32" ? "Scripts" : "bin", "python");
 const SIZE = { width: 1280, height: 800 };
+// Another PDF to read instead of the sample (a path), and text to start reading at.
+const DEMO_PDF = process.env.DEMO_PDF ? resolve(process.env.DEMO_PDF) : "";
+const PDF_PATH = DEMO_PDF ? `PDFs/${basename(DEMO_PDF)}` : "PDFs/A short paper.pdf";
+const PDF_FROM = process.env.DEMO_PDF_FROM ?? "";
 
 // No heading: Obsidian already shows the note's name above it.
 const NOTE = `Edge Voice reads your notes aloud, right here in Obsidian. The sentence being read is highlighted, and so is each word as it's spoken.
@@ -59,6 +63,7 @@ async function main(): Promise<void> {
 	await esbuild.build({ ...buildOptions(true), absWorkingDir: REPO, logLevel: "warning" });
 	await sandbox.prepareVault();
 	writeFileSync(join(sandbox.paths.vault, "Reading along.md"), NOTE);
+	if (DEMO_PDF) copyFileSync(DEMO_PDF, join(sandbox.paths.vault, PDF_PATH));
 	sandbox.prepareProfile();
 	const home = sandbox.prepareHome(false);
 	sandbox.prepareSettings(false, PYTHON);
@@ -138,13 +143,31 @@ async function main(): Promise<void> {
 		await until(() => run<string>(`return ${PLUGIN}.reader.state;`) === "idle", 90000);
 		await pause(1200);
 
-		// A PDF, from its first sentence, for a few sentences.
+		// A PDF for a few sentences: the sample, from its top, or DEMO_PDF from the
+		// first text-layer span containing DEMO_PDF_FROM (selected, then "read from here").
 		run(`
-			const file = app.vault.getAbstractFileByPath("PDFs/A short paper.pdf");
+			const file = app.vault.getAbstractFileByPath(${JSON.stringify(PDF_PATH)});
 			const leaf = app.workspace.getMostRecentLeaf();
 			await leaf.openFile(file);
-			await new Promise((done) => setTimeout(done, 2000));
-			app.commands.executeCommandById("edge-voice:toggle");
+			await new Promise((done) => setTimeout(done, 3000));
+			const from = ${JSON.stringify(PDF_FROM)};
+			const span = from
+				? [...document.querySelectorAll(".workspace-leaf.mod-active .textLayer span")].find((item) => item.textContent.includes(from))
+				: null;
+			if (from && !span) throw new Error("no text " + JSON.stringify(from) + " in the PDF's first pages");
+			if (span) {
+				span.scrollIntoView({ block: "center" });
+				await new Promise((done) => setTimeout(done, 800));
+				const range = document.createRange();
+				range.selectNodeContents(span);
+				const selection = window.getSelection();
+				selection.removeAllRanges();
+				selection.addRange(range);
+				app.commands.executeCommandById("edge-voice:read-from-here");
+				selection.removeAllRanges();
+			} else {
+				app.commands.executeCommandById("edge-voice:toggle");
+			}
 		`);
 		await pause(14000);
 		run(`app.commands.executeCommandById("edge-voice:stop");`);
