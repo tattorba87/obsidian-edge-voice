@@ -66,11 +66,9 @@ export interface Link {
 
 /**
  * The parts of the daily engine a shared sandbox links to, so nothing is
- * installed or downloaded twice: the engine folder's Python, packages, uv and
- * its cache, the MLX voices (hf), and Moonshine's voice cache, which follows
- * HOME. Only what exists is linked. server.py is left out on purpose: the
- * sandbox writes its own, so a development version never replaces the one the
- * daily plugin runs.
+ * installed or downloaded twice: the engine you installed (~/.edge-voice/engine),
+ * the faster engine's voices (hf), and Moonshine's voice cache, which follows
+ * HOME. Only what exists is linked.
  */
 export function engineLinks(
 	realHome: string,
@@ -78,7 +76,7 @@ export function engineLinks(
 	platform: NodeJS.Platform,
 	exists: (path: string) => boolean,
 ): Link[] {
-	const parts = ["bin", "python", "venv", "cache", "hf"].map((name) => join(".edge-voice", name));
+	const parts = ["engine", "hf"].map((name) => join(".edge-voice", name));
 	// Where platformdirs puts Moonshine's cache, under HOME. The sandbox runs on macOS only for now (see main.ts).
 	if (platform === "darwin") parts.push(join("Library", "Caches", "moonshine_voice"));
 	else if (platform === "linux") parts.push(join(".cache", "moonshine_voice"));
@@ -94,7 +92,7 @@ export function profileConfig(vault: string, now: number): object {
 
 /**
  * The plugin's settings for this start: `python` as its interpreter, or none,
- * so the plugin uses (or installs) the engine in its home. Everything else is
+ * so the plugin uses the engine in its home. Everything else is
  * left as the sandbox last saved it.
  */
 export function pluginSettings(saved: Record<string, unknown> | null, python: string | null): Record<string, unknown> {

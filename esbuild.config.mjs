@@ -5,8 +5,6 @@ import esbuild from "esbuild";
 export function buildOptions(production) {
 	return {
 		entryPoints: ["src/main.ts"],
-		// server.py and the engine's locks ship inside main.js; Obsidian installs only main.js, manifest.json and styles.css.
-		loader: { ".py": "text", ".txt": "text" },
 		bundle: true,
 		external: ["obsidian", "electron", "@codemirror/*", "@lezer/*", ...builtins],
 		format: "cjs",

@@ -5,7 +5,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CancelledError, Sidecar } from "../src/sidecar";
+import { CancelledError, MissingVoiceError, Sidecar } from "../src/sidecar";
 
 const FAKE_SERVER = fileURLToPath(new URL("./fixtures/fake_server.py", import.meta.url));
 const BAD_SERVER = fileURLToPath(new URL("./fixtures/bad_server.py", import.meta.url));
@@ -15,22 +15,29 @@ let sidecar: Sidecar | undefined;
 afterEach(() => sidecar?.stop());
 
 describe("Sidecar", () => {
-	it("loads, reports progress and synthesizes", async () => {
+	it("loads and synthesizes", async () => {
 		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
-		const progress: number[] = [];
-		sidecar.onProgress = (fraction) => progress.push(fraction);
 		await sidecar.load("en_us", "any");
-		expect(progress).toEqual([0.5]);
 		const audio = await sidecar.synthesize("hello", 1);
 		expect(audio.sampleRate).toBe(24000);
 		expect(Array.from(audio.samples)).toEqual([0.5, 0.5, 0.5, 0.5, 0.5]);
 		expect(await sidecar.cacheDir()).toBe("/tmp/cache");
 	});
 
+	it("tells a voice that isn't downloaded from other errors, naming it", async () => {
+		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
+		const error = await sidecar.load("en_us", "kokoro_am_santa").catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(MissingVoiceError);
+		expect((error as MissingVoiceError).voice).toBe("kokoro_am_santa");
+		expect((error as Error).message).toContain("edge-voice-engine voices get kokoro_am_santa");
+		// The engine carries on with the next request.
+		await sidecar.load("en_us", "kokoro_af_bella");
+	});
+
 	it("asks for the faster engine and reports a fallback", async () => {
 		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
-		expect(await sidecar.load("en_us", "kokoro_am_santa")).toEqual({ engine: "moonshine", fallback: undefined });
-		expect(await sidecar.load("en_us", "kokoro_am_santa", "mlx")).toEqual({ engine: "mlx", fallback: undefined });
+		expect(await sidecar.load("en_us", "kokoro_af_bella")).toEqual({ engine: "moonshine", fallback: undefined });
+		expect(await sidecar.load("en_us", "kokoro_af_bella", "mlx")).toEqual({ engine: "mlx", fallback: undefined });
 		expect(await sidecar.load("en_us", "piper_en_US-lessac-medium", "mlx")).toEqual({
 			engine: "moonshine",
 			fallback: "the faster engine only has Kokoro voices",
@@ -126,16 +133,10 @@ describe("Sidecar limits", () => {
 		expect(engine.running).toBe(false);
 	});
 
-	it("gives loading a voice all the time it needs, since it may be downloading", async () => {
+	it("gives up on loading a voice that never finishes: voices load from disk, never downloading", async () => {
 		const engine = bad("hang");
-		let settled = false;
-		void engine.load("en_us", "kokoro_af_bella").then(
-			() => (settled = true),
-			() => (settled = true),
-		);
-		await new Promise((done) => setTimeout(done, limits.answerMs * 2));
-		expect(settled).toBe(false);
-		expect(engine.running).toBe(true);
+		await expect(engine.load("en_us", "kokoro_af_bella")).rejects.toThrow(/didn't answer within/);
+		expect(engine.running).toBe(false);
 	});
 
 	it("ends an engine whose reply never ends, instead of growing without bound", async () => {

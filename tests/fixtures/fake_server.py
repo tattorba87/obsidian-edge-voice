@@ -1,8 +1,9 @@
-"""A stand-in for server.py that speaks the same protocol without an engine.
+"""A stand-in for the engine that speaks the same protocol without a speech library.
 
 synth returns as many samples as the text has characters; texts starting with
-"slow" take 300 ms; "fail" errors; load reports progress first, and answers
-an MLX request the way server.py does.
+"slow" take 300 ms; "fail" errors. load answers an MLX request the way the
+engine does, and a voice that isn't on disk (kokoro_am_santa, listed as
+downloadable) the way the engine does: an error naming the missing voice.
 
 For the tests against real Obsidian (tests/obsidian), three optional
 environment variables: EDGE_VOICE_FAKE_LOG appends every request to that
@@ -31,7 +32,6 @@ for line in sys.stdin:
     request_id = request.get("id")
     op = request.get("op")
     if op == "load":
-        print(json.dumps({"event": "progress", "fraction": 0.5, "file": "voice"}), flush=True)
         reply = {"id": request_id, "ok": True}
         # Like server.py: MLX takes Kokoro voices, anything else falls back.
         if request.get("engine") == "mlx":
@@ -39,6 +39,13 @@ for line in sys.stdin:
             reply["engine"] = "mlx" if mlx else "moonshine"
             if not mlx:
                 reply["fallback"] = "the faster engine only has Kokoro voices"
+        if request.get("voice") == "kokoro_am_santa":
+            reply = {
+                "id": request_id,
+                "error": "The voice kokoro_am_santa isn't downloaded. "
+                "Get it with: edge-voice-engine voices get kokoro_am_santa",
+                "missing": "kokoro_am_santa",
+            }
     elif op == "synth":
         text = request["text"]
         if text.startswith("slow"):
