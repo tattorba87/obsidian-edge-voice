@@ -9,8 +9,8 @@ set -o pipefail
 #
 #   scripts/check-engine-local.sh [--faster] [voice]
 #
-# uv's download cache and Python builds are shared with your own, and voices
-# are kept in .scratch/engine-check-voices, so later runs download little.
+# uv's packages and the voices are kept in .scratch/ (engine-check-uv and
+# engine-check-voices), so later runs download little.
 # Needs uv, bun and gh.
 
 FASTER=false
@@ -37,10 +37,13 @@ for _ in $(seq 30); do curl -sSf "${BASE}/SHA256SUMS" >/dev/null && break; sleep
 
 read -r PLATFORM ARCH < <(bun -e 'console.log(process.platform, process.arch)')
 echo "== The setup steps for ${PLATFORM}-${ARCH} (faster engine: ${FASTER})"
-# Same caches as your own uv, so nothing big downloads twice; a fresh home for the engine.
-UV_CACHE_DIR="$(uv cache dir)"
+# A cache of its own that outlives the run, so PyPI packages download once; the
+# wheels built here change between runs at the same URL, so they're dropped
+# from it first. uv's Python builds are shared with yours. A fresh home for the engine.
+export UV_CACHE_DIR="${ROOT}/.scratch/engine-check-uv"
 UV_PYTHON_INSTALL_DIR="$(uv python dir)"
-export UV_CACHE_DIR UV_PYTHON_INSTALL_DIR
+export UV_PYTHON_INSTALL_DIR
+uv cache clean -q edge-voice-engine moonshine-voice docopt 2>/dev/null || true
 export MOONSHINE_VOICE_CACHE="${ROOT}/.scratch/engine-check-voices"
 mkdir -p "${MOONSHINE_VOICE_CACHE}" "${WORK}/home"
 bun "${ROOT}/scripts/setup-steps.ts" "${PLATFORM}" "${ARCH}" "${FASTER}" "${VOICE}" "${BASE}" > "${WORK}/steps.json"
