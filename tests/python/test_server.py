@@ -1,7 +1,9 @@
-"""The engine's JSON-lines protocol, run as a subprocess against a stub engine.
+"""The engine's JSON-lines protocol and its voices command, against stub libraries.
 
-The engine runs as the package users install (python -m edge_voice_engine);
-one test also runs server.py as a plain script, as today's in-plugin setup does.
+The engine runs as the package people install (python -m edge_voice_engine),
+in a temporary home with its own voice caches. It serves the plugin with
+downloads off: the stubs fail any attempt, so these tests also prove that only
+`edge-voice-engine voices get`, run by the person, downloads anything.
 """
 
 import base64
@@ -10,6 +12,7 @@ import os
 import struct
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -18,11 +21,41 @@ ROOT = Path(__file__).resolve().parents[2]
 STUB = Path(__file__).resolve().parent / "stub"
 PACKAGE = ROOT / "engine" / "src"
 SERVER = PACKAGE / "edge_voice_engine" / "server.py"
+MLX_FILES = Path("mlx-community/Kokoro-82M-bf16") / "a71e4d38b236d968966a2002c4c895dbd12b1c3c"
+
+
+def engine_home(home=None, voices=("kokoro_af_heart",), mlx=("af_heart",)):
+    """A home folder holding these voices, as `voices get` (and `--faster`) leaves them."""
+    home = Path(home or tempfile.mkdtemp())
+    cache = home / "moonshine"
+    cache.mkdir(parents=True, exist_ok=True)
+    for voice in voices:
+        (cache / f"{voice}.ort").write_text("voice")
+    hf = home / ".edge-voice" / "hf" / MLX_FILES
+    if mlx:
+        (hf / "voices").mkdir(parents=True, exist_ok=True)
+        (hf / "model.safetensors").write_text("model")
+        for voice in mlx:
+            (hf / "voices" / f"{voice}.safetensors").write_text("voice")
+    return home
+
+
+def engine_env(home, **env_extra):
+    return {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join([str(STUB), str(PACKAGE)]),
+        "HOME": str(home),
+        "USERPROFILE": str(home),
+        "MOONSHINE_STUB_CACHE": str(home / "moonshine"),
+        **env_extra,
+    }
 
 
 class Server:
-    def __init__(self, *, script=False, **env_extra):
-        env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(STUB), str(PACKAGE)]), **env_extra}
+    def __init__(self, *, script=False, home=None, **env_extra):
+        self.home = home or engine_home()
+        # The engine serving the plugin must never download: the stubs fail if it tries.
+        env = engine_env(self.home, MOONSHINE_STUB_OFFLINE="1", **env_extra)
         command = [str(SERVER)] if script else ["-m", "edge_voice_engine"]
         self.proc = subprocess.Popen(
             [sys.executable, "-u", *command],
@@ -59,10 +92,15 @@ def server():
     s.close()
 
 
-def test_load_reports_progress_and_keeps_native_output_off_the_protocol(server):
+def test_load_keeps_native_output_off_the_protocol(server):
     request_id = server.request(op="load", language="en_us", voice="kokoro_af_heart")
-    assert server.read() == {"event": "progress", "fraction": 1.0, "file": "voice.ort"}
     assert server.read() == {"id": request_id, "ok": True}
+
+
+def test_load_of_a_voice_not_on_disk_says_how_to_get_it(server):
+    reply = answer(server, op="load", language="en_us", voice="piper_en_US-lessac-medium")
+    assert reply["missing"] == "piper_en_US-lessac-medium"
+    assert "edge-voice-engine voices get piper_en_US-lessac-medium" in reply["error"]
 
 
 def test_synth_returns_float32_audio(server):
@@ -85,7 +123,7 @@ def test_a_bad_voice_keeps_the_old_one(server):
     while "id" not in server.read():
         pass
     request_id = server.request(op="load", language="en_us", voice="no_such_voice")
-    assert "no voice" in server.read()["error"]
+    assert server.read()["missing"] == "no_such_voice"
     server.request(op="synth", text="Still here.")
     assert server.read()["ok"] is True
     assert request_id
@@ -93,7 +131,12 @@ def test_a_bad_voice_keeps_the_old_one(server):
 
 def test_voices_paths_and_unknown_ops(server):
     server.request(op="voices", language="en_us")
-    assert server.read()["present"] == ["kokoro_af_heart"]
+    assert server.read() == {
+        "id": 1,
+        "ok": True,
+        "present": ["kokoro_af_heart"],
+        "downloadable": ["piper_en_US-lessac-medium"],
+    }
     server.request(op="paths")
     assert server.read()["cache"] == "/tmp/moonshine_voice"
     request_id = server.request(op="dance")
@@ -129,11 +172,23 @@ def test_mlx_speaks_kokoro_voices(server):
     assert samples and set(samples) == {0.75}
 
 
-def test_mlx_falls_back_to_moonshine_for_piper_voices(server):
+def test_mlx_falls_back_to_moonshine_for_piper_voices():
+    server = Server(home=engine_home(voices=["piper_en_US-lessac-medium"]))
+    assert server.read() == {"event": "ready"}
     reply = loaded(server, language="en_us", voice="piper_en_US-lessac-medium", engine="mlx")
     assert reply["ok"] is True and reply["engine"] == "moonshine"
     assert "Kokoro" in reply["fallback"]
     assert set(synth_samples(server)) == {0.25}
+    server.close()
+
+
+def test_mlx_without_its_files_falls_back_and_says_how_to_get_them():
+    server = Server(home=engine_home(mlx=()))
+    assert server.read() == {"event": "ready"}
+    reply = loaded(server, language="en_us", voice="kokoro_af_heart", engine="mlx")
+    assert reply["engine"] == "moonshine"
+    assert "edge-voice-engine voices get kokoro_af_heart --faster" in reply["fallback"]
+    server.close()
 
 
 def test_mlx_falls_back_to_moonshine_when_it_cannot_load():
@@ -150,8 +205,7 @@ def test_mlx_downloads_stay_private_whatever_the_environment_says(tmp_path):
     # Wherever the engine is installed, the files go to ~/.edge-voice/hf, which
     # the plugin's storage list shows and can delete.
     server = Server(
-        HOME=str(tmp_path),
-        USERPROFILE=str(tmp_path),
+        home=engine_home(tmp_path),
         HF_HOME="/elsewhere/hf",
         USER_HF_HOME="/elsewhere/hf",
         EXPECTED_HF_HOME=str(tmp_path / ".edge-voice" / "hf"),
@@ -205,9 +259,12 @@ def test_synth_refuses_text_and_speeds_it_shouldnt_take(server, body, message):
     assert message in answer(server, op="synth", **body)["error"]
 
 
-def test_valid_ids_with_capitals_still_load(server):
+def test_valid_ids_with_capitals_still_load():
     # Piper voices carry their locale, e.g. en_US.
+    server = Server(home=engine_home(voices=["piper_en_US-lessac-medium"]))
+    assert server.read() == {"event": "ready"}
     assert answer(server, op="load", language="en_us", voice="piper_en_US-lessac-medium") == {"id": 1, "ok": True}
+    server.close()
 
 
 def test_hello_names_the_engine_and_its_protocol(server):
@@ -216,7 +273,7 @@ def test_hello_names_the_engine_and_its_protocol(server):
 
 
 def test_runs_as_a_plain_script_too():
-    # Today's in-plugin setup copies server.py next to its environment and runs it.
+    # For running a checkout's server.py by hand.
     server = Server(script=True)
     assert server.read() == {"event": "ready"}
     assert answer(server, op="hello")["ok"]
@@ -230,8 +287,8 @@ def test_package_version_matches_the_engine():
     assert f'VERSION = "{project["version"]}"' in SERVER.read_text()
 
 
-def run_command(*args):
-    env = {**os.environ, "PYTHONPATH": str(PACKAGE)}
+def run_command(*args, home=None):
+    env = engine_env(home or engine_home())
     return subprocess.run([sys.executable, "-m", "edge_voice_engine", *args], capture_output=True, text=True, env=env)
 
 
@@ -240,3 +297,39 @@ def test_command_prints_its_python_and_version():
     assert run_command("--version").stdout.strip() == "0.2.0"
     wrong = run_command("--install")
     assert wrong.returncode != 0 and "unknown arguments" in wrong.stderr
+
+
+def test_voices_get_downloads_a_voice_the_engine_can_then_load(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    result = run_command("voices", "get", "kokoro_af_heart", home=home)
+    assert result.returncode == 0, result.stderr
+    assert "download.moonshine.ai" in result.stdout and "ready" in result.stdout
+    server = Server(home=home)
+    assert server.read() == {"event": "ready"}
+    assert answer(server, op="load", language="en_us", voice="kokoro_af_heart")["ok"]
+    server.close()
+
+
+def test_voices_get_faster_also_fetches_the_mlx_files(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    assert run_command("voices", "get", "kokoro_af_heart", "--faster", home=home).returncode == 0
+    assert (home / ".edge-voice" / "hf" / MLX_FILES / "voices" / "af_heart.safetensors").exists()
+    server = Server(home=home)
+    assert server.read() == {"event": "ready"}
+    assert loaded(server, language="en_us", voice="kokoro_af_heart", engine="mlx")["engine"] == "mlx"
+    server.close()
+
+
+def test_voices_get_refuses_unknown_voices_and_piper_for_the_faster_engine(tmp_path):
+    home = engine_home(tmp_path, voices=[], mlx=())
+    unknown = run_command("voices", "get", "kokoro_nobody", home=home)
+    assert unknown.returncode == 1 and "voices list" in unknown.stderr
+    piper = run_command("voices", "get", "piper_en_US-lessac-medium", "--faster", home=home)
+    assert piper.returncode == 1 and "Kokoro" in piper.stderr
+    assert "not a voice name" in run_command("voices", "get", "../x", home=home).stderr
+
+
+def test_voices_list_shows_what_is_here_and_what_can_be_fetched():
+    result = run_command("voices", "list")
+    assert "On this computer: kokoro_af_heart" in result.stdout
+    assert "Available to get: piper_en_US-lessac-medium" in result.stdout

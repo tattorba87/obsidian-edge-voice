@@ -1,11 +1,17 @@
-"""A stand-in for huggingface_hub that refuses what server.py must never do.
+"""A stand-in for huggingface_hub that refuses what the engine must never do.
 
 It fails unless downloads are pinned to a commit, kept in the engine's own
 folder, and anonymous, so the tests check the engine's settings for real.
+Files live under HF_HOME; with HF_HUB_OFFLINE=1 (the engine serving the
+plugin) a missing file fails as the real library does, and nothing downloads.
 """
 
 import os
 from pathlib import Path
+
+
+class LocalEntryNotFoundError(FileNotFoundError):
+    pass
 
 
 def check_private(revision):
@@ -22,6 +28,17 @@ def check_private(revision):
         raise RuntimeError("telemetry on")
 
 
-def hf_hub_download(repo_id, filename, revision=None):
+def fetch(repo_id, filename, revision):
+    """The cached file, downloading it first unless offline."""
     check_private(revision)
-    return str(Path(os.environ["HF_HOME"]) / repo_id / filename)
+    path = Path(os.environ["HF_HOME"]) / repo_id / revision / filename
+    if not path.exists():
+        if os.environ.get("HF_HUB_OFFLINE") == "1":
+            raise LocalEntryNotFoundError(f"{filename} isn't in the cache and downloads are off")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("downloaded")
+    return str(path)
+
+
+def hf_hub_download(repo_id, filename, revision=None):
+    return fetch(repo_id, filename, revision)

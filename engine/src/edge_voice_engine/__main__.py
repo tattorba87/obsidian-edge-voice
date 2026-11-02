@@ -15,8 +15,12 @@ def main() -> None:
         from edge_voice_engine.server import VERSION
 
         print(VERSION)
+    elif sys.argv[1:2] == ["voices"]:
+        from edge_voice_engine.voices import main as voices
+
+        sys.exit(voices(sys.argv[2:]))
     elif sys.argv[1:]:
-        sys.exit(f"edge-voice-engine: unknown arguments {' '.join(sys.argv[1:])} (try --python or --version)")
+        sys.exit(f"edge-voice-engine: unknown arguments {' '.join(sys.argv[1:])} (try voices, --python or --version)")
     else:
         from edge_voice_engine.server import main as serve
 
