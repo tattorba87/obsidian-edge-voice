@@ -68,7 +68,7 @@ jobs:
             echo "</details>"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ env.MOONSHINE_CACHE }}
@@ -119,7 +119,7 @@ jobs:
           uv venv -q --python 3.12 .bench/moonshine
           uv pip install -q --python .bench/moonshine/bin/python ".bench/$WHEEL"
           echo "MOONSHINE_CACHE=$(.bench/moonshine/bin/python -I -c 'from moonshine_voice.download_file import get_cache_dir; print(get_cache_dir())')" >> "$GITHUB_ENV"
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.MOONSHINE_CACHE }}
           key: engine-bench-voices-x64-v1
