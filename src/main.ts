@@ -29,6 +29,7 @@ import { deleteItem, formatBytes, scanMlxVoices, scanVoices, StorageItem } from 
 import { SetupModal } from "./setup-modal";
 import { InBackground, pausesInBackground } from "./background";
 import { playChime } from "./chime";
+import { clamp, isEngineId, savedSettings } from "./settings";
 import { startsReading, statusFor, toggleAction } from "./controls";
 import {
 	customKeyProblem,
@@ -224,21 +225,30 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<ReaderSettings> | null) };
+		const saved = (await this.loadData()) as unknown;
+		// Only values of the right type are kept (see settings.ts); then what each must be.
+		const settings: ReaderSettings = { ...DEFAULT_SETTINGS, ...savedSettings(saved, DEFAULT_SETTINGS) };
+		if (!isEngineId(settings.voice)) settings.voice = DEFAULT_SETTINGS.voice;
+		if (!isEngineId(settings.language)) settings.language = DEFAULT_SETTINGS.language;
+		if (!["pause", "visible", "always"].includes(settings.inBackground)) {
+			settings.inBackground = DEFAULT_SETTINGS.inBackground;
+		}
+		if (!settings.pythonPath.trim()) settings.pythonPath = DEFAULT_SETTINGS.pythonPath;
+		settings.volume = clamp(settings.volume, 0, 1);
+		// The settings offer 1 to 4.
+		settings.prefetch = Math.round(clamp(settings.prefetch, 1, 4));
 		// Finer speeds were offered before; keep the closest of the ones offered now.
-		this.settings.speed = nearestSpeed(this.settings.speed);
+		settings.speed = nearestSpeed(settings.speed);
 		// One setting used to cover both switching pages and leaving Obsidian.
-		const old = this.settings as ReaderSettings & { keepReadingInBackground?: boolean };
-		if (old.keepReadingInBackground) {
-			this.settings.pauseOnPageSwitch = false;
-			this.settings.inBackground = "always";
+		if ((saved as { keepReadingInBackground?: unknown } | null)?.keepReadingInBackground === true) {
+			settings.pauseOnPageSwitch = false;
+			settings.inBackground = "always";
 		}
-		delete old.keepReadingInBackground;
 		// A key recorded before there was one custom slot becomes the custom key.
-		const { doubleTapKey, doubleTapCustomKey } = this.settings;
-		if (!doubleTapCustomKey && !DOUBLE_TAP_PRESETS.includes(doubleTapKey)) {
-			this.settings.doubleTapCustomKey = doubleTapKey;
+		if (!settings.doubleTapCustomKey && !DOUBLE_TAP_PRESETS.includes(settings.doubleTapKey)) {
+			settings.doubleTapCustomKey = settings.doubleTapKey;
 		}
+		this.settings = settings;
 	}
 
 	async saveSettings(): Promise<void> {

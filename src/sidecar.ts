@@ -1,6 +1,19 @@
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
-import { dirname } from "path";
+import { dirname, isAbsolute } from "path";
+import { clearTimeout, setTimeout } from "timers";
 import { childEnvironment } from "./environment";
+import { isEngineId } from "./settings";
+
+export interface SidecarLimits {
+	/** The engine must say it's ready within this (ms), or it's taken to be stuck. */
+	startMs: number;
+	/** A synthesis or a voice list must be answered within this (ms), counted from when it's sent. */
+	answerMs: number;
+	/** No reply line may be longer (characters): beyond a long sentence's audio, short of exhausting memory. */
+	maxLine: number;
+}
+
+const LIMITS: SidecarLimits = { startMs: 120_000, answerMs: 120_000, maxLine: 64 * 1024 * 1024 };
 
 export interface Synthesis {
 	samples: Float32Array<ArrayBuffer>;
@@ -33,7 +46,8 @@ export class Sidecar {
 	private ready?: Promise<void>;
 	private nextId = 1;
 	private pending = new Map<number, Pending>();
-	private waiting: { id: number; body: Record<string, unknown> }[] = [];
+	private waiting: { id: number; body: Record<string, unknown>; deadline?: number }[] = [];
+	private answerTimer?: ReturnType<typeof setTimeout>;
 	private inFlight?: number;
 	private stdoutBuffer = "";
 	private stderrTail: string[] = [];
@@ -41,6 +55,7 @@ export class Sidecar {
 	constructor(
 		private readonly python: string,
 		private readonly script: string,
+		private readonly limits: SidecarLimits = LIMITS,
 	) {}
 
 	get running(): boolean {
@@ -60,9 +75,18 @@ export class Sidecar {
 			});
 			this.proc = proc;
 
+			const startTimer = setTimeout(
+				() => fail(`The speech engine didn't start within ${this.limits.startMs / 1000} s.`),
+				this.limits.startMs,
+			);
+
 			proc.stdout.setEncoding("utf8");
 			proc.stdout.on("data", (data: string) => {
 				this.stdoutBuffer += data;
+				if (this.stdoutBuffer.length > this.limits.maxLine && !this.stdoutBuffer.includes("\n")) {
+					fail("The speech engine sent a reply too large to read.");
+					return;
+				}
 				let newline: number;
 				while ((newline = this.stdoutBuffer.indexOf("\n")) >= 0) {
 					const line = this.stdoutBuffer.slice(0, newline).trim();
@@ -77,6 +101,7 @@ export class Sidecar {
 					}
 					if (message.event === "ready") {
 						started = true;
+						clearTimeout(startTimer);
 						resolve();
 					} else {
 						this.handle(message);
@@ -95,14 +120,10 @@ export class Sidecar {
 			});
 
 			const fail = (message: string) => {
-				this.proc = undefined;
-				this.ready = undefined;
-				this.waiting = [];
-				this.inFlight = undefined;
-				const error = new Error(message);
-				for (const pending of this.pending.values()) pending.reject(error);
-				this.pending.clear();
-				if (!started) reject(error);
+				if (this.proc !== proc) return;
+				clearTimeout(startTimer);
+				this.abandon(message);
+				if (!started) reject(new Error(message));
 				this.onExit?.(message);
 			};
 			proc.on("error", (error) => fail(`Could not start ${this.python}: ${error.message}`));
@@ -116,12 +137,20 @@ export class Sidecar {
 	}
 
 	stop(): void {
+		this.abandon("Sidecar stopped");
+	}
+
+	/** Ends the engine and fails everything waiting on it with `message`; the next request starts it again. */
+	private abandon(message: string): void {
 		const proc = this.proc;
 		this.proc = undefined;
 		this.ready = undefined;
 		this.waiting = [];
 		this.inFlight = undefined;
-		for (const pending of this.pending.values()) pending.reject(new Error("Sidecar stopped"));
+		this.stdoutBuffer = "";
+		clearTimeout(this.answerTimer);
+		const error = new Error(message);
+		for (const pending of this.pending.values()) pending.reject(error);
 		this.pending.clear();
 		proc?.kill();
 	}
@@ -131,6 +160,7 @@ export class Sidecar {
 	 * and falls back to Moonshine; the result says which loaded, and why not MLX.
 	 */
 	async load(language: string, voice: string, engine?: "mlx"): Promise<{ engine: string; fallback?: string }> {
+		if (!isEngineId(language) || !isEngineId(voice)) throw new Error(`Not a voice: ${language}/${voice}`);
 		const reply = await this.request(
 			engine ? { op: "load", language, voice, engine } : { op: "load", language, voice },
 		);
@@ -141,29 +171,40 @@ export class Sidecar {
 	}
 
 	async voices(language: string): Promise<{ present: string[]; downloadable: string[] }> {
-		const reply = await this.request({ op: "voices", language });
-		return {
-			present: (reply.present as string[]) ?? [],
-			downloadable: (reply.downloadable as string[]) ?? [],
-		};
+		const reply = await this.request({ op: "voices", language }, undefined, this.limits.answerMs);
+		const ids = (value: unknown) => (Array.isArray(value) ? value.filter(isEngineId) : []);
+		return { present: ids(reply.present), downloadable: ids(reply.downloadable) };
 	}
 
 	/** Where the engine keeps downloaded voices. */
 	async cacheDir(): Promise<string> {
-		const reply = await this.request({ op: "paths" });
-		return reply.cache as string;
+		const reply = await this.request({ op: "paths" }, undefined, this.limits.answerMs);
+		if (typeof reply.cache !== "string" || !isAbsolute(reply.cache))
+			throw new Error("The engine gave no cache folder");
+		return reply.cache;
 	}
 
 	async synthesize(text: string, speed: number, signal?: AbortSignal): Promise<Synthesis> {
-		const reply = await this.request({ op: "synth", text, speed }, signal);
-		const bytes = Buffer.from(reply.audio as string, "base64");
+		const reply = await this.request({ op: "synth", text, speed }, signal, this.limits.answerMs);
+		const rate = reply.sampleRate;
+		if (typeof rate !== "number" || !Number.isFinite(rate) || rate < 1000 || rate > 384000) {
+			throw new Error("The engine's audio has an impossible sample rate");
+		}
+		if (typeof reply.audio !== "string") throw new Error("The engine sent no audio");
+		const bytes = Buffer.from(reply.audio, "base64");
+		if (bytes.byteLength % 4 !== 0) throw new Error("The engine's audio isn't whole samples");
 		// Copy into a fresh buffer: Buffer slices can sit at unaligned offsets.
 		const samples = new Float32Array(bytes.byteLength / 4);
 		new Uint8Array(samples.buffer).set(bytes);
-		return { samples, sampleRate: reply.sampleRate as number };
+		return { samples, sampleRate: rate };
 	}
 
-	private async request(body: Record<string, unknown>, signal?: AbortSignal): Promise<Record<string, unknown>> {
+	/** Sends `body` once the engine is free. `deadline` (ms) counts from sending; past it, the engine is restarted. */
+	private async request(
+		body: Record<string, unknown>,
+		signal?: AbortSignal,
+		deadline?: number,
+	): Promise<Record<string, unknown>> {
 		await this.start();
 		if (!this.proc) throw new Error("TTS sidecar is not running");
 		if (signal?.aborted) throw new CancelledError();
@@ -171,7 +212,7 @@ export class Sidecar {
 		const reply = new Promise<Record<string, unknown>>((resolve, reject) => {
 			this.pending.set(id, { resolve, reject });
 		});
-		const entry = { id, body };
+		const entry = { id, body, deadline };
 		this.waiting.push(entry);
 		signal?.addEventListener(
 			"abort",
@@ -194,15 +235,26 @@ export class Sidecar {
 		if (!next) return;
 		this.inFlight = next.id;
 		this.proc.stdin.write(JSON.stringify({ id: next.id, ...next.body }) + "\n");
+		if (next.deadline) {
+			const { id, deadline } = next;
+			this.answerTimer = setTimeout(() => {
+				if (this.inFlight === id) this.abandon(`The speech engine didn't answer within ${deadline / 1000} s.`);
+			}, deadline);
+		}
 	}
 
 	private handle(message: Record<string, unknown>): void {
 		if (message.event === "progress") {
-			this.onProgress?.(message.fraction as number, message.file as string);
+			const { fraction, file } = message;
+			if (typeof fraction === "number" && Number.isFinite(fraction)) {
+				this.onProgress?.(Math.min(1, Math.max(0, fraction)), typeof file === "string" ? file : "");
+			}
 			return;
 		}
-		const id = message.id as number;
+		const id = message.id;
+		if (typeof id !== "number") return;
 		if (id === this.inFlight) {
+			clearTimeout(this.answerTimer);
 			this.inFlight = undefined;
 			this.pump();
 		}

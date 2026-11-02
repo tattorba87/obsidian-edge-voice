@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CancelledError, Sidecar } from "../src/sidecar";
 
 const FAKE_SERVER = fileURLToPath(new URL("./fixtures/fake_server.py", import.meta.url));
+const BAD_SERVER = fileURLToPath(new URL("./fixtures/bad_server.py", import.meta.url));
 const PYTHON = process.platform === "win32" ? "python" : "python3";
 
 let sidecar: Sidecar | undefined;
@@ -90,5 +91,67 @@ describe("Sidecar", () => {
 			for (const folder of [dir, planted])
 				rmSync(folder, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
 		}
+	});
+});
+
+describe("Sidecar limits", () => {
+	const limits = { startMs: 1500, answerMs: 1500, maxLine: 10_000 };
+
+	/** A sidecar running the misbehaving engine in `mode` (see fixtures/bad_server.py). */
+	function bad(mode: string): Sidecar {
+		vi.stubEnv("EDGE_VOICE_BAD", mode);
+		sidecar = new Sidecar(PYTHON, BAD_SERVER, limits);
+		return sidecar;
+	}
+
+	afterEach(() => vi.unstubAllEnvs());
+
+	it("gives up on an engine that never says it's ready", async () => {
+		await expect(bad("silent").synthesize("hi", 1)).rejects.toThrow(/didn't start within 1.5 s/);
+		expect(sidecar!.running).toBe(false);
+	});
+
+	it("restarts an engine that stops answering, failing what was waiting, not blocking it forever", async () => {
+		const engine = bad("hang");
+		const first = engine.synthesize("one", 1);
+		const queued = engine.synthesize("two", 1);
+		await expect(first).rejects.toThrow(/didn't answer within 1.5 s/);
+		await expect(queued).rejects.toThrow(/didn't answer/);
+		expect(engine.running).toBe(false);
+	});
+
+	it("gives loading a voice all the time it needs, since it may be downloading", async () => {
+		const engine = bad("hang");
+		let settled = false;
+		void engine.load("en_us", "kokoro_af_bella").then(
+			() => (settled = true),
+			() => (settled = true),
+		);
+		await new Promise((done) => setTimeout(done, limits.answerMs * 2));
+		expect(settled).toBe(false);
+		expect(engine.running).toBe(true);
+	});
+
+	it("ends an engine whose reply never ends, instead of growing without bound", async () => {
+		await expect(bad("huge").synthesize("hi", 1)).rejects.toThrow(/too large/);
+	});
+
+	it("refuses audio with an impossible sample rate, or that isn't whole samples", async () => {
+		const engine = bad("bad-audio");
+		await expect(engine.synthesize("rate", 1)).rejects.toThrow(/impossible sample rate/);
+		await expect(engine.synthesize("half", 1)).rejects.toThrow(/whole samples/);
+	});
+
+	it("keeps only real voice IDs from the engine's list", async () => {
+		expect(await bad("bad-voices").voices("en_us")).toEqual({
+			present: ["kokoro_af_bella"],
+			downloadable: ["piper_en_US-lessac-medium"],
+		});
+	});
+
+	it("never sends the engine a voice ID that isn't one", async () => {
+		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
+		await expect(sidecar.load("en_us", "../../etc/passwd")).rejects.toThrow(/Not a voice/);
+		expect(sidecar.running).toBe(false);
 	});
 });
