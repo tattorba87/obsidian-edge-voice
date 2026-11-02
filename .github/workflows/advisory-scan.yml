@@ -9,6 +9,7 @@ on:
     paths:
       - .github/workflows/advisory-scan.yml
       - scripts/audit-dependencies*.py
+      - scripts/advisory-allowlist.json
       - locks/**
       - bun.lock
 
@@ -31,9 +32,9 @@ jobs:
         run: uv run --no-project --python 3.12 scripts/audit-dependencies-test.py
       - name: Query advisories for every Python lock and bun.lock
         # --disable-pip queries pinned identities without installing engine/model packages.
-        # A nonzero result means advisories, gaps or a scanner error; inspect the report.
-        run: uv run --no-project --python 3.12 --with pip-audit==2.10.1 scripts/audit-dependencies.py
-      - name: Save reports even when findings or coverage gaps make the job fail
+        # New advisories, scanner/policy errors or expired exceptions fail; documented gaps stay visible.
+        run: uv run --no-project --python 3.12 --with pip-audit==2.10.1 scripts/audit-dependencies.py --enforce-policy
+      - name: Save the advisory policy report even on failure
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

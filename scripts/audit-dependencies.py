@@ -104,7 +104,7 @@ def markdown(reports):
     lines = [
         "# Dependency advisory scan",
         "",
-        "Reports only; no locks are changed and no update PRs are opened.",
+        "No locks are changed and no update PRs are opened.",
         "A name/version advisory lookup is not a code, artifact-integrity or native-library audit.",
         "",
         "| Input | Packages queried | Advisories | Gaps | Errors |",
@@ -168,7 +168,13 @@ def release_gate(reports, policy, manifest, today=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--release", action="store_true", help="enforce the reviewed release advisory policy")
+    parser.add_argument(
+        "--enforce-policy",
+        "--release",
+        dest="release",
+        action="store_true",
+        help="enforce reviewed advisory exceptions; gaps stay visible",
+    )
     args = parser.parse_args()
     OUTPUT.mkdir(parents=True, exist_ok=True)
     reports = {}
@@ -215,8 +221,10 @@ def main():
             manifest = json.loads((ROOT / "package.json").read_text())
             blocked, accepted = release_gate(reports, policy, manifest)
             gate_failed = bool(blocked)
-            summary += "\n## Release advisory gate\n\n"
-            summary += "Gate failed.\n" if blocked else "Gate passed; coverage gaps above remain unaudited.\n"
+            summary += "\n## Advisory policy\n\n"
+            summary += (
+                "Gate failed.\n" if blocked else "Policy passed; documented coverage gaps above remain unaudited.\n"
+            )
             summary += "\n".join("- Blocked: " + item for item in blocked) + "\n"
             summary += "\n".join("- Accepted dev-only advisory: " + item for item in accepted) + "\n"
         except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
