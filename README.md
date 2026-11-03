@@ -1,6 +1,6 @@
 # Edge Voice
 
-**Listen to your notes and PDFs in Obsidian, and follow along as each word lights up.**
+**Text-to-speech (TTS) for Obsidian: listen to your notes and PDFs, and follow along as each word lights up.**
 
 **Free. Private.** Free and open source (MIT), with no account, no subscription and no limits. The voices run on your own computer: your notes never leave it, and once it's set up it works offline.
 
