@@ -9,6 +9,9 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	SettingDefinition,
+	SettingDefinitionControl,
+	SettingDefinitionItem,
 	setIcon,
 } from "obsidian";
 import { join } from "path";
@@ -761,6 +764,16 @@ function pointerPosition(event: MouseEvent): { node: Node | null; offset: number
 		: { node: event.target as Node, offset: 0 };
 }
 
+/** What Settings → Storage knows: not asked yet, asking the engine, or its answer (see storageItems). */
+type StorageState = { status: "idle" | "loading" } | { status: "done"; items: StorageItem[] | null | "none" };
+
+/**
+ * The settings tab, as Obsidian's setting definitions (1.13+), so every row
+ * shows up in Obsidian's settings search. Plain toggles, menus and the slider
+ * are controls; rows with their own drawing (voices, colours, the double-tap
+ * key, Storage, the engine) are render definitions around the code that drew
+ * them before.
+ */
 class ReaderSettingTab extends PluginSettingTab {
 	constructor(
 		app: App,
@@ -769,55 +782,178 @@ class ReaderSettingTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
-	/** Which folded sections are open, kept when the page is drawn again. */
-	private open = new Set<string>();
+	/** The Voice row, filled in together with Get another voice (see showVoices). */
+	private voiceRow?: Setting;
 
-	/** Asks the engine for the voices again and redraws the voice rows (set by display). */
-	private refreshVoices?: () => void;
+	private storage: StorageState = { status: "idle" };
 
-	/** A section folded away under a heading with a hint beside it, closed unless opened. */
-	private fold(
-		parentEl: HTMLElement,
-		title: string,
-		hint: string,
-		id: string,
-	): { details: HTMLDetailsElement; body: HTMLElement; hint: HTMLElement } {
-		const details = parentEl.createEl("details", { cls: "edge-voice-fold" });
-		details.open = this.open.has(id);
-		details.addEventListener("toggle", () => (details.open ? this.open.add(id) : this.open.delete(id)));
-		const summary = details.createEl("summary");
-		summary.createSpan({ cls: "edge-voice-fold-title", text: title });
-		const hintEl = summary.createSpan({ cls: "setting-item-description", text: hint });
-		return { details, body: details.createDiv(), hint: hintEl };
+	getControlValue(key: string): unknown {
+		if (key === "speed") return String(nearestSpeed(this.plugin.settings.speed));
+		return (this.plugin.settings as unknown as Record<string, unknown>)[key];
 	}
 
-	display(): void {
-		const { containerEl } = this;
+	setControlValue(key: string, value: unknown): void {
+		if (key === "speed") return this.plugin.setSpeed(Number(value));
+		if (key === "showPlayer") return this.plugin.setPlayerShown(value === true);
+		(this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+		void this.plugin.saveSettings();
+	}
+
+	hide(): void {
+		super.hide();
+		// Ask the engine again next time the tab opens.
+		this.storage = { status: "idle" };
+	}
+
+	getSettingDefinitions(): SettingDefinitionItem[] {
 		const settings = this.plugin.settings;
-		containerEl.empty();
+		const toggle = (
+			key: string,
+			name: string,
+			desc: string,
+			disabled?: () => boolean,
+		): SettingDefinitionControl => ({
+			name,
+			desc,
+			control: { type: "toggle", key, disabled },
+		});
+		return [
+			{
+				type: "group",
+				items: [
+					{
+						name: "Voice",
+						desc: "Kokoro voices sound the most natural; Piper voices start reading sooner.",
+						render: (setting) => {
+							this.voiceRow = setting;
+						},
+					},
+					{
+						name: "Get another voice",
+						desc: "Voices are downloaded by you, with a command; Edge Voice doesn't download anything.",
+						aliases: ["Download a voice", "Kokoro", "Piper"],
+						render: (setting) => {
+							if (this.voiceRow) this.showVoices(this.voiceRow, setting);
+						},
+					},
+					{
+						name: "Speed",
+						desc: "Also adjustable while reading, from the player bar, the status bar or the commands to read faster and slower.",
+						control: {
+							type: "dropdown",
+							key: "speed",
+							options: Object.fromEntries(SPEEDS.map((speed) => [String(speed), formatSpeed(speed)])),
+						},
+					},
+					{
+						name: "Highlight colour",
+						desc: "A soft tint for the sentence, a deeper shade for the word being spoken.",
+						aliases: ["Highlight color", "Theme"],
+						render: (setting) => this.highlightColour(setting),
+					},
+					toggle(
+						"showPlayer",
+						"Show player controls",
+						"The floating bar with play/pause, skip, speed and volume while reading. Without it, use the status bar, commands and hotkeys.",
+					),
+					toggle(
+						"preloadVoice",
+						"Load the voice when Obsidian starts",
+						"Reading then starts at once. Keeps the voice in memory (a few hundred MB for Kokoro) while Obsidian is open.",
+					),
+					{
+						name: "Double-tap shortcut",
+						desc: "Double-tap a key to start reading, and again to pause or resume. Works while Obsidian is the active app.",
+						aliases: ["Hotkey", "Key"],
+						render: (setting) => this.doubleTapSetting(setting),
+					},
+					toggle(
+						"doubleTapChime",
+						"Chime on double tap",
+						"A short chime, rising when reading starts or resumes and falling when it pauses.",
+						() => !settings.doubleTapEnabled,
+					),
+					toggle(
+						"pauseOnPageSwitch",
+						"Pause when switching pages",
+						"Reading pauses when you open another page, and resumes where it stopped. Sidebars don't count.",
+					),
+					{
+						name: "When Obsidian is in the background",
+						desc: "While you use another app. Visible means an Obsidian window is still on screen, not minimized, hidden or covered.",
+						control: {
+							type: "dropdown",
+							key: "inBackground",
+							options: { pause: "Pause", visible: "Keep reading while visible", always: "Keep reading" },
+						},
+					},
+					toggle(
+						"skipFootnotes",
+						"Skip footnotes in PDFs",
+						"Leave out the small-print notes at the bottom of a page and the little marks that point to them.",
+					),
+					toggle("autoScroll", "Follow along", "Scroll to keep the sentence being read in view."),
+				],
+			},
+			{ type: "group", heading: "Storage", items: this.storageDefinitions() },
+			{
+				type: "group",
+				heading: "Advanced",
+				items: [
+					{
+						name: "Speech engine",
+						desc: "Looking for it…",
+						aliases: ["Setup", "Install"],
+						render: (setting) => this.engineSetting(setting),
+					},
+					{
+						name: "Faster voice engine",
+						desc: this.plugin.fasterEngineStatus(),
+						aliases: ["MLX", "Apple silicon"],
+						visible: mlxSupported(),
+						render: (setting) => {
+							setting.addToggle((component) =>
+								component.setValue(settings.fasterEngine).onChange((value) => {
+									this.plugin.setFasterEngine(value);
+									setting.setDesc(this.plugin.fasterEngineStatus());
+								}),
+							);
+						},
+					},
+					{
+						name: "Python interpreter",
+						desc:
+							"Leave empty to use the engine in the .edge-voice/engine folder in your home folder. To use another " +
+							"Python with the engine installed, enter its full path.",
+						render: (setting) => {
+							setting
+								.addText((text) =>
+									text
+										.setPlaceholder("Automatic")
+										.setValue(settings.pythonPath)
+										.onChange((value) => {
+											settings.pythonPath = value.trim();
+											void this.plugin.saveSettings();
+										}),
+								)
+								// Drawing the tab again looks for the engine there.
+								.addButton((button) => button.setButtonText("Use it").onClick(() => this.update()));
+						},
+					},
+					{
+						name: "Sentences to prepare ahead",
+						desc: "More smooths over slow sentences; fewer reacts faster to skips and speed changes.",
+						control: { type: "slider", key: "prefetch", min: 1, max: 4, step: 1 },
+					},
+				],
+			},
+		];
+	}
 
-		const voiceSetting = new Setting(containerEl)
-			.setName("Voice")
-			.setDesc("Kokoro voices sound the most natural; Piper voices start reading sooner.");
-		const moreSetting = new Setting(containerEl).setName("Get another voice");
-		this.showVoices(voiceSetting, moreSetting);
-		this.refreshVoices = () => this.showVoices(voiceSetting, moreSetting);
-
-		new Setting(containerEl)
-			.setName("Speed")
-			.setDesc(
-				"Also adjustable while reading, from the player bar, the status bar or the commands to read faster and slower.",
-			)
-			.addDropdown((dropdown) => {
-				for (const speed of SPEEDS) dropdown.addOption(String(speed), formatSpeed(speed));
-				dropdown.setValue(String(nearestSpeed(settings.speed)));
-				dropdown.onChange((value) => this.plugin.setSpeed(Number(value)));
-			});
-
-		const colorSetting = new Setting(containerEl)
-			.setName("Highlight colour")
-			.setDesc("A soft tint for the sentence, a deeper shade for the word being spoken.");
-		const swatches = colorSetting.controlEl.createDiv({ cls: "edge-voice-swatches" });
+	/** Colour swatches, with a preview of the sentence and word highlights below. */
+	private highlightColour(setting: Setting): void {
+		const settings = this.plugin.settings;
+		const swatches = setting.controlEl.createDiv({ cls: "edge-voice-swatches" });
 		for (const theme of HIGHLIGHT_THEMES) {
 			const swatch = swatches.createEl("button", {
 				cls: "edge-voice-swatch",
@@ -834,89 +970,38 @@ class ReaderSettingTab extends PluginSettingTab {
 				});
 			});
 		}
-		const preview = containerEl.createDiv({ cls: "edge-voice-preview" });
+		const preview = setting.descEl.createDiv({ cls: "edge-voice-preview" });
 		preview.createSpan({ text: "Before it. " });
 		const sentence = preview.createSpan({ cls: "edge-voice-sentence", text: "This sentence is being read, and " });
 		sentence.createSpan({ cls: "edge-voice-word", text: "this" });
 		sentence.appendText(" word is being spoken.");
 		preview.createSpan({ text: " After it." });
+	}
 
-		new Setting(containerEl)
-			.setName("Show player controls")
-			.setDesc(
-				"The floating bar with play/pause, skip, speed and volume while reading. Without it, use the status bar, commands and hotkeys.",
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(settings.showPlayer).onChange((value) => this.plugin.setPlayerShown(value)),
-			);
-
-		new Setting(containerEl)
-			.setName("Load the voice when Obsidian starts")
-			.setDesc(
-				"Reading then starts at once. Keeps the voice in memory (a few hundred MB for Kokoro) while Obsidian is open.",
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(settings.preloadVoice).onChange((value) => {
-					settings.preloadVoice = value;
-					void this.plugin.saveSettings();
+	/** The engine row: what was found, the setup steps, and Check again. */
+	private engineSetting(setting: Setting): void {
+		const lookForEngine = () => {
+			setting.setDesc("Looking for it…");
+			void this.plugin.checkEngine().then(({ engine: found, problem }) => {
+				setting.setDesc(
+					found
+						? `Ready: speech engine ${found.version}, in ${found.python}.`
+						: (problem ?? "Not set up yet. See the setup steps."),
+				);
+				setting.controlEl.querySelector("button")?.toggleClass("mod-cta", !found);
+			});
+		};
+		setting.addButton((button) =>
+			button.setButtonText("Setup steps").onClick(() =>
+				// Once the engine is found, draw again what depends on it.
+				this.plugin.openSetup(() => {
+					this.storage = { status: "idle" };
+					this.update();
 				}),
-			);
-
-		this.doubleTapSettings(containerEl);
-
-		new Setting(containerEl)
-			.setName("Pause when switching pages")
-			.setDesc("Reading pauses when you open another page, and resumes where it stopped. Sidebars don't count.")
-			.addToggle((toggle) =>
-				toggle.setValue(settings.pauseOnPageSwitch).onChange((value) => {
-					settings.pauseOnPageSwitch = value;
-					void this.plugin.saveSettings();
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName("When Obsidian is in the background")
-			.setDesc(
-				"While you use another app. Visible means an Obsidian window is still on screen, not minimized, hidden or covered.",
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						pause: "Pause",
-						visible: "Keep reading while visible",
-						always: "Keep reading",
-					})
-					.setValue(settings.inBackground)
-					.onChange((value) => {
-						settings.inBackground = value as InBackground;
-						void this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Skip footnotes in PDFs")
-			.setDesc("Leave out the small-print notes at the bottom of a page and the little marks that point to them.")
-			.addToggle((toggle) =>
-				toggle.setValue(settings.skipFootnotes).onChange((value) => {
-					settings.skipFootnotes = value;
-					void this.plugin.saveSettings();
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName("Follow along")
-			.setDesc("Scroll to keep the sentence being read in view.")
-			.addToggle((toggle) =>
-				toggle.setValue(settings.autoScroll).onChange((value) => {
-					settings.autoScroll = value;
-					void this.plugin.saveSettings();
-				}),
-			);
-
-		const storage = this.fold(containerEl, "Storage", "Checking downloads…", "storage");
-		void this.showStorage(storage.body, storage.hint);
-
-		this.advancedSettings(containerEl);
+			),
+		);
+		setting.addButton((button) => button.setButtonText("Check again").onClick(lookForEngine));
+		lookForEngine();
 	}
 
 	/**
@@ -1037,105 +1122,18 @@ class ReaderSettingTab extends PluginSettingTab {
 	}
 
 	/**
-	 * Settings almost nobody needs, folded away at the bottom: the engine, the
-	 * Python it runs in, the faster engine and how far ahead to prepare. It
-	 * opens by itself when the engine isn't set up, so Set up can be found.
+	 * The double-tap shortcut row: on or off, a menu of three good keys or
+	 * "Custom…". Custom opens a box that shows the key being pressed, refuses
+	 * keys that type or already do something, and saves only when confirmed;
+	 * there is one custom key, replaced each time. The chime is its own row,
+	 * disabled with the shortcut (refreshDomState).
 	 */
-	private advancedSettings(parentEl: HTMLElement): void {
-		const settings = this.plugin.settings;
-		const { details, body: containerEl } = this.fold(
-			parentEl,
-			"Advanced",
-			"Rarely needed: the speech engine and how it runs.",
-			"advanced",
-		);
-
-		const engine = new Setting(containerEl).setName("Speech engine");
-		/** Looks for the engine again and says what was found. */
-		const lookForEngine = () => {
-			engine.setDesc("Looking for it…");
-			void this.plugin.checkEngine().then(({ engine: found, problem }) => {
-				engine.setDesc(
-					found
-						? `Ready: speech engine ${found.version}, in ${found.python}.`
-						: (problem ?? "Not set up yet. See the setup steps."),
-				);
-				if (!found) details.open = true;
-				engine.controlEl.querySelector("button")?.toggleClass("mod-cta", !found);
-			});
-		};
-		engine.addButton((button) =>
-			button.setButtonText("Setup steps").onClick(() =>
-				// Once the engine is found, refresh what depends on it, not the whole tab.
-				this.plugin.openSetup(() => {
-					lookForEngine();
-					this.refreshVoices?.();
-				}),
-			),
-		);
-		engine.addButton((button) => button.setButtonText("Check again").onClick(lookForEngine));
-		lookForEngine();
-
-		if (mlxSupported()) {
-			const faster = new Setting(containerEl)
-				.setName("Faster voice engine")
-				.setDesc(this.plugin.fasterEngineStatus());
-			faster.addToggle((toggle) =>
-				toggle.setValue(settings.fasterEngine).onChange((value) => {
-					this.plugin.setFasterEngine(value);
-					faster.setDesc(this.plugin.fasterEngineStatus());
-				}),
-			);
-		}
-
-		new Setting(containerEl)
-			.setName("Python interpreter")
-			.setDesc(
-				"Leave empty to use the engine in the .edge-voice/engine folder in your home folder. To use another " +
-					"Python with the engine installed, enter its full path.",
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder("Automatic")
-					.setValue(settings.pythonPath)
-					.onChange((value) => {
-						settings.pythonPath = value.trim();
-						void this.plugin.saveSettings();
-					}),
-			)
-			.addButton((button) => button.setButtonText("Use it").onClick(lookForEngine));
-
-		new Setting(containerEl)
-			.setName("Sentences to prepare ahead")
-			.setDesc("More smooths over slow sentences; fewer reacts faster to skips and speed changes.")
-			.addSlider((slider) =>
-				slider
-					.setLimits(1, 4, 1)
-					.setValue(settings.prefetch)
-					.onChange((value) => {
-						settings.prefetch = value;
-						void this.plugin.saveSettings();
-					}),
-			);
-	}
-
-	/**
-	 * The double-tap shortcut: on or off, a menu of three good keys or
-	 * "Custom…", and the chime. Custom opens a box that shows the key being
-	 * pressed, refuses keys that type or already do something, and saves only
-	 * when confirmed; there is one custom key, replaced each time.
-	 */
-	private doubleTapSettings(containerEl: HTMLElement): void {
+	private doubleTapSetting(setting: Setting): void {
 		const settings = this.plugin.settings;
 		const CUSTOM = "custom";
 		const isPreset = (code: string) => DOUBLE_TAP_PRESETS.includes(code);
 		const save = () => void this.plugin.saveSettings();
 
-		const setting = new Setting(containerEl)
-			.setName("Double-tap shortcut")
-			.setDesc(
-				"Double-tap a key to start reading, and again to pause or resume. Works while Obsidian is the active app.",
-			);
 		// Custom: a panel inside the setting's own box, with the key, Save and clear in a row
 		// and a message line below that always keeps its space, so nothing shifts.
 		setting.settingEl.addClass("edge-voice-key-setting");
@@ -1146,16 +1144,6 @@ class ReaderSettingTab extends PluginSettingTab {
 		const clear = row.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Clear the custom key" } });
 		setIcon(clear, "x");
 		const message = panel.createDiv({ cls: "edge-voice-key-message" });
-		const chime = new Setting(containerEl)
-			.setName("Chime on double tap")
-			.setDesc("A short chime, rising when reading starts or resumes and falling when it pauses.")
-			.addToggle((toggle) =>
-				toggle.setValue(settings.doubleTapChime).onChange((value) => {
-					settings.doubleTapChime = value;
-					save();
-				}),
-			);
-
 		let dropdown!: DropdownComponent;
 		let pending: string | null = null;
 
@@ -1190,8 +1178,9 @@ class ReaderSettingTab extends PluginSettingTab {
 		const refresh = () => {
 			dropdown.setValue(isPreset(settings.doubleTapKey) ? settings.doubleTapKey : CUSTOM);
 			dropdown.setDisabled(!settings.doubleTapEnabled);
-			chime.setDisabled(!settings.doubleTapEnabled);
 			panel.hidden = !settings.doubleTapEnabled || dropdown.getValue() !== CUSTOM;
+			// The chime row follows the shortcut's on/off.
+			this.refreshDomState();
 		};
 
 		capture.addEventListener("focus", () => {
@@ -1288,41 +1277,20 @@ class ReaderSettingTab extends PluginSettingTab {
 	}
 
 	/**
-	 * Lists downloaded voices with their sizes, as the engine reports them, and
-	 * for each the command that removes it, with a Copy button. Edge Voice
-	 * deletes nothing itself: the person runs the command, as with setup.
+	 * Settings → Storage: downloaded voices with their sizes, as the engine
+	 * reports them, and for each the command that removes it, with a Copy
+	 * button. Edge Voice deletes nothing itself: the person runs the command,
+	 * as with setup. The engine is asked when the tab is drawn, not when
+	 * Obsidian starts.
 	 */
-	private async showStorage(el: HTMLElement, hint: HTMLElement): Promise<void> {
-		const voices = await this.plugin.storageItems();
-		el.empty();
+	private storageDefinitions(): SettingDefinition[] {
+		const state = this.storage;
+		const items = state.status === "done" ? state.items : undefined;
 		const shell = process.platform === "win32" ? "PowerShell" : "Terminal";
 		const refresh = () => {
-			hint.setText("Checking downloads…");
-			void this.showStorage(el, hint);
+			this.storage = { status: "idle" };
+			this.update();
 		};
-		if (voices === "none") {
-			hint.setText("No speech engine yet.");
-			el.createDiv({
-				cls: "setting-item-description",
-				text: "Set up the speech engine first (see Speech engine).",
-			});
-			return;
-		}
-		if (voices === null) {
-			hint.setText("Update the speech engine to see downloads.");
-			new Setting(el)
-				.setName("Update the speech engine")
-				.setDesc(
-					"This version of the speech engine can't list what it has downloaded. Run the setup steps again to update it.",
-				)
-				.addButton((button) =>
-					button.setButtonText("Setup steps").onClick(() => this.plugin.openSetup(refresh)),
-				)
-				.addButton((button) => button.setButtonText("Check again").onClick(refresh));
-			return;
-		}
-		const total = voices.reduce((sum, item) => sum + item.bytes, 0);
-		hint.setText(voices.length > 0 ? `${formatBytes(total)} of voices downloaded.` : "No voices downloaded.");
 		const copyButton = (setting: Setting, ids: string[], label = "Copy remove command") =>
 			setting.addButton((button) =>
 				button.setButtonText(label).onClick(async () => {
@@ -1332,23 +1300,47 @@ class ReaderSettingTab extends PluginSettingTab {
 					new Notice(`Copied. Run it in ${shell}, then click Check again.`);
 				}),
 			);
-
-		const all = new Setting(el)
-			.setName("Downloaded voices")
-			.setDesc(
-				voices.length > 0
-					? `${formatBytes(total)} in all. Edge Voice doesn't delete files itself: copy a voice's remove command ` +
-							`and run it in ${shell}. Copying stops reading, so no voice is in use. ` +
-							"To use a removed voice again, get it again (see Get another voice)."
-					: "Nothing downloaded yet.",
-			)
-			.addButton((button) => button.setButtonText("Check again").onClick(refresh));
-		if (voices.length > 1) copyButton(all, [], "Copy command to remove all");
-		for (const item of voices) {
-			copyButton(
-				new Setting(el).setName(item.label).setDesc(`${formatBytes(item.bytes)} · ${item.description}`),
-				[item.id],
-			);
-		}
+		const total = Array.isArray(items) ? items.reduce((sum, item) => sum + item.bytes, 0) : 0;
+		let desc = "Checking downloads…";
+		if (items === "none") desc = "Set up the speech engine first (see Speech engine, under Advanced).";
+		else if (items === null)
+			desc =
+				"This version of the speech engine can't list what it has downloaded. Run the setup steps again to update it.";
+		else if (items?.length === 0) desc = "Nothing downloaded yet.";
+		else if (items)
+			desc =
+				`${formatBytes(total)} in all. Edge Voice doesn't delete files itself: copy a voice's remove command ` +
+				`and run it in ${shell}. Copying stops reading, so no voice is in use. ` +
+				"To use a removed voice again, get it again (see Get another voice).";
+		const summary: SettingDefinition = {
+			name: "Downloaded voices",
+			desc,
+			aliases: ["Delete voices", "Remove voices", "Disk space"],
+			render: (setting) => {
+				if (state.status === "idle") {
+					this.storage = { status: "loading" };
+					void this.plugin.storageItems().then((found) => {
+						this.storage = { status: "done", items: found };
+						this.update();
+					});
+				}
+				if (items === null)
+					setting.addButton((button) =>
+						button.setButtonText("Setup steps").onClick(() => this.plugin.openSetup(refresh)),
+					);
+				setting.addButton((button) => button.setButtonText("Check again").onClick(refresh));
+				if (Array.isArray(items) && items.length > 1) copyButton(setting, [], "Copy command to remove all");
+			},
+		};
+		const rows: SettingDefinition[] = Array.isArray(items)
+			? items.map((item) => ({
+					name: item.label,
+					desc: `${formatBytes(item.bytes)} · ${item.description}`,
+					render: (setting: Setting) => {
+						copyButton(setting, [item.id]);
+					},
+				}))
+			: [];
+		return [summary, ...rows];
 	}
 }
