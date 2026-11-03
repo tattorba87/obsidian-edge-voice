@@ -176,7 +176,7 @@ export class Sidecar {
 	 */
 	async load(language: string, voice: string, engine?: "mlx"): Promise<{ engine: string; fallback?: string }> {
 		if (!isEngineId(language) || !isEngineId(voice)) throw new Error(`Not a voice: ${language}/${voice}`);
-		const reply = await this.request(
+		const reply = await this.ask(
 			engine ? { op: "load", language, voice, engine } : { op: "load", language, voice },
 			undefined,
 			this.limits.answerMs,
@@ -193,7 +193,7 @@ export class Sidecar {
 	 * without one).
 	 */
 	async voices(language: string): Promise<{ present: string[]; downloadable: string[]; catalog: VoiceInfo[] }> {
-		const reply = await this.request({ op: "voices", language }, undefined, this.limits.answerMs);
+		const reply = await this.ask({ op: "voices", language }, undefined, this.limits.answerMs);
 		const ids = (value: unknown) => (Array.isArray(value) ? value.filter(isEngineId) : []);
 		return {
 			present: ids(reply.present),
@@ -203,7 +203,7 @@ export class Sidecar {
 	}
 
 	async synthesize(text: string, speed: number, signal?: AbortSignal): Promise<Synthesis> {
-		const reply = await this.request({ op: "synth", text, speed }, signal, this.limits.answerMs);
+		const reply = await this.ask({ op: "synth", text, speed }, signal, this.limits.answerMs);
 		const rate = reply.sampleRate;
 		if (typeof rate !== "number" || !Number.isFinite(rate) || rate < 1000 || rate > 384000) {
 			throw new Error("The engine's audio has an impossible sample rate");
@@ -218,7 +218,7 @@ export class Sidecar {
 	}
 
 	/** Sends `body` once the engine is free. `deadline` (ms) counts from sending; past it, the engine is restarted. */
-	private async request(
+	private async ask(
 		body: Record<string, unknown>,
 		signal?: AbortSignal,
 		deadline?: number,
