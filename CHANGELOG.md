@@ -4,19 +4,16 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
-### Changed
-
-- Edge Voice's settings show up in Obsidian's settings search (Obsidian's setting definitions, 1.13+). Storage and Advanced are now sections with headings instead of folded away, so search can reach every row.
-
-### Fixed
-
-- Settings: the custom double-tap key box stayed visible while the shortcut was off.
-
 ## [0.1.3] - 2026-11-03
 
 ### Changed
 
+- Edge Voice's settings show up in Obsidian's settings search (Obsidian's setting definitions, 1.13+). Storage and Advanced are now sections with headings instead of folded away, so search can reach every row.
 - Renamed the engine connection's internal `request` method, which Obsidian's scan counted as network requests. The plugin makes no network requests.
+
+### Fixed
+
+- Settings: the custom double-tap key box stayed visible while the shortcut was off.
 
 ## [0.1.2] - 2026-11-03
 
