@@ -9,6 +9,9 @@ on:
     # check run in the commit hook.
     paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
   workflow_dispatch:
+  # Monthly, so a quiet repository still notices toolchain, runner or advisory drift.
+  schedule:
+    - cron: "41 6 1 * *"
 
 permissions:
   contents: read

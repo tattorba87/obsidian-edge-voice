@@ -3,11 +3,20 @@ name: Obsidian
 # The tests against real Obsidian (tests/obsidian): a sandbox Obsidian, with
 # the plugin built from this commit and a fake engine, driven through
 # obsidian-cli. They catch what the unit tests can't, such as Obsidian's own
-# internals or styles changing under the plugin. macOS runner minutes are
-# costly while the repository is private, so this runs before each release
-# (the release workflow calls it) and by hand from the Actions tab.
+# internals or styles changing under the plugin. It runs before each release
+# (the release workflow calls it), by hand from the Actions tab, and on the
+# 1st of each month against both the pinned Obsidian and the newest release,
+# so an Obsidian update that breaks the plugin shows up before people report it.
 on:
+  schedule:
+    - cron: "17 6 1 * *"
   workflow_dispatch:
+    inputs:
+      obsidian:
+        description: "Obsidian to test: the pinned version or the newest release"
+        type: choice
+        options: [pinned, latest]
+        default: pinned
   workflow_call:
 
 permissions:
@@ -20,8 +29,13 @@ env:
 
 jobs:
   obsidian:
-    name: Real Obsidian (macOS)
+    name: Real Obsidian (macOS, ${{ matrix.obsidian }})
     runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        # The monthly run tests both; a release and a manual run test one (pinned by default).
+        obsidian: ${{ fromJSON(github.event_name == 'schedule' && '["pinned","latest"]' || format('["{0}"]', inputs.obsidian || 'pinned')) }}
     # Room for a retried test (vitest.obsidian.config.mts); a normal run takes about 2 minutes.
     timeout-minutes: 20
     steps:
@@ -32,6 +46,19 @@ jobs:
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
+      - name: Choose the newest Obsidian release
+        if: matrix.obsidian == 'latest'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # The newest non-prerelease, checked against the SHA-256 GitHub records for its installer.
+        run: |
+          release=$(gh api repos/obsidianmd/obsidian-releases/releases/latest)
+          version=$(jq -r '.tag_name | ltrimstr("v")' <<<"$release")
+          digest=$(jq -r --arg n "Obsidian-${version}.dmg" '.assets[] | select(.name == $n) | .digest | ltrimstr("sha256:")' <<<"$release")
+          [[ "$version" =~ ^[0-9]+(\.[0-9]+)+$ && "$digest" =~ ^[0-9a-f]{64}$ ]] || { echo "No usable installer in $version"; exit 1; }
+          echo "OBSIDIAN_VERSION=$version" >> "$GITHUB_ENV"
+          echo "OBSIDIAN_SHA256=$digest" >> "$GITHUB_ENV"
+          echo "Testing Obsidian $version (pinned: ${OBSIDIAN_VERSION})" >> "$GITHUB_STEP_SUMMARY"
       - name: Install Obsidian
         run: |
           dmg="Obsidian-${OBSIDIAN_VERSION}.dmg"
@@ -44,7 +71,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: obsidian-tests
+          name: obsidian-tests-${{ matrix.obsidian }}
           path: |
             .sandbox-test/last.png
             .sandbox-test/requests.log
