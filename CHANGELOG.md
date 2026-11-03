@@ -4,6 +4,8 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-03
+
 ### Changed
 
 - The plugin reads and deletes no files itself. Settings → Storage lists downloads as the speech engine reports them, and each has a **Copy remove command** button instead of Delete: you run `edge-voice-engine storage remove <ID>`, as with setup. Needs engine 0.3.0; the setup steps install it.
@@ -52,6 +54,7 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - The speech engine starts isolated: Python and linker settings in your environment (`PYTHONPATH`, `DYLD_*`/`LD_*`) can't change what runs. It never downloads: a voice that isn't on your computer gets a notice with the command that fetches it.
 - The speech engine and its connection check what passes between them: voice IDs, text length, speed, audio and reply size; a stuck engine is restarted instead of blocking reading, and settings of the wrong type fall back to their defaults.
 
-[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.1...HEAD
+[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.2...HEAD
+[0.1.2]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.1...0.1.2
 [0.1.1]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/tattorba87/obsidian-edge-voice/releases/tag/0.1.0
