@@ -129,7 +129,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # SHA256SUMS checks the files between jobs and goes in the notes; it isn't attached
+          # (Obsidian ignores extra files, and the attestations above verify downloads).
           (cd release-files && sha256sum -c SHA256SUMS)
           gh release create "${GITHUB_REF_NAME}" \
-            release-files/main.js release-files/manifest.json release-files/styles.css release-files/SHA256SUMS \
+            release-files/main.js release-files/manifest.json release-files/styles.css \
             --verify-tag --draft --title "${GITHUB_REF_NAME}" --notes-file release-files/release-notes.md

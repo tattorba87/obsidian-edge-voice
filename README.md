@@ -18,6 +18,18 @@
 
 English only for now. Obsidian desktop only (macOS, Windows, Linux); not on phones or tablets.
 
+## Is it safe?
+
+Obsidian's directory scans every plugin and lists what it could do. Here is what Edge Voice actually does:
+
+- **No internet.** The plugin makes no network requests: no telemetry, no account. Your notes never leave your computer.
+- **Runs one program: its own speech engine.** That's what Obsidian lists as "shell execution". Edge Voice starts the engine you installed, directly, without a shell, so nothing in a note can become a command. It runs nothing else.
+- **No file access of its own.** It reads notes and PDFs through Obsidian, and nothing else. Its downloads are listed and removed by the engine, with commands you run.
+- **Clipboard: write only.** It copies a setup or voice command when you press Copy. It never reads your clipboard.
+- **Open source and verifiable.** MIT licensed. Obsidian rebuilds each release from this source and checks it matches, and every plugin release file carries a signed GitHub attestation ([Verifying downloads](#verifying-downloads)).
+
+More detail: [Privacy and network use](#privacy-and-network-use).
+
 ## Why read along
 
 Studies support reading and listening at the same time, at a pace the audio sets, which is how Edge Voice works:
@@ -133,7 +145,7 @@ The status bar shows what's happening: a spinner while a voice loads or a senten
 
 Pick the highlight colour under Settings → Highlight colour: amber, blue, green, pink, purple, red or grey. Each sets a soft tint for the sentence and a deeper shade for the spoken word; a preview shows the result.
 
-Settings → Storage (folded away at the bottom, with the total beside it) lists the downloaded voices, each with its size and a button to delete it, to keep them from piling up, and what an earlier version's setup left in `~/.edge-voice`. Get a deleted voice again with its command (see Voices). The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
+Settings → Storage (folded away at the bottom, with the total beside it) lists the downloaded voices with their sizes, as the engine reports them, to keep them from piling up. Edge Voice doesn't delete files itself: each voice has a **Copy remove command** button, and you run the command (`edge-voice-engine storage remove <ID>`), as with setup. You can also run `edge-voice-engine storage` yourself to see the list. Get a removed voice again with its command (see Voices). The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
 
 Bind the commands you use to hotkeys under Settings → Hotkeys.
 
@@ -256,7 +268,7 @@ Edge Voice reads your notes and PDFs on your computer, and the plugin itself nev
 What the plugin does on your computer, and why (Obsidian's review lists these):
 
 - **Starts the speech engine** as a separate program (Node's `child_process`): the Python in `~/.edge-voice/engine` (or the one you set under Advanced), with fixed arguments, no shell, and Python's isolated mode. To find an engine installed elsewhere, it may also run `edge-voice-engine --python` if that command is on your PATH. It runs nothing else.
-- **Uses the file system** outside Obsidian's vault API (Node's `fs`) only to find that engine, to show the size of downloaded voices, and to delete what you choose in Settings → Storage (voices, or what an earlier version's setup left behind), only inside those known folders. Notes and PDFs are read through Obsidian.
+- **Reads and writes no files itself.** Notes and PDFs are read through Obsidian. The sizes in Settings → Storage come from the engine, and removing voices is a command you run.
 - **Writes to the clipboard** only when you press a Copy button for a setup or voice command. It never reads the clipboard.
 
 Only the commands you run yourself download anything, and only when you run them:
@@ -277,17 +289,17 @@ Edge Voice keeps its engine and voices outside your vault, because they're share
 - `~/.edge-voice` (`%USERPROFILE%\.edge-voice` on Windows): the engine (about 100 MB, a few hundred MB more with the faster engine) and the faster engine's voices.
 - Moonshine's voice folder: `~/Library/Caches/moonshine_voice` on macOS, `~/.cache/moonshine_voice` on Linux, a folder under `%LOCALAPPDATA%\moonshine_voice` on Windows.
 
-Settings → Storage shows their sizes and deletes voices. Obsidian has no uninstall step for plugins, so to remove everything after uninstalling Edge Voice, delete those two folders. Inside your vault, Edge Voice only reads the notes and PDFs you ask it to read and stores its settings in its plugin folder.
+Settings → Storage shows their sizes and the commands that remove voices. Obsidian has no uninstall step for plugins, so to remove everything after uninstalling Edge Voice, delete those two folders. Inside your vault, Edge Voice only reads the notes and PDFs you ask it to read and stores its settings in its plugin folder.
 
 ## Verifying downloads
 
-Each release lists the SHA-256 of its files in `SHA256SUMS`, and from 0.1.1 on carries GitHub's signed build provenance (an artifact attestation), which shows a file was built by this repository's release workflow from a given commit. With the [GitHub CLI](https://cli.github.com/):
+Plugin releases from 0.1.1 on carry GitHub's signed build provenance (an artifact attestation), which shows a file was built by this repository's release workflow from a given commit. With the [GitHub CLI](https://cli.github.com/):
 
 ```sh
 gh attestation verify main.js --repo tattorba87/obsidian-edge-voice
 ```
 
-The community directory also rebuilds `main.js` from the source and checks it matches the release byte for byte.
+The community directory also rebuilds `main.js` from the source and checks it matches the release byte for byte. Engine releases list the SHA-256 of their files in `SHA256SUMS`, and the setup commands check every package against its hash.
 
 ## Licences
 

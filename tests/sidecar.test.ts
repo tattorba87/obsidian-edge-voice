@@ -21,7 +21,6 @@ describe("Sidecar", () => {
 		const audio = await sidecar.synthesize("hello", 1);
 		expect(audio.sampleRate).toBe(24000);
 		expect(Array.from(audio.samples)).toEqual([0.5, 0.5, 0.5, 0.5, 0.5]);
-		expect(await sidecar.cacheDir()).toBe("/tmp/cache");
 	});
 
 	it("tells a voice that isn't downloaded from other errors, naming it", async () => {

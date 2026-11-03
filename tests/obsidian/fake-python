@@ -1,10 +1,15 @@
 #!/bin/bash
 # Stands in for the engine's Python in the tests against real Obsidian: it
 # answers the plugin's check (src/engine.ts) as an installed engine without the
-# faster one, and runs the fake server as `python -I -u -m edge_voice_engine`.
+# faster one, lists its downloads (`storage --json`), and runs the fake server as `python -I -u -m edge_voice_engine`.
 case "$*" in
 	*"from edge_voice_engine.server import PROTOCOL, VERSION"*)
-		echo '{"version": "0.2.0", "protocol": 1, "faster": false}'
+		echo '{"version": "0.3.0", "protocol": 1, "faster": false}'
+		exit 0
+		;;
+	"-I -m edge_voice_engine storage --json")
+		echo '[{"id": "kokoro", "label": "Kokoro voices", "description": "The Kokoro model and its voices.", "bytes": 330000000},'
+		echo ' {"id": "piper:en_US-amy-low", "label": "Piper voice en_US-amy-low", "description": "A Piper voice for en_us.", "bytes": 63000000}]'
 		exit 0
 		;;
 	"-I -u -m edge_voice_engine") exec /usr/bin/env python3 -u "$(dirname "$0")/../fixtures/fake_server.py" ;;
