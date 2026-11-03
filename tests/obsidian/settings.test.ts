@@ -41,11 +41,39 @@ describe("Edge Voice settings in Obsidian", () => {
 		expect(result).toEqual({ theme: "blue", accent: "20, 100, 230" });
 	});
 
+	it("gives Obsidian's settings search every row, by name and alias", () => {
+		const names = run<string[]>(`
+			const out = [];
+			const walk = (items) => {
+				for (const item of items ?? []) {
+					if (item.name) out.push(item.name, ...(item.aliases ?? []));
+					walk(item.items);
+				}
+			};
+			walk(window.edgeVoiceTab.getSettingDefinitions());
+			return out;
+		`);
+		for (const name of [
+			"Voice",
+			"Get another voice",
+			"Speed",
+			"Highlight colour",
+			"Highlight color",
+			"Double-tap shortcut",
+			"Downloaded voices",
+			"Speech engine",
+			"Python interpreter",
+		])
+			expect(names).toContain(name);
+	});
+
 	it("saves the choice of what happens in the background", () => {
 		const saved = run<string>(`
 			const select = ${SETTING("When Obsidian is in the background")}.querySelector("select");
 			select.value = "pause";
 			select.dispatchEvent(new Event("change"));
+			// Obsidian saves a setting definition's control a moment after the change.
+			await new Promise((done) => setTimeout(done, 200));
 			return ${PLUGIN}.settings.inBackground;
 		`);
 		expect(saved).toBe("pause");
@@ -88,6 +116,10 @@ describe("Edge Voice settings in Obsidian", () => {
 					buttons: [...storage.querySelectorAll("button")].map((button) => button.textContent),
 				};
 			`);
+		// The tab asks the engine when drawn; with the answer, Obsidian draws the open
+		// settings page again (update()). Drawn off-screen here, so draw it again by hand.
+		await until(() => run<boolean>(`return window.edgeVoiceTab.storage.status === "done";`));
+		run(`window.edgeVoiceTab.display();`);
 		const shown = await until(read);
 		expect(shown?.names).toEqual(["Downloaded voices", "Kokoro voices", "Piper voice en_US-amy-low"]);
 		expect(shown?.buttons).toContain("Copy command to remove all");

@@ -44,7 +44,7 @@ body.theme-dark {
 /* The preview in the plugin's settings. */
 .edge-voice-preview {
 	padding: 8px 12px;
-	margin-bottom: 12px;
+	margin-top: 8px;
 	border-radius: var(--radius-m);
 	background-color: var(--background-primary-alt);
 	line-height: 1.8;
@@ -505,6 +505,10 @@ body.theme-dark {
 	margin-top: 12px;
 }
 
+.edge-voice-key-panel[hidden] {
+	display: none;
+}
+
 .edge-voice-key-row {
 	display: flex;
 	align-items: center;
@@ -569,40 +573,4 @@ body.theme-dark {
 
 .edge-voice-key-message.is-error {
 	color: var(--text-error);
-}
-
-/* Settings: sections folded away (Storage, Advanced), opened by clicking their heading. */
-.edge-voice-fold {
-	margin-top: 24px;
-	border-top: 1px solid var(--background-modifier-border);
-}
-
-.edge-voice-fold > summary {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	gap: 4px 12px;
-	padding: 16px 0 12px;
-	cursor: pointer;
-	list-style: none;
-}
-
-.edge-voice-fold > summary::-webkit-details-marker {
-	display: none;
-}
-
-.edge-voice-fold-title {
-	font-weight: var(--font-semibold);
-}
-
-.edge-voice-fold-title::before {
-	content: "›";
-	display: inline-block;
-	width: 1em;
-	color: var(--text-muted);
-	transition: transform 150ms ease;
-}
-
-.edge-voice-fold[open] .edge-voice-fold-title::before {
-	transform: rotate(90deg);
 }

@@ -145,7 +145,7 @@ The status bar shows what's happening: a spinner while a voice loads or a senten
 
 Pick the highlight colour under Settings → Highlight colour: amber, blue, green, pink, purple, red or grey. Each sets a soft tint for the sentence and a deeper shade for the spoken word; a preview shows the result.
 
-Settings → Storage (folded away at the bottom, with the total beside it) lists the downloaded voices with their sizes, as the engine reports them, to keep them from piling up. Edge Voice doesn't delete files itself: each voice has a **Copy remove command** button, and you run the command (`edge-voice-engine storage remove <ID>`), as with setup. You can also run `edge-voice-engine storage` yourself to see the list. Get a removed voice again with its command (see Voices). The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
+Settings → Storage (near the bottom) lists the downloaded voices with their sizes, as the engine reports them, to keep them from piling up. Edge Voice doesn't delete files itself: each voice has a **Copy remove command** button, and you run the command (`edge-voice-engine storage remove <ID>`), as with setup. You can also run `edge-voice-engine storage` yourself to see the list. Get a removed voice again with its command (see Voices). The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
 
 Bind the commands you use to hotkeys under Settings → Hotkeys.
 
