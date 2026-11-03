@@ -55,7 +55,7 @@ Edge Voice doesn't install or download anything itself. Its speech engine is a s
 ```sh
 brew install uv
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
-uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.2.0/requirements-darwin-arm64-mlx.txt
+uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-darwin-arm64-mlx.txt
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella --faster
 ```
 
@@ -64,7 +64,7 @@ uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r http
 ```sh
 brew install uv
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
-uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.2.0/requirements-darwin-x64.txt
+uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-darwin-x64.txt
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella
 ```
 
@@ -73,7 +73,7 @@ uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r http
 ```powershell
 winget install --id=astral-sh.uv -e
 uv venv --clear --managed-python "$HOME\.edge-voice\engine" --python 3.12
-uv pip install --python "$HOME\.edge-voice\engine" --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.2.0/requirements-win32-x64.txt
+uv pip install --python "$HOME\.edge-voice\engine" --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-win32-x64.txt
 & "$HOME\.edge-voice\engine\Scripts\edge-voice-engine.exe" voices get kokoro_af_bella
 ```
 
@@ -83,7 +83,7 @@ Open a new PowerShell window after installing uv, so it's found.
 
 ```sh
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
-uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.2.0/requirements-linux-x64.txt
+uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-linux-x64.txt
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella
 ```
 
