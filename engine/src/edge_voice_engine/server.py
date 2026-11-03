@@ -55,7 +55,7 @@ import sys
 from pathlib import Path
 
 # Released with the engine package (engine/pyproject.toml has the same version).
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 PROTOCOL = 1
 
 # Kokoro for MLX on Hugging Face (the model and its voices, as .safetensors),

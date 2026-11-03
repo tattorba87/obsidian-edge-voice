@@ -18,15 +18,18 @@ import {
 	DEFAULT_VOICE,
 	EDGE_VOICE_HOME,
 	enginePython,
+	engineStorage,
 	EngineSearch,
 	findEngine,
+	formatBytes,
 	mlxSupported,
 	OLD_SETUP,
+	removeCommand,
 	setupSteps,
+	StorageItem,
 	voiceCommand,
 } from "./engine";
 import { StatusIndicator } from "./status";
-import { deleteItem, formatBytes, scanMlxVoices, scanOldSetup, scanVoices, StorageItem } from "./storage";
 import { CommandNotice, SetupModal } from "./setup-modal";
 import { InBackground, pausesInBackground } from "./background";
 import { playChime } from "./chime";
@@ -509,32 +512,24 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	/**
-	 * The voices downloaded, for the Storage settings: the engine's and the
-	 * faster engine's, and what the old setup left behind. Not the engine
-	 * itself: that's the person's to remove (the ~/.edge-voice folder).
+	 * The voices downloaded, for the Storage settings, as the engine lists them
+	 * (`edge-voice-engine storage`): "none" without an engine, null when the
+	 * engine is too old to say. The plugin reads no files itself.
 	 */
-	async storageItems(): Promise<StorageItem[]> {
-		let voices: StorageItem[] = [];
-		try {
-			voices = await scanVoices(await this.sidecar.cacheDir());
-		} catch {
-			// No working engine: then there's nothing it downloaded to list either.
-		}
-		const extras = [
-			await scanMlxVoices(join(EDGE_VOICE_HOME, "hf")),
-			await scanOldSetup(EDGE_VOICE_HOME, OLD_SETUP),
-		];
-		return [...voices, ...extras.filter((item) => item !== null)].sort((a, b) => b.bytes - a.bytes);
+	async storageItems(): Promise<StorageItem[] | null | "none"> {
+		const search = this.engineSearch ?? (await this.checkEngine());
+		if (!search.engine) return "none";
+		return engineStorage(search.engine.python);
 	}
 
-	/** Deletes downloads, stopping reading and the engine first so no file is in use. */
-	async deleteStorage(items: StorageItem[]): Promise<void> {
+	/**
+	 * Stops reading and the engine, so no voice file is in use while the person
+	 * removes voices with the command they just copied.
+	 */
+	releaseVoiceFiles(): void {
 		this.stop();
 		this.sidecar.stop();
 		this.voice = undefined;
-		for (const item of items) await deleteItem(item);
-		const freed = items.reduce((sum, item) => sum + item.bytes, 0);
-		new Notice(`Freed ${formatBytes(freed)}.`);
 	}
 
 	/** Opens the setup steps for this computer; "Check again" there looks for the engine. */
@@ -1292,43 +1287,67 @@ class ReaderSettingTab extends PluginSettingTab {
 		refresh();
 	}
 
-	/** Lists downloaded voices with their sizes and a Delete button each (click twice to confirm). */
+	/**
+	 * Lists downloaded voices with their sizes, as the engine reports them, and
+	 * for each the command that removes it, with a Copy button. Edge Voice
+	 * deletes nothing itself: the person runs the command, as with setup.
+	 */
 	private async showStorage(el: HTMLElement, hint: HTMLElement): Promise<void> {
 		const voices = await this.plugin.storageItems();
 		el.empty();
-		const total = voices.reduce((sum, item) => sum + item.bytes, 0);
-		hint.setText(voices.length > 0 ? `${formatBytes(total)} of voices downloaded.` : "No voices downloaded.");
-		const deleteButton = (setting: Setting, items: StorageItem[], label = "Delete") =>
-			setting.addButton((button) => {
-				let armed = false;
-				// The red "warning" look, on every Obsidian version (setDestructive is 1.13+).
-				button.buttonEl.addClass("mod-warning");
-				button.setButtonText(label).onClick(async () => {
-					if (!armed) {
-						armed = true;
-						button.setButtonText("Click again to delete");
-						return;
-					}
-					button.setDisabled(true);
-					await this.plugin.deleteStorage(items);
-					void this.showStorage(el, hint);
-				});
+		const shell = process.platform === "win32" ? "PowerShell" : "Terminal";
+		const refresh = () => {
+			hint.setText("Checking downloads…");
+			void this.showStorage(el, hint);
+		};
+		if (voices === "none") {
+			hint.setText("No speech engine yet.");
+			el.createDiv({
+				cls: "setting-item-description",
+				text: "Set up the speech engine first (see Speech engine).",
 			});
-
-		if (voices.length === 0) {
-			el.createDiv({ cls: "setting-item-description", text: "Nothing downloaded yet." });
 			return;
 		}
+		if (voices === null) {
+			hint.setText("Update the speech engine to see downloads.");
+			new Setting(el)
+				.setName("Update the speech engine")
+				.setDesc(
+					"This version of the speech engine can't list what it has downloaded. Run the setup steps again to update it.",
+				)
+				.addButton((button) =>
+					button.setButtonText("Setup steps").onClick(() => this.plugin.openSetup(refresh)),
+				)
+				.addButton((button) => button.setButtonText("Check again").onClick(refresh));
+			return;
+		}
+		const total = voices.reduce((sum, item) => sum + item.bytes, 0);
+		hint.setText(voices.length > 0 ? `${formatBytes(total)} of voices downloaded.` : "No voices downloaded.");
+		const copyButton = (setting: Setting, ids: string[], label = "Copy remove command") =>
+			setting.addButton((button) =>
+				button.setButtonText(label).onClick(async () => {
+					// Nothing may hold a voice file open while it's removed.
+					this.plugin.releaseVoiceFiles();
+					await navigator.clipboard.writeText(removeCommand(ids));
+					new Notice(`Copied. Run it in ${shell}, then click Check again.`);
+				}),
+			);
+
 		const all = new Setting(el)
 			.setName("Downloaded voices")
 			.setDesc(
-				`${formatBytes(total)} in all. To use a deleted voice again, get it again (see Get another voice).`,
-			);
-		if (voices.length > 1) deleteButton(all, voices, "Delete all voices");
+				voices.length > 0
+					? `${formatBytes(total)} in all. Edge Voice doesn't delete files itself: copy a voice's remove command ` +
+							`and run it in ${shell}. Copying stops reading, so no voice is in use. ` +
+							"To use a removed voice again, get it again (see Get another voice)."
+					: "Nothing downloaded yet.",
+			)
+			.addButton((button) => button.setButtonText("Check again").onClick(refresh));
+		if (voices.length > 1) copyButton(all, [], "Copy command to remove all");
 		for (const item of voices) {
-			deleteButton(
+			copyButton(
 				new Setting(el).setName(item.label).setDesc(`${formatBytes(item.bytes)} · ${item.description}`),
-				[item],
+				[item.id],
 			);
 		}
 	}

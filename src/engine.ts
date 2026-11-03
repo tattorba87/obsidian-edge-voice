@@ -1,5 +1,4 @@
 import { spawn } from "child_process";
-import { existsSync } from "fs";
 import { homedir, release } from "os";
 import { isAbsolute, join } from "path";
 import { clearTimeout, setTimeout } from "timers";
@@ -14,7 +13,7 @@ import { childEnvironment } from "./environment";
  */
 
 /** The engine release these steps install, and the protocol this plugin speaks. */
-export const ENGINE_VERSION = "0.2.0";
+export const ENGINE_VERSION = "0.3.0";
 export const ENGINE_PROTOCOL = 1;
 const RELEASE = `https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-${ENGINE_VERSION}`;
 export const UV_INSTALL = "https://docs.astral.sh/uv/getting-started/installation/";
@@ -68,11 +67,14 @@ export interface Step {
 
 /** The command that downloads `voice` (and, with `faster`, its faster-engine files). */
 export function voiceCommand(voice: string, faster: boolean, platform: string = process.platform): string {
-	const tool =
-		platform === "win32"
-			? '& "$HOME\\.edge-voice\\engine\\Scripts\\edge-voice-engine.exe"'
-			: "~/.edge-voice/engine/bin/edge-voice-engine";
-	return `${tool} voices get ${voice}${faster ? " --faster" : ""}`;
+	return `${engineTool(platform)} voices get ${voice}${faster ? " --faster" : ""}`;
+}
+
+/** The engine's command, as the person types it in Terminal or PowerShell. */
+function engineTool(platform: string): string {
+	return platform === "win32"
+		? '& "$HOME\\.edge-voice\\engine\\Scripts\\edge-voice-engine.exe"'
+		: "~/.edge-voice/engine/bin/edge-voice-engine";
 }
 
 /** The setup steps for this computer, or null if there's no engine for it. */
@@ -160,8 +162,8 @@ export async function findEngine(configured: string, run: Runner = runPython): P
 	}
 	let problem: string | undefined;
 	for (const python of candidates) {
-		if (!existsSync(python)) continue;
 		const found = await probe(python, run);
+		if (found === "missing") continue;
 		if (!found) {
 			problem ??= `${python} doesn't have the speech engine installed.`;
 		} else if (found.protocol !== ENGINE_PROTOCOL) {
@@ -176,15 +178,17 @@ export async function findEngine(configured: string, run: Runner = runPython): P
 	return problem ? { problem } : {};
 }
 
-/** Which of the old setup's folders are still in EDGE_VOICE_HOME. */
-export function oldSetupLeftovers(exists: (path: string) => boolean = existsSync): string[] {
-	return OLD_SETUP.map((name) => join(EDGE_VOICE_HOME, name)).filter(exists);
-}
-
 export type Runner = (command: string, args: string[]) => Promise<{ code: number; stdout: string }>;
 
-async function probe(python: string, run: Runner): Promise<Engine | null> {
-	const { code, stdout } = await run(python, ["-I", "-c", PROBE]).catch(() => ({ code: 1, stdout: "" }));
+/** The engine at `python`; null if that Python has none, "missing" if there's no such program. */
+async function probe(python: string, run: Runner): Promise<Engine | null | "missing"> {
+	let result: { code: number; stdout: string };
+	try {
+		result = await run(python, ["-I", "-c", PROBE]);
+	} catch (error) {
+		return (error as NodeJS.ErrnoException).code === "ENOENT" ? "missing" : null;
+	}
+	const { code, stdout } = result;
 	if (code !== 0) return null;
 	try {
 		const info = JSON.parse(stdout.trim().split("\n").pop() ?? "") as Record<string, unknown>;
@@ -193,6 +197,53 @@ async function probe(python: string, run: Runner): Promise<Engine | null> {
 	} catch {
 		return null;
 	}
+}
+
+/** Something the engine has downloaded, as `edge-voice-engine storage --json` lists it. */
+export interface StorageItem {
+	id: string;
+	label: string;
+	description: string;
+	bytes: number;
+}
+
+/**
+ * What the engine has downloaded, largest first, or null when this engine is
+ * too old to say (before 0.3.0). The engine reads its own folders; the plugin
+ * reads no files.
+ */
+export async function engineStorage(python: string, run: Runner = runPython): Promise<StorageItem[] | null> {
+	const { code, stdout } = await run(python, ["-I", "-m", "edge_voice_engine", "storage", "--json"]).catch(() => ({
+		code: 1,
+		stdout: "",
+	}));
+	if (code !== 0) return null;
+	try {
+		const items = JSON.parse(stdout) as unknown;
+		if (!Array.isArray(items)) return null;
+		return items.filter(
+			(item): item is StorageItem =>
+				typeof item === "object" &&
+				item !== null &&
+				typeof (item as StorageItem).id === "string" &&
+				typeof (item as StorageItem).label === "string" &&
+				typeof (item as StorageItem).description === "string" &&
+				typeof (item as StorageItem).bytes === "number",
+		);
+	} catch {
+		return null;
+	}
+}
+
+/** The command that removes downloads: the given IDs, or everything when there are none. */
+export function removeCommand(ids: string[], platform: string = process.platform): string {
+	return `${engineTool(platform)} storage remove ${ids.length > 0 ? ids.join(" ") : "--all"}`;
+}
+
+export function formatBytes(bytes: number): string {
+	if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
+	if (bytes < 1e9) return `${Math.round(bytes / 1e6)} MB`;
+	return `${(bytes / 1e9).toFixed(1)} GB`;
 }
 
 /** The interpreter of an `edge-voice-engine` command on PATH, if there is one. */

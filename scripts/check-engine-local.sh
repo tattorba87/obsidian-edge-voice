@@ -56,6 +56,8 @@ python3 -I -c "import json, sys; print('\n'.join(json.load(open(sys.argv[1]))))"
 PYTHON="${WORK}/home/.edge-voice/engine/bin/python"
 echo "== The voice list"
 HOME="${WORK}/home" "${PYTHON}" -I -m edge_voice_engine voices list | head -15
+echo "== Storage"
+HOME="${WORK}/home" "${PYTHON}" -I -m edge_voice_engine storage
 
 echo "== Speaking"
 SPEAK=(python3 -I "${ROOT}/scripts/engine-speaks.py" "${PYTHON}" "${VOICE}")

@@ -7,7 +7,9 @@ import {
 	enginePython,
 	findEngine,
 	mlxSupported,
-	oldSetupLeftovers,
+	engineStorage,
+	formatBytes,
+	removeCommand,
 	requirementsFile,
 	Runner,
 	setupSteps,
@@ -48,7 +50,7 @@ describe("The engine's setup steps", () => {
 		expect(steps[1].command).toBe("uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12");
 		expect(steps[2].command).toBe(
 			"uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r " +
-				"https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.2.0/requirements-darwin-arm64.txt",
+				"https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-darwin-arm64.txt",
 		);
 		// The file can be read before anything runs.
 		expect(steps[2].link).toBe(steps[2].command!.split(" -r ")[1]);
@@ -139,7 +141,8 @@ describe("Finding the engine", () => {
 	});
 
 	it("finds nothing, and no problem, when nothing is installed", async () => {
-		const run: Runner = () => Promise.resolve({ code: 1, stdout: "" });
+		// Starting a program that isn't there fails with ENOENT; the plugin checks no files itself.
+		const run: Runner = () => Promise.reject(Object.assign(new Error("spawn ENOENT"), { code: "ENOENT" }));
 		expect(await findEngine("/nonexistent/python", run)).toEqual({});
 	});
 
@@ -147,10 +150,41 @@ describe("Finding the engine", () => {
 		expect(enginePython("darwin")).toBe(join(homedir(), ".edge-voice", "engine", "bin", "python"));
 		expect(enginePython("win32")).toBe(join(homedir(), ".edge-voice", "engine", "Scripts", "python.exe"));
 	});
+});
 
-	it("lists what the old setup left behind", () => {
-		const home = join(homedir(), ".edge-voice");
-		const there = new Set([join(home, "venv"), join(home, "server.py"), join(home, "engine")]);
-		expect(oldSetupLeftovers((path) => there.has(path))).toEqual([join(home, "venv"), join(home, "server.py")]);
+describe("Storage, as the engine reports it", () => {
+	const kokoro = { id: "kokoro", label: "Kokoro voices", description: "The Kokoro model.", bytes: 330_000_000 };
+
+	it("asks the engine, isolated, and keeps only well-formed items", async () => {
+		const calls: string[][] = [];
+		const run: Runner = (command, args) => {
+			calls.push([command, ...args]);
+			return Promise.resolve({ code: 0, stdout: JSON.stringify([kokoro, { id: 3 }, "nonsense"]) });
+		};
+		expect(await engineStorage("/engine/python", run)).toEqual([kokoro]);
+		expect(calls).toEqual([["/engine/python", "-I", "-m", "edge_voice_engine", "storage", "--json"]]);
+	});
+
+	it("says null for an engine without the storage command (before 0.3.0), or bad output", async () => {
+		const old: Runner = () => Promise.resolve({ code: 2, stdout: "" });
+		expect(await engineStorage("/engine/python", old)).toBeNull();
+		const garbled: Runner = () => Promise.resolve({ code: 0, stdout: "{" });
+		expect(await engineStorage("/engine/python", garbled)).toBeNull();
+	});
+
+	it("writes the remove command for this computer", () => {
+		expect(removeCommand(["piper:en_US-amy-low"], "darwin")).toBe(
+			"~/.edge-voice/engine/bin/edge-voice-engine storage remove piper:en_US-amy-low",
+		);
+		expect(removeCommand([], "linux")).toBe("~/.edge-voice/engine/bin/edge-voice-engine storage remove --all");
+		expect(removeCommand(["kokoro", "mlx"], "win32")).toBe(
+			'& "$HOME\\.edge-voice\\engine\\Scripts\\edge-voice-engine.exe" storage remove kokoro mlx',
+		);
+	});
+
+	it("formats sizes", () => {
+		expect(formatBytes(512)).toBe("1 KB");
+		expect(formatBytes(84_000_000)).toBe("84 MB");
+		expect(formatBytes(1_250_000_000)).toBe("1.3 GB");
 	});
 });

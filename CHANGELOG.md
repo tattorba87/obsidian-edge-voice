@@ -4,6 +4,21 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Changed
+
+- The plugin reads and deletes no files itself. Settings → Storage lists downloads as the speech engine reports them, and each has a **Copy remove command** button instead of Delete: you run `edge-voice-engine storage remove <ID>`, as with setup. Needs engine 0.3.0; the setup steps install it.
+- The speech engine is found by starting it, not by checking for its files.
+- Plugin releases no longer carry `SHA256SUMS`; their signed attestations do that job.
+- The plugin's description says text-to-speech (TTS), and the README has an "Is it safe?" section.
+
+### Added
+
+- Engine 0.3.0: `edge-voice-engine storage` lists downloads with their sizes, and `storage remove <ID>` (or `--all`) removes them, only inside the engine's own folders.
+
+### Removed
+
+- Settings → Storage no longer lists what the setup from before engine releases left in `~/.edge-voice`.
+
 ## [0.1.1] - 2026-11-02
 
 ### Fixed

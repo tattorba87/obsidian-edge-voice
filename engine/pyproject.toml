@@ -4,7 +4,7 @@
 # match engine/pins.json; a test checks they do.
 [project]
 name = "edge-voice-engine"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local speech engine for the Edge Voice Obsidian plugin"
 license = "MIT"
 requires-python = ">=3.12,<3.13"

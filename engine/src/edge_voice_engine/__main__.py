@@ -19,8 +19,15 @@ def main() -> None:
         from edge_voice_engine.voices import main as voices
 
         sys.exit(voices(sys.argv[2:]))
+    elif sys.argv[1:2] == ["storage"]:
+        from edge_voice_engine.storage import main as storage
+
+        sys.exit(storage(sys.argv[2:]))
     elif sys.argv[1:]:
-        sys.exit(f"edge-voice-engine: unknown arguments {' '.join(sys.argv[1:])} (try voices, --python or --version)")
+        sys.exit(
+            f"edge-voice-engine: unknown arguments {' '.join(sys.argv[1:])} "
+            "(try voices, storage, --python or --version)"
+        )
     else:
         from edge_voice_engine.server import main as serve
 

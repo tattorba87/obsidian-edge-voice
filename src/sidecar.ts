@@ -1,6 +1,6 @@
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import { homedir } from "os";
-import { dirname, isAbsolute } from "path";
+import { dirname } from "path";
 import { clearTimeout, setTimeout } from "timers";
 import { childEnvironment } from "./environment";
 import { isEngineId } from "./settings";
@@ -200,14 +200,6 @@ export class Sidecar {
 			downloadable: ids(reply.downloadable),
 			catalog: parseCatalog(reply.catalog),
 		};
-	}
-
-	/** Where the engine keeps downloaded voices. */
-	async cacheDir(): Promise<string> {
-		const reply = await this.request({ op: "paths" }, undefined, this.limits.answerMs);
-		if (typeof reply.cache !== "string" || !isAbsolute(reply.cache))
-			throw new Error("The engine gave no cache folder");
-		return reply.cache;
 	}
 
 	async synthesize(text: string, speed: number, signal?: AbortSignal): Promise<Synthesis> {

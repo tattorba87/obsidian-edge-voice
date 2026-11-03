@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { errors, PLUGIN, run, setSettings } from "./obsidian";
+import { errors, PLUGIN, run, setSettings, until } from "./obsidian";
 
 /** Code that finds a setting on Edge Voice's settings screen by its name. */
 const SETTING = (name: string) =>
@@ -74,6 +74,36 @@ describe("Edge Voice settings in Obsidian", () => {
 		expect(steps.saveAfterLetter).toBe(false);
 		expect(steps.saveAfterF13).toBe(true);
 		expect(steps.key).toBe("F13");
+		expect(errors()).toEqual([]);
+	});
+
+	it("lists downloads as the engine reports them, and copies a remove command instead of deleting", async () => {
+		const read = () =>
+			run<{ names: string[]; buttons: string[] } | null>(`
+				const item = ${SETTING("Piper voice en_US-amy-low")};
+				if (!item) return null;
+				const storage = item.parentElement;
+				return {
+					names: [...storage.querySelectorAll(".setting-item-name")].map((name) => name.textContent),
+					buttons: [...storage.querySelectorAll("button")].map((button) => button.textContent),
+				};
+			`);
+		const shown = await until(read);
+		expect(shown?.names).toEqual(["Downloaded voices", "Kokoro voices", "Piper voice en_US-amy-low"]);
+		expect(shown?.buttons).toContain("Copy command to remove all");
+		expect(shown?.buttons).not.toContain("Delete");
+		const copied = run<string>(`
+			let copied = "";
+			const original = navigator.clipboard.writeText;
+			navigator.clipboard.writeText = async (text) => { copied = text; };
+			const button = [...${SETTING("Piper voice en_US-amy-low")}.querySelectorAll("button")]
+				.find((candidate) => candidate.textContent === "Copy remove command");
+			button.click();
+			await new Promise((done) => setTimeout(done, 100));
+			navigator.clipboard.writeText = original;
+			return copied;
+		`);
+		expect(copied).toBe("~/.edge-voice/engine/bin/edge-voice-engine storage remove piper:en_US-amy-low");
 		expect(errors()).toEqual([]);
 	});
 
