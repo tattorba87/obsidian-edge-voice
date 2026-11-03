@@ -17,4 +17,18 @@ describe("File access", () => {
 			);
 		expect(offenders).toEqual([]);
 	});
+
+	// Obsidian's scan counts calls named request( as network requests (Obsidian's own
+	// request() API). The plugin makes none, so nothing may be called that.
+	it("no plugin source calls anything request(", () => {
+		const src = join(__dirname, "..", "src");
+		const offenders = readdirSync(src)
+			.filter((name) => name.endsWith(".ts"))
+			.filter((name) => {
+				// Comments may say "request"; code may not call it.
+				const code = readFileSync(join(src, name), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+				return /\brequest\s*\(/.test(code);
+			});
+		expect(offenders).toEqual([]);
+	});
 });
