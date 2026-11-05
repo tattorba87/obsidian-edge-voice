@@ -6,7 +6,7 @@
 
 ![Edge Voice reading a note aloud in Obsidian, highlighting the sentence and the word being spoken](docs/media/demo.gif)
 
-▶ **[Watch the demo with sound](https://github.com/user-attachments/assets/0ab2984c-49eb-4444-8074-2f25ff312abe)**
+▶ **[Watch the demo with sound](https://github.com/user-attachments/assets/fb9d0ba1-60dc-46e0-a5a7-1c8fc0d4d4ee)**
 
 <sub>The paper in the demo: Wei et al., [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/abs/2201.11903) (2022), CC BY 4.0. Recorded on an Intel Mac with pauses for synthesis cut; on Apple silicon the next sentence is ready in time.</sub>
 
