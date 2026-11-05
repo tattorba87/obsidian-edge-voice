@@ -5,11 +5,12 @@
  * demo.mp4 (with sound) and demo.gif (silent, short, for the top of the README).
  *
  *     bun scripts/demo/record.ts [output folder]
- *     DEMO_PDF=paper.pdf DEMO_PDF_FROM="We explore how" bun scripts/demo/record.ts [output folder]
+ *     DEMO_PDF=paper.pdf DEMO_PDF_FROM="We explore how" DEMO_PDF_UNTIL="can be striking" bun scripts/demo/record.ts [output folder]
  *
  * DEMO_PDF reads another PDF instead of the sample, starting at the first text
- * containing DEMO_PDF_FROM. Use only a PDF that's free to show (CC BY, say), and
- * credit it wherever the recording or a frame of it is used.
+ * containing DEMO_PDF_FROM and stopping once the sentence containing
+ * DEMO_PDF_UNTIL has been said in full. Use only a PDF that's free to show
+ * (CC BY, say), and credit it wherever the recording or a frame of it is used.
  *
  * Needs the engine set up (~/.edge-voice/engine) with the voice below, Obsidian
  * installed, and ffmpeg. It runs in CI (the Demo workflow), on a runner, so
@@ -34,13 +35,20 @@ const SIZE = { width: 1280, height: 800 };
 const DEMO_PDF = process.env.DEMO_PDF ? resolve(process.env.DEMO_PDF) : "";
 const PDF_PATH = DEMO_PDF ? `PDFs/${basename(DEMO_PDF)}` : "PDFs/A short paper.pdf";
 const PDF_FROM = process.env.DEMO_PDF_FROM ?? "";
+const PDF_UNTIL = process.env.DEMO_PDF_UNTIL ?? "";
+const NOTE_NAME = "Why read along";
 
-// No heading: Obsidian already shows the note's name above it.
-const NOTE = `Edge Voice reads your notes aloud, right here in Obsidian. The sentence being read is highlighted, and so is each word as it's spoken.
+// No heading: Obsidian already shows the note's name above it. Every sentence
+// was checked through normalizeForSpeech and Moonshine's G2P before recording.
+const NOTE = `Edge Voice speaks your notes aloud, right here in Obsidian. The sentence you're on is highlighted, and so is each word as it's spoken.
+
+In a world full of distractions, staying focused on a page is hard. When you hear the words and follow them at the same time, your eyes and ears stay on one thing, and **your mind wanders less**.
+
+Studies suggest it helps people with **ADHD or dyslexia** understand more, and the rest of us too.
 
 Everything runs on your own computer. Your notes never leave it, there's no account, and it's free.
 
-It reads PDFs too. Pause, skip a sentence, or change the speed from the player bar at the bottom.
+It works on PDFs as well, like this research paper.
 `;
 
 const sandbox = new Sandbox(REPO, ".sandbox-demo", (message) => process.stderr.write(`demo: ${message}\n`));
@@ -67,7 +75,7 @@ async function main(): Promise<void> {
 	rmSync(sandbox.paths.root, { recursive: true, force: true });
 	await esbuild.build({ ...buildOptions(true), absWorkingDir: REPO, logLevel: "warning" });
 	await sandbox.prepareVault();
-	writeFileSync(join(sandbox.paths.vault, "Reading along.md"), NOTE);
+	writeFileSync(join(sandbox.paths.vault, `${NOTE_NAME}.md`), NOTE);
 	if (DEMO_PDF) copyFileSync(DEMO_PDF, join(sandbox.paths.vault, PDF_PATH));
 	sandbox.prepareProfile();
 	const home = sandbox.prepareHome(false);
@@ -96,7 +104,7 @@ async function main(): Promise<void> {
 			app.workspace.leftSplit?.collapse();
 			app.workspace.rightSplit?.collapse();
 			const leaf = app.workspace.getMostRecentLeaf();
-			await leaf.setViewState({ type: "markdown", state: { file: "Reading along.md", mode: "preview" } });
+			await leaf.setViewState({ type: "markdown", state: { file: ${JSON.stringify(`${NOTE_NAME}.md`)}, mode: "preview" } });
 			app.workspace.setActiveLeaf(leaf, { focus: true });
 			await ${PLUGIN}.ensureVoice();
 			await new Promise((done) => setTimeout(done, 1000));
@@ -173,10 +181,34 @@ async function main(): Promise<void> {
 			} else {
 				app.commands.executeCommandById("edge-voice:toggle");
 			}
+			// Stop right after the sentence containing DEMO_PDF_UNTIL ends, before the
+			// next one starts: its unhighlight() is called once its audio has finished.
+			const until = ${JSON.stringify(PDF_UNTIL)};
+			if (until) {
+				const reader = ${PLUGIN}.reader;
+				const watch = setInterval(() => {
+					const segment = reader.current;
+					if (!segment || !segment.text.includes(until) || segment.edgeVoiceDemoLast) return;
+					segment.edgeVoiceDemoLast = true;
+					const unhighlight = segment.unhighlight.bind(segment);
+					// Once: stopping unhighlights the current sentence too.
+					segment.unhighlight = () => {
+						segment.unhighlight = unhighlight;
+						unhighlight();
+						app.commands.executeCommandById("edge-voice:stop");
+					};
+					clearInterval(watch);
+				}, 50);
+			}
 		`);
-		await pause(14000);
+		if (PDF_UNTIL) {
+			await until(() => run<string>(`return ${PLUGIN}.reader.state;`) === "playing", 30000);
+			await until(() => run<string>(`return ${PLUGIN}.reader.state;`) === "idle", 120000);
+		} else {
+			await pause(14000);
+		}
 		run(`app.commands.executeCommandById("edge-voice:stop");`);
-		await pause(1000);
+		await pause(1500);
 
 		const timing = run<{ times: number[]; audioStart: number | null }>(`
 			const demo = window.edgeVoiceDemo;

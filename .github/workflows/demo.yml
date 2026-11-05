@@ -15,6 +15,9 @@ on:
       pdf-from:
         description: Text in the PDF to start reading at (e.g. the abstract's first words)
         default: ""
+      pdf-until:
+        description: Text in the last sentence to read; stops when that sentence ends (empty = 14 seconds)
+        default: ""
 
 permissions:
   contents: read
@@ -67,6 +70,7 @@ jobs:
         env:
           PDF_URL: ${{ inputs.pdf-url }}
           DEMO_PDF_FROM: ${{ inputs.pdf-from }}
+          DEMO_PDF_UNTIL: ${{ inputs.pdf-until }}
         run: |
           if [ -n "$PDF_URL" ]; then
             mkdir -p demo-in

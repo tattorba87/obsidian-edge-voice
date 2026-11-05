@@ -29,6 +29,26 @@ describe("normalizeForSpeech", () => {
 		["accuracy ≥ 95% ± 2", "accuracy at least 95 percent plus or minus 2"],
 		["about ~3% more", "about 3 percent more"],
 		["x86_64 hosts", "x 86 64 hosts"],
+		// Hyphenated words are said apart; the parts run together otherwise.
+		["chain-of-thought prompting, end-to-end", "chain of thought prompting, end to end"],
+		["Text-to-speech, step-by-step and self-aware", "Text to speech, step by step and self aware"],
+		// "us" is said as a word (the front end spells it "U S"); "US" is the country.
+		["Let us go, all of us. Us too!", "Let usse go, all of usse. Usse too!"],
+		["The US and the U.S. trust us", "The U S and the U.S. trust usse"],
+		["thus, using, bus, user's", "thus, using, bus, user's"],
+		// "read" after these is "red" (the front end always says "reed").
+		["The sentence being read is highlighted", "The sentence being red is highlighted"],
+		["I've read it, it was Read, a well read man", "I've red it, it was Red, a well red man"],
+		["I will read it. Read this. It is read-only", "I will read it. Read this. It is read only"],
+		["All he does is read. They are read to.", "All he does is read. They are read to."],
+		[
+			"She has read access and had read and write permissions",
+			"She has read access and had read and write permissions",
+		],
+		[
+			"It had been read aloud; having read it, we were read to",
+			"It had been red aloud; having red it, we were red to",
+		],
 	])("%s", (written, spoken) => {
 		expect(normalizeForSpeech(written)).toBe(spoken);
 	});
