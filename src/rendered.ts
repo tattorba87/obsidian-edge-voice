@@ -165,21 +165,28 @@ export function alignWords(source: string[], rendered: string[]): number[] {
 	const have = rendered.map(comparable);
 	const probe = Math.min(8, want.length);
 
+	// Among starts matching as many opening words, the one skipping the fewest
+	// rendered words: in "…on your own computer. Your notes never…", the
+	// sentence "Your notes never…" starts at the second "your", not the first.
 	let bestStart = -1;
 	let bestScore = 0;
+	let bestSkipped = Infinity;
 	for (let k = 0; k < have.length; k++) {
 		if (have[k] !== want[0] && have[k] !== want[1]) continue;
 		let score = 0;
+		let skipped = 0;
 		let r = k;
 		for (let i = 0; i < probe && r < have.length; i++) {
 			const found = have.indexOf(want[i], r);
 			if (found >= 0 && found - r < 6) {
 				score++;
+				skipped += found - r;
 				r = found + 1;
 			}
 		}
-		if (score > bestScore) {
+		if (score > bestScore || (score === bestScore && skipped < bestSkipped)) {
 			bestScore = score;
+			bestSkipped = skipped;
 			bestStart = k;
 		}
 	}

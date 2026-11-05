@@ -204,6 +204,18 @@ export function normalizeForSpeech(text: string): string {
 	out = out.replace(/(?<=[\p{L}\d])[_/](?=[\p{L}\d])/gu, " ");
 	out = out.replace(/(?<=[\p{Lu}\d])-(?=[\p{L}\d])|(?<=[\p{L}\d])-(?=[\p{Lu}\d])/gu, " ");
 	out = out.replace(/(?<=\p{L})(?=\d)|(?<=\d)(?=\p{L})/gu, " ");
+	// Hyphenated words: the front end runs the parts together ("text-to-speech"
+	// came out as "textahkspeech", "step-by-step" as "stepbeestep"); apart, each
+	// is said right. "read" first, so "read-only" isn't taken for the past tense.
+	out = out.replace(
+		/(\b(?:has|have|had|having|been|being|was|were|be|well|widely)|['’]ve)(\s+)([Rr])ead(?![\p{L}\d'’-])(?!\s+(?:access|permissions?|rights|receipts?|mode|and\s+write|\/\s*write|or\s+write)\b)/giu,
+		// The front end always says "reed"; after these words it's "red". Not after
+		// "is"/"are" ("all he does is read"), nor as an adjective ("read access").
+		(_m, before: string, space: string, r: string) => `${before}${space}${r}ed`,
+	);
+	out = out.replace(/(?<=\p{L})-(?=\p{L})/gu, " ");
+	// "us" comes out as the letters "U S"; "usse" is said "us". "US" stays the country.
+	out = out.replace(/(?<![\p{L}\d'’.])([Uu])s(?![\p{L}\d'’.]\p{L}|[\p{L}\d'’])/gu, "$1sse");
 
 	// Plain decimals ("2.4", "0.75") the front end already reads as "two point
 	// four". Dotted runs it garbles: a version "1.2.3" is "1 point 2 point 3",

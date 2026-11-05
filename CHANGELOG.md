@@ -4,6 +4,17 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Fixed
+
+- In Reading view and other rendered text, a sentence whose first word also appears a few words earlier in the paragraph ("…your own computer. Your notes…") was highlighted from the earlier word, and its word highlight ran ahead.
+- Hyphenated words are said properly: "text-to-speech", "step-by-step" and "chain-of-thought" were run together.
+- "us" was said as the letters "U S".
+- "read" is said "red" after "has", "have", "had", "been", "was", "were", "be", "well" and "widely" ("it was read aloud"); elsewhere it stays "reed".
+
+### Changed
+
+- New demo: why reading along helps, and a research paper read aloud.
+
 ## [0.1.3] - 2026-11-03
 
 ### Changed

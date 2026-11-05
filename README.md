@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/media/banner.png" alt="Edge Voice: offline text-to-speech for Obsidian. A crystal set in a chip, with sound waves coming from it." width="100%"></p>
+
 # Edge Voice
 
 **Text-to-speech (TTS) for Obsidian: listen to your notes and PDFs, and follow along as each word lights up.**
@@ -6,7 +8,9 @@
 
 ![Edge Voice reading a note aloud in Obsidian, highlighting the sentence and the word being spoken](docs/media/demo.gif)
 
-▶ **[Watch the demo with sound](https://github.com/user-attachments/assets/0ab2984c-49eb-4444-8074-2f25ff312abe)**
+▶ **[Watch the demo with sound](https://github.com/user-attachments/assets/fb9d0ba1-60dc-46e0-a5a7-1c8fc0d4d4ee)**
+
+<sub>The paper in the demo: Wei et al., [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/abs/2201.11903) (2022), CC BY 4.0. Recorded on an Intel Mac with pauses for synthesis cut; on Apple silicon the next sentence is ready in time.</sub>
 
 - **Read along.** The sentence and the word being spoken are highlighted as you listen, in notes (editing, Live Preview and Reading view) and in PDFs.
 - **Natural voices.** 66 English voices, American and British, from [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) and [Piper](https://github.com/rhasspy/piper). On Apple silicon, a faster engine runs the Kokoro voices on the GPU.
