@@ -4,6 +4,8 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-05
+
 ### Added
 
 - Settings → Advanced → **Free voice memory when idle**: after 5, 10 or 30 minutes or an hour stopped or paused, the voice engine is unloaded to give its memory back (about 800 MB with a Kokoro voice). The status bar shows "Unloading voice", then "Reloading voice" on the next play, resume or skip (about 2–3 seconds). Off by default.
@@ -82,7 +84,8 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - The speech engine starts isolated: Python and linker settings in your environment (`PYTHONPATH`, `DYLD_*`/`LD_*`) can't change what runs. It never downloads: a voice that isn't on your computer gets a notice with the command that fetches it.
 - The speech engine and its connection check what passes between them: voice IDs, text length, speed, audio and reply size; a stuck engine is restarted instead of blocking reading, and settings of the wrong type fall back to their defaults.
 
-[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.4...HEAD
+[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.5...HEAD
+[0.1.5]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.4...0.1.5
 [0.1.4]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.3...0.1.4
 [0.1.3]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.2...0.1.3
 [0.1.2]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.1...0.1.2
