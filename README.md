@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/media/banner.png" alt="Edge Voice: offline text-to-speech for Obsidian. A crystal set in a chip, with sound waves coming from it." width="100%"></p>
+
 # Edge Voice
 
 **Text-to-speech (TTS) for Obsidian: listen to your notes and PDFs, and follow along as each word lights up.**
