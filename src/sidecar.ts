@@ -74,6 +74,11 @@ export class Sidecar {
 		return this.proc !== undefined;
 	}
 
+	/** True while a request is being answered or waits to be sent. */
+	get busy(): boolean {
+		return this.pending.size > 0 || this.waiting.length > 0 || this.inFlight !== undefined;
+	}
+
 	start(): Promise<void> {
 		if (this.ready) return this.ready;
 		this.ready = new Promise((resolve, reject) => {

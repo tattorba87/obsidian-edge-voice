@@ -33,6 +33,7 @@ import {
 	voiceCommand,
 } from "./engine";
 import { StatusIndicator } from "./status";
+import { IdleUnload, UNLOAD_CHOICES } from "./idle";
 import { CommandNotice, SetupModal } from "./setup-modal";
 import { InBackground, pausesInBackground } from "./background";
 import { playChime } from "./chime";
@@ -77,6 +78,8 @@ interface ReaderSettings {
 	showPlayer: boolean;
 	highlightTheme: string;
 	playerMinimized: boolean;
+	/** Minutes stopped or paused before the voice engine is unloaded to free memory; 0 is never. */
+	unloadAfter: number;
 }
 
 const DEFAULT_SETTINGS: ReaderSettings = {
@@ -99,6 +102,7 @@ const DEFAULT_SETTINGS: ReaderSettings = {
 	showPlayer: true,
 	highlightTheme: DEFAULT_HIGHLIGHT_THEME,
 	playerMinimized: false,
+	unloadAfter: 0,
 };
 
 const MENU_TITLE = "Start text-to-speech here";
@@ -124,10 +128,14 @@ export default class EdgeVoicePlugin extends Plugin {
 	private bar!: PlayerBar;
 	private state: ReaderState = "idle";
 	private stateDetail?: string;
+	/** Unloads the voice after a while stopped or paused, if the person asked for that. */
+	private idle!: IdleUnload;
+	/** The voice was unloaded to free memory; loading it again says "Reloading". */
+	private unloaded = false;
 	private readonly controls: PlayerControls = {
 		toggle: () => this.toggle("button"),
-		previous: () => this.reader.skip(-1),
-		next: () => this.reader.skip(1),
+		previous: () => void this.skip(-1),
+		next: () => void this.skip(1),
 		stop: () => this.stop(),
 		speed: () => this.settings.speed,
 		setSpeed: (speed) => this.setSpeed(speed),
@@ -155,6 +163,14 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
+		this.idle = new IdleUnload({
+			minutes: () => this.settings.unloadAfter,
+			idle: () => this.sidecar.running && (this.reader.state === "idle" || this.reader.state === "paused"),
+			busy: () => this.sidecar.busy,
+			unload: () => this.unloadVoice(),
+			setTimer: (run, ms) => window.setTimeout(run, ms),
+			clearTimer: (id) => window.clearTimeout(id),
+		});
 		this.createSidecar();
 		this.createReader();
 
@@ -182,8 +198,8 @@ export default class EdgeVoicePlugin extends Plugin {
 			callback: () => this.readFromHere(),
 		});
 		this.addCommand({ id: "stop", name: "Stop reading", callback: () => this.stop() });
-		this.addCommand({ id: "next", name: "Next sentence", callback: () => this.reader.skip(1) });
-		this.addCommand({ id: "previous", name: "Previous sentence", callback: () => this.reader.skip(-1) });
+		this.addCommand({ id: "next", name: "Next sentence", callback: () => void this.skip(1) });
+		this.addCommand({ id: "previous", name: "Previous sentence", callback: () => void this.skip(-1) });
 		this.addCommand({
 			id: "faster",
 			name: "Read faster",
@@ -217,6 +233,7 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	onunload(): void {
+		this.idle.cancel();
 		this.reader.stop();
 		this.sidecar.stop();
 	}
@@ -237,6 +254,7 @@ export default class EdgeVoicePlugin extends Plugin {
 		settings.volume = clamp(settings.volume, 0, 1);
 		// The settings offer 1 to 4.
 		settings.prefetch = Math.round(clamp(settings.prefetch, 1, 4));
+		if (!(String(settings.unloadAfter) in UNLOAD_CHOICES)) settings.unloadAfter = DEFAULT_SETTINGS.unloadAfter;
 		// Finer speeds were offered before; keep the closest of the ones offered now.
 		settings.speed = nearestSpeed(settings.speed);
 		// One setting used to cover both switching pages and leaving Obsidian.
@@ -349,6 +367,7 @@ export default class EdgeVoicePlugin extends Plugin {
 			console.warn("[edge-voice] preloading the voice failed", error);
 		} finally {
 			if (this.reader.state === "idle") this.status.show("hidden");
+			this.idle.reset();
 		}
 	}
 
@@ -383,7 +402,7 @@ export default class EdgeVoicePlugin extends Plugin {
 				this.reader.pause();
 				break;
 			case "resume":
-				this.reader.resume();
+				void this.resume();
 				break;
 			case "stop":
 				this.stop();
@@ -395,6 +414,44 @@ export default class EdgeVoicePlugin extends Plugin {
 			case "start":
 				void this.readFromHere();
 		}
+	}
+
+	/** Resumes, loading the voice again first if it was unloaded while paused. */
+	private async resume(): Promise<void> {
+		if (await this.reload()) this.reader.resume();
+	}
+
+	private async skip(delta: number): Promise<void> {
+		if (await this.reload()) this.reader.skip(delta);
+	}
+
+	/**
+	 * Loads the voice again if it was unloaded to free memory, showing
+	 * "Reloading voice". False if that failed (the person has been told).
+	 */
+	private async reload(): Promise<boolean> {
+		if (!this.unloaded || this.sidecar.running) return true;
+		try {
+			await this.ensureVoice();
+			this.showState(this.state, this.stateDetail);
+			return true;
+		} catch (error) {
+			if (error instanceof MissingVoiceError) this.showMissingVoice(error.voice);
+			else new Notice(`Edge Voice could not load the voice: ${(error as Error).message}`, 10000);
+			this.showState(this.state, this.stateDetail);
+			return false;
+		}
+	}
+
+	/** Stops the engine to free its memory; the next play loads the voice again. */
+	private unloadVoice(): void {
+		this.status.show("busy", "Unloading voice");
+		this.sidecar.stop();
+		this.voice = undefined;
+		this.unloaded = true;
+		window.setTimeout(() => {
+			if (!this.sidecar.running) this.showState(this.state, this.stateDetail);
+		}, 1500);
 	}
 
 	/** Stops reading the target page and forgets it. */
@@ -676,10 +733,12 @@ export default class EdgeVoicePlugin extends Plugin {
 		const engine = this.fasterReady ? "mlx" : undefined;
 		const key = `${this.settings.language}/${this.settings.voice}/${engine ?? "moonshine"}`;
 		if (this.voice?.key === key && this.sidecar.running) return this.voice.ready;
-		this.status.show("busy", "Loading voice");
+		this.idle.cancel();
+		this.status.show("busy", this.unloaded ? "Reloading voice" : "Loading voice");
 		const ready = this.sidecar
 			.load(this.settings.language, this.settings.voice, engine)
 			.then((loaded) => {
+				this.unloaded = false;
 				this.engineInUse = loaded;
 				if (loaded.fallback) console.warn("[edge-voice] the standard engine is speaking:", loaded.fallback);
 			})
@@ -710,12 +769,21 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.bar.setEnabled(shown);
 	}
 
+	/** How long to wait, stopped or paused, before unloading the voice; 0 is never. */
+	setUnloadAfter(minutes: number): void {
+		this.settings.unloadAfter = String(minutes) in UNLOAD_CHOICES ? minutes : 0;
+		void this.saveSettings();
+		this.idle.reset();
+	}
+
 	/** Sets the reading speed; it is heard from the next sentence on. */
 	setSpeed(value: number): void {
 		const speed = nearestSpeed(value);
 		this.settings.speed = speed;
 		void this.saveSettings();
-		this.reader.invalidateAudio();
+		// Speed changes prepare audio again: the voice must be there first.
+		if (this.unloaded && this.state !== "idle") void this.reload().then(() => this.reader.invalidateAudio());
+		else this.reader.invalidateAudio();
 		this.bar.showSpeed(speed);
 		this.showState(this.state, this.stateDetail);
 		if (this.state === "idle") new Notice(`Reading speed ${formatSpeed(speed)}`, 1500);
@@ -729,6 +797,7 @@ export default class EdgeVoicePlugin extends Plugin {
 			this.target = undefined;
 		}
 		this.status.show(...statusFor(state, this.stateDetail, formatSpeed(this.settings.speed)));
+		this.idle?.reset();
 		this.bar.update(state, this.stateDetail);
 		setIcon(this.ribbonEl, state === "playing" || state === "loading" ? "pause" : "audio-lines");
 		this.ribbonEl.setAttribute("aria-label", state === "playing" ? "Pause reading" : "Read aloud");
@@ -789,12 +858,14 @@ class ReaderSettingTab extends PluginSettingTab {
 
 	getControlValue(key: string): unknown {
 		if (key === "speed") return String(nearestSpeed(this.plugin.settings.speed));
+		if (key === "unloadAfter") return String(this.plugin.settings.unloadAfter);
 		return (this.plugin.settings as unknown as Record<string, unknown>)[key];
 	}
 
 	setControlValue(key: string, value: unknown): void {
 		if (key === "speed") return this.plugin.setSpeed(Number(value));
 		if (key === "showPlayer") return this.plugin.setPlayerShown(value === true);
+		if (key === "unloadAfter") return this.plugin.setUnloadAfter(Number(value));
 		(this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
 		void this.plugin.saveSettings();
 	}
@@ -939,6 +1010,12 @@ class ReaderSettingTab extends PluginSettingTab {
 								// Drawing the tab again looks for the engine there.
 								.addButton((button) => button.setButtonText("Use it").onClick(() => this.update()));
 						},
+					},
+					{
+						name: "Free voice memory when idle",
+						desc: 'After this long stopped or paused, Edge Voice unloads the voice engine and gives its memory back (several hundred MB; about 800 MB with a Kokoro voice). The next time you play, resume or skip, it loads the voice again first: expect about 2–3 seconds for a Kokoro voice and 1–2 seconds for a Piper voice, a little more on older computers. The status bar shows "Unloading voice" and "Reloading voice".',
+						aliases: ["memory", "RAM", "unload", "idle", "resources"],
+						control: { type: "dropdown", key: "unloadAfter", options: UNLOAD_CHOICES },
 					},
 					{
 						name: "Sentences to prepare ahead",

@@ -4,6 +4,10 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- Settings → Advanced → **Free voice memory when idle**: after 5, 10 or 30 minutes or an hour stopped or paused, the voice engine is unloaded to give its memory back (about 800 MB with a Kokoro voice). The status bar shows "Unloading voice", then "Reloading voice" on the next play, resume or skip (about 2–3 seconds). Off by default.
+
 ## [0.1.4] - 2026-11-04
 
 ### Fixed
