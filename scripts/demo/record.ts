@@ -110,29 +110,29 @@ async function main(): Promise<void> {
 			await new Promise((done) => setTimeout(done, 1000));
 		`);
 
-		// Capture: frames of the page, and everything the plugin sends to the speakers.
+		// Capture: frames of the page, and every sound the plugin plays with the
+		// moment it started, so the soundtrack is rebuilt in sync with the frames
+		// (a MediaRecorder drops the silences, and the sound drifts ahead).
 		run(`
 			const fs = require("fs");
 			const electron = require("electron");
 			const remote = electron.remote ?? require("@electron/remote");
 			const contents = remote.getCurrentWebContents();
-			const demo = (window.edgeVoiceDemo = { stop: false, times: [], audioStart: null, chunks: [], done: null });
-			const connect = AudioNode.prototype.connect;
-			AudioNode.prototype.connect = function (target, ...rest) {
-				const result = connect.call(this, target, ...rest);
-				if (target instanceof AudioDestinationNode) {
-					const context = target.context;
-					if (!context.edgeVoiceTap) {
-						context.edgeVoiceTap = context.createMediaStreamDestination();
-						const recorder = new MediaRecorder(context.edgeVoiceTap.stream, { mimeType: "audio/webm;codecs=opus" });
-						recorder.ondataavailable = (event) => demo.chunks.push(event.data);
-						recorder.start(250);
-						demo.recorder = recorder;
-						demo.audioStart = performance.now();
-					}
-					connect.call(this, context.edgeVoiceTap);
-				}
-				return result;
+			fs.mkdirSync(${JSON.stringify(join(OUT, "clips"))}, { recursive: true });
+			const demo = (window.edgeVoiceDemo = { stop: false, times: [], clips: [], done: null });
+			const start = AudioBufferSourceNode.prototype.start;
+			AudioBufferSourceNode.prototype.start = function (...args) {
+				const n = demo.clips.length;
+				const data = this.buffer.getChannelData(0);
+				fs.writeFileSync(${JSON.stringify(join(OUT, "clips"))} + "/" + n + ".f32", Buffer.from(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)));
+				this.edgeVoiceClip = { t: performance.now(), rate: this.buffer.sampleRate, samples: data.length, end: null };
+				demo.clips.push(this.edgeVoiceClip);
+				return start.apply(this, args);
+			};
+			const stop = AudioBufferSourceNode.prototype.stop;
+			AudioBufferSourceNode.prototype.stop = function (...args) {
+				if (this.edgeVoiceClip && this.edgeVoiceClip.end === null) this.edgeVoiceClip.end = performance.now();
+				return stop.apply(this, args);
 			};
 			demo.done = (async () => {
 				for (let n = 0; !demo.stop; n++) {
@@ -158,7 +158,7 @@ async function main(): Promise<void> {
 
 		// A PDF for a few sentences: the sample, from its top, or DEMO_PDF from the
 		// first text-layer span containing DEMO_PDF_FROM (selected, then "read from here").
-		run(`
+		const pdfStart = run<number>(`
 			const file = app.vault.getAbstractFileByPath(${JSON.stringify(PDF_PATH)});
 			const leaf = app.workspace.getMostRecentLeaf();
 			await leaf.openFile(file);
@@ -200,6 +200,7 @@ async function main(): Promise<void> {
 					clearInterval(watch);
 				}, 50);
 			}
+			return performance.now();
 		`);
 		if (PDF_UNTIL) {
 			await until(() => run<string>(`return ${PLUGIN}.reader.state;`) === "playing", 30000);
@@ -210,40 +211,93 @@ async function main(): Promise<void> {
 		run(`app.commands.executeCommandById("edge-voice:stop");`);
 		await pause(1500);
 
-		const timing = run<{ times: number[]; audioStart: number | null }>(`
+		const timing = run<{ times: number[]; clips: Clip[] }>(`
 			const demo = window.edgeVoiceDemo;
 			demo.stop = true;
 			await demo.done;
-			if (demo.recorder) {
-				const stopped = new Promise((done) => (demo.recorder.onstop = done));
-				demo.recorder.stop();
-				await stopped;
-				const audio = new Blob(demo.chunks, { type: "audio/webm" });
-				require("fs").writeFileSync(${JSON.stringify(join(OUT, "audio.webm"))}, Buffer.from(await audio.arrayBuffer()));
-			}
-			return { times: demo.times, audioStart: demo.audioStart };
+			return { times: demo.times, clips: demo.clips };
 		`);
-		writeFileSync(join(OUT, "timing.json"), JSON.stringify({ ...timing, noteStart }, null, 2));
-		encode(timing.times, timing.audioStart, noteStart);
+		writeFileSync(join(OUT, "timing.json"), JSON.stringify({ ...timing, noteStart, pdfStart }, null, 2));
+		encode(timing.times, timing.clips, [noteStart, pdfStart]);
 	} finally {
 		sandbox.cli("dev:screenshot", `path=${join(OUT, "last.png")}`);
 		await sandbox.close();
 	}
 }
 
-/** demo.mp4 at the frames' real timing with the audio laid over it; demo.gif from the note's part. */
-function encode(times: number[], audioStart: number | null, noteStart: number): void {
-	if (times.length < 10) throw new Error(`only ${times.length} frames were captured`);
-	const list = times.map((time, n) => {
-		const next = times[n + 1] ?? time + 100;
-		return `file 'frames/${String(n).padStart(5, "0")}.jpg'\nduration ${((next - time) / 1000).toFixed(3)}`;
+interface Clip {
+	/** performance.now() when it started playing. */
+	t: number;
+	rate: number;
+	samples: number;
+	/** When it was cut off, if it was. */
+	end: number | null;
+}
+
+/**
+ * Waits for synthesis to cut from the recording: before a part's first sound
+ * and between sounds within a part. On a slow computer the next sentence may
+ * not be ready in time; on Apple silicon it is, and the demo shows that.
+ */
+function waits(clips: Clip[], parts: number[]): [number, number][] {
+	const cuts: [number, number][] = [];
+	const ends = (clip: Clip) => clip.end ?? clip.t + (clip.samples / clip.rate) * 1000;
+	parts.forEach((part, p) => {
+		const next = parts[p + 1] ?? Infinity;
+		const mine = clips.filter((clip) => clip.t >= part && clip.t < next).sort((a, b) => a.t - b.t);
+		if (mine.length === 0) return;
+		if (mine[0].t - part > 900) cuts.push([part + 600, mine[0].t - 200]);
+		for (let i = 1; i < mine.length; i++) {
+			const gap = mine[i].t - ends(mine[i - 1]);
+			if (gap > 350) cuts.push([ends(mine[i - 1]) + 150, mine[i].t - 150]);
+		}
+	});
+	return cuts;
+}
+
+/** demo.mp4 from the frames and the sounds, with the waits cut; demo.gif from the note's part. */
+function encode(allTimes: number[], clips: Clip[], parts: number[]): void {
+	if (allTimes.length < 10) throw new Error(`only ${allTimes.length} frames were captured`);
+	const cuts = waits(clips, parts);
+	const origin = allTimes[0];
+	// Time on the recording's clock -> seconds into the video, with the waits taken out.
+	const at = (time: number): number => {
+		let shift = 0;
+		for (const [from, to] of cuts) {
+			if (time >= to) shift += to - from;
+			else if (time > from) shift += time - from;
+		}
+		return (time - origin - shift) / 1000;
+	};
+	const kept = allTimes
+		.map((time, n) => ({ n, time }))
+		.filter(({ time }) => !cuts.some(([a, b]) => time > a && time < b));
+	const list = kept.map(({ n, time }, k) => {
+		const next = kept[k + 1] ? at(kept[k + 1].time) : at(time) + 0.1;
+		return `file 'frames/${String(n).padStart(5, "0")}.jpg'\nduration ${Math.max(0.001, next - at(time)).toFixed(3)}`;
 	});
 	// The concat demuxer wants the last file again, without a duration.
-	list.push(`file 'frames/${String(times.length - 1).padStart(5, "0")}.jpg'`);
+	list.push(`file 'frames/${String(kept[kept.length - 1].n).padStart(5, "0")}.jpg'`);
 	writeFileSync(join(OUT, "frames.txt"), list.join("\n") + "\n");
 
-	const audio = join(OUT, "audio.webm");
-	const withAudio = audioStart !== null && existsSync(audio) && statSync(audio).size > 1000;
+	// The soundtrack: every sound at the moment it played, cut off where it was.
+	const rate = clips[0]?.rate ?? 24000;
+	const total = Math.ceil((at(allTimes[allTimes.length - 1]) + 0.2) * rate);
+	const mix = new Float32Array(total);
+	clips.forEach((clip, n) => {
+		if (clip.rate !== rate) throw new Error(`sounds at ${clip.rate} and ${rate} Hz`);
+		const raw = readFileSync(join(OUT, "clips", `${n}.f32`));
+		const samples = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
+		const played =
+			clip.end === null
+				? samples.length
+				: Math.min(samples.length, Math.round(((clip.end - clip.t) / 1000) * rate));
+		const offset = Math.round(at(clip.t) * rate);
+		for (let i = 0; i < played && offset + i < total; i++) mix[offset + i] += samples[i];
+	});
+	writeFileSync(join(OUT, "audio.wav"), wav(mix, rate));
+	writeFileSync(join(OUT, "cuts.json"), JSON.stringify(cuts.map(([a, b]) => [at(a), (b - a) / 1000])));
+
 	const ffmpeg = (...args: string[]) =>
 		execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...args], { cwd: OUT });
 	ffmpeg(
@@ -253,22 +307,16 @@ function encode(times: number[], audioStart: number | null, noteStart: number): 
 		"0",
 		"-i",
 		"frames.txt",
-		...(withAudio
-			? [
-					"-itsoffset",
-					((audioStart - times[0]) / 1000).toFixed(3),
-					"-i",
-					"audio.webm",
-					"-map",
-					"0:v",
-					"-map",
-					"1:a",
-					"-c:a",
-					"aac",
-					"-b:a",
-					"128k",
-				]
-			: []),
+		"-i",
+		"audio.wav",
+		"-map",
+		"0:v",
+		"-map",
+		"1:a",
+		"-c:a",
+		"aac",
+		"-b:a",
+		"128k",
 		"-vf",
 		"fps=30,scale=1280:-2:flags=lanczos,format=yuv420p",
 		"-c:v",
@@ -283,7 +331,7 @@ function encode(times: number[], audioStart: number | null, noteStart: number): 
 	);
 
 	// The GIF: from just before reading starts, the first sentences of the note.
-	const from = Math.max(0, (noteStart - times[0]) / 1000 - 0.5);
+	const from = Math.max(0, at(parts[0]) - 0.5);
 	for (const [width, fps] of [
 		[960, 12],
 		[800, 10],
@@ -302,10 +350,30 @@ function encode(times: number[], audioStart: number | null, noteStart: number): 
 		);
 		if (statSync(join(OUT, "demo.gif")).size < 9_500_000) break;
 	}
+	const cutSeconds = cuts.reduce((sum, [a, b]) => sum + b - a, 0) / 1000;
+	process.stdout.write(`cut ${cuts.length} waits for synthesis (${cutSeconds.toFixed(1)} s)\n`);
 	for (const file of ["demo.mp4", "demo.gif"])
-		process.stdout.write(
-			`${file}: ${(statSync(join(OUT, file)).size / 1e6).toFixed(1)} MB${file === "demo.mp4" && !withAudio ? " (no audio was captured)" : ""}\n`,
-		);
+		process.stdout.write(`${file}: ${(statSync(join(OUT, file)).size / 1e6).toFixed(1)} MB\n`);
+}
+
+/** 16-bit mono WAV. */
+function wav(samples: Float32Array, rate: number): Buffer {
+	const data = Buffer.alloc(samples.length * 2);
+	samples.forEach((sample, i) => data.writeInt16LE(Math.round(Math.max(-1, Math.min(1, sample)) * 32767), i * 2));
+	const header = Buffer.alloc(44);
+	header.write("RIFF", 0);
+	header.writeUInt32LE(36 + data.length, 4);
+	header.write("WAVEfmt ", 8);
+	header.writeUInt32LE(16, 16);
+	header.writeUInt16LE(1, 20);
+	header.writeUInt16LE(1, 22);
+	header.writeUInt32LE(rate, 24);
+	header.writeUInt32LE(rate * 2, 28);
+	header.writeUInt16LE(2, 32);
+	header.writeUInt16LE(16, 34);
+	header.write("data", 36);
+	header.writeUInt32LE(data.length, 40);
+	return Buffer.concat([header, data]);
 }
 
 await main();

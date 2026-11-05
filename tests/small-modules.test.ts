@@ -27,6 +27,17 @@ describe("alignWords", () => {
 		expect(alignWords(source, rendered).filter((index) => index < 0)).toHaveLength(1);
 	});
 
+	it("starts a sentence at its own first word, not an earlier one in the paragraph", () => {
+		// Recorded in the demo: "Your notes…" was highlighted from "your own computer".
+		const paragraph = wordTokens(
+			"Everything runs on your own computer. Your notes never leave it, there's no account, and it's free.",
+		).map((token) => token.text);
+		const sentence = wordTokens("Your notes never leave it, there's no account, and it's free.").map(
+			(token) => token.text,
+		);
+		expect(alignWords(sentence, paragraph)[0]).toBe(6);
+	});
+
 	it("gives up when the opening doesn't match", () => {
 		expect(alignWords(["nothing", "like", "this"], rendered)).toEqual([-1, -1, -1]);
 	});

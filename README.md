@@ -8,6 +8,8 @@
 
 ▶ **[Watch the demo with sound](https://github.com/user-attachments/assets/0ab2984c-49eb-4444-8074-2f25ff312abe)**
 
+<sub>The paper in the demo: Wei et al., [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/abs/2201.11903) (2022), CC BY 4.0. Recorded on an Intel Mac with pauses for synthesis cut; on Apple silicon the next sentence is ready in time.</sub>
+
 - **Read along.** The sentence and the word being spoken are highlighted as you listen, in notes (editing, Live Preview and Reading view) and in PDFs.
 - **Natural voices.** 66 English voices, American and British, from [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) and [Piper](https://github.com/rhasspy/piper). On Apple silicon, a faster engine runs the Kokoro voices on the GPU.
 - **Start anywhere.** Right-click a sentence and choose _Start text-to-speech here_. Pause, skip sentences and change the speed from the player bar.
