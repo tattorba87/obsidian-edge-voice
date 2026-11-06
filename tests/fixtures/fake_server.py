@@ -56,7 +56,15 @@ for line in sys.stdin:
             log.write(json.dumps(request) + "\n")
     request_id = request.get("id")
     op = request.get("op")
-    if op == "load":
+    if op == "hello":
+        reply = {"id": request_id, "ok": True, "protocol": 1, "capabilities": ["dictation-streaming-v1"]}
+    elif op == "asr_start":
+        reply = {"id": request_id, "ok": True, "text": ""}
+    elif op == "asr_audio":
+        reply = {"id": request_id, "ok": True, "text": "Hello from dictation"}
+    elif op == "asr_stop":
+        reply = {"id": request_id, "ok": True, "text": "Hello from dictation."}
+    elif op == "load":
         reply = {"id": request_id, "ok": True}
         # Like server.py: MLX takes Kokoro voices, anything else falls back.
         if request.get("engine") == "mlx":

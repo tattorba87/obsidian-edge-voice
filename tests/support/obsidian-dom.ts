@@ -45,3 +45,7 @@ proto.toggleClass = function (this: HTMLElement, name: string, on: boolean) {
 proto.toggle = function (this: HTMLElement, show: boolean) {
 	this.style.display = show ? "" : "none";
 };
+
+proto.setCssProps = function (this: HTMLElement, props: Record<string, string>) {
+	for (const [key, value] of Object.entries(props)) this.style.setProperty(key, value);
+};

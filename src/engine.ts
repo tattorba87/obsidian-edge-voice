@@ -13,7 +13,7 @@ import { childEnvironment } from "./environment";
  */
 
 /** The engine release these steps install, and the protocol this plugin speaks. */
-export const ENGINE_VERSION = "0.3.0";
+export const ENGINE_VERSION = "0.4.0";
 export const ENGINE_PROTOCOL = 1;
 const RELEASE = `https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-${ENGINE_VERSION}`;
 export const UV_INSTALL = "https://docs.astral.sh/uv/getting-started/installation/";
@@ -55,6 +55,18 @@ export function requirementsFile({ platform, arch, faster }: Platform): string |
 	return null;
 }
 
+/** A newer bundled recommendation, independent of protocol compatibility. No network lookup. */
+export function engineUpdateAvailable(installed: string, recommended: string = ENGINE_VERSION): boolean {
+	const parse = (value: string) => (/^\d+\.\d+\.\d+$/.test(value) ? value.split(".").map(Number) : null);
+	const current = parse(installed);
+	const target = parse(recommended);
+	if (!current || !target) return false;
+	for (let i = 0; i < 3; i++) {
+		if (current[i] !== target[i]) return current[i] < target[i];
+	}
+	return false;
+}
+
 export interface Step {
 	title: string;
 	/** What it does, in plain words. */
@@ -70,6 +82,12 @@ export function voiceCommand(voice: string, faster: boolean, platform: string = 
 	return `${engineTool(platform)} voices get ${voice}${faster ? " --faster" : ""}`;
 }
 
+/** A manual, SHA-256 verified English ASR download; never executed by the plugin. */
+export function modelCommand(model: string, platform: string = process.platform): string {
+	if (!["tiny", "small", "medium"].includes(model)) throw new Error("Unknown English streaming model");
+	return `${engineTool(platform)} models get ${model}`;
+}
+
 /** The engine's command, as the person types it in Terminal or PowerShell. */
 function engineTool(platform: string): string {
 	return platform === "win32"
@@ -78,7 +96,7 @@ function engineTool(platform: string): string {
 }
 
 /** The setup steps for this computer, or null if there's no engine for it. */
-export function setupSteps(where: Platform, voice: string): Step[] | null {
+export function setupSteps(where: Platform, voice: string, dictationModel?: string): Step[] | null {
 	const file = requirementsFile(where);
 	if (!file) return null;
 	const windows = where.platform === "win32";
@@ -113,13 +131,25 @@ export function setupSteps(where: Platform, voice: string): Step[] | null {
 			link: `${RELEASE}/${file}`,
 		},
 		{
-			title: "Download a voice",
+			title: "Download a reading voice (optional)",
 			text:
 				`This downloads the voice ${voice} from Moonshine's server (download.moonshine.ai)` +
 				(faster ? ", and its files for the faster engine from Hugging Face" : "") +
-				". You can get more voices later; Edge Voice's settings show the command for each.",
+				". Skip this if you only want dictation. You can get more voices later in Edge Voice settings.",
 			command: voiceCommand(voice, faster, where.platform),
 		},
+		...(dictationModel
+			? [
+					{
+						title: "Download a dictation model (optional)",
+						text:
+							`For English speech-to-text, this downloads the ${dictationModel} streaming model from Moonshine (download.moonshine.ai), with SHA-256 verification. ` +
+							"Skip this if you only want reading aloud. Medium (269 MB) prioritizes word accuracy; Small (142 MB) and Tiny (45 MB) prioritize speed and lower resource use, with more recognition errors expected. " +
+							"Choose another model in Settings → Edge Voice → English dictation, then use its download command. After downloading, enable dictation and leave Custom model folder empty.",
+						command: modelCommand(dictationModel, where.platform),
+					},
+				]
+			: []),
 	];
 }
 

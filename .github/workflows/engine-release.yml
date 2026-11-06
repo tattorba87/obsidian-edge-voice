@@ -12,6 +12,10 @@ on:
         description: Publish the release (otherwise build and check only)
         type: boolean
         default: false
+      prerelease:
+        description: Mark a published engine as a prerelease for beta testing
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -59,8 +63,9 @@ jobs:
               platform=$1 arch=$2 faster=$3
               shift 3
               echo "**$*:**"
+              echo "After installing the engine, choose either or both optional downloads: voices get for TTS, models get for English STT. Medium prioritizes accuracy; Small/Tiny prioritize speed with more recognition errors."
               echo '```'
-              bun scripts/setup-steps.ts "$platform" "$arch" "$faster" kokoro_af_bella | python3 -I -c "import json, sys; print('\n'.join(json.load(sys.stdin)))"
+              bun scripts/setup-steps.ts "$platform" "$arch" "$faster" kokoro_af_bella "" medium | python3 -I -c "import json, sys; print('\n'.join(json.load(sys.stdin)))"
               echo '```'
             done
             echo
@@ -107,9 +112,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_PRERELEASE: ${{ inputs.prerelease }}
         run: |
           cd release
           sha256sum -c SHA256SUMS
+          flags=()
+          if [ "$RELEASE_PRERELEASE" = true ]; then flags+=(--prerelease); fi
           # Not marked latest, so it never stands in for a plugin release. Fails if the tag exists.
           gh release create "engine-${VERSION}" ./*.whl ./requirements-*.txt THIRD-PARTY-NOTICES.txt SHA256SUMS \
-            --title "Speech engine ${VERSION}" --notes-file release-notes.md --latest=false --target "$GITHUB_SHA"
+            --title "Speech engine ${VERSION}" --notes-file release-notes.md --latest=false --target "$GITHUB_SHA" "${flags[@]}"

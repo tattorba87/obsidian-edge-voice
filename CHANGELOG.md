@@ -4,6 +4,21 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-06
+
+### Added
+
+- **English dictation (speech-to-text)** into Markdown notes, on your own computer, with Moonshine's Tiny, Small or Medium streaming models. Click the microphone in the player, or double-tap **Left ⌘** (Mac) / **Left Ctrl** (Windows, Linux) to start and tap once to stop. Live text appears as you speak and is revised as the recognizer catches up; it stops rather than overwrite anything you type. Optional start/stop sounds, lowercase output and an inactivity timeout. Reading aloud and dictation run one at a time.
+- Dictation is on for new installs. **If you're updating, it stays off** until you turn it on under Settings → Edge Voice → English dictation, so nothing new appears in your player or shortcuts; your reading settings and voices are kept.
+- Dictation needs **speech engine 0.4.0** and one English model, downloaded with a command the settings show (`edge-voice-engine models get <tiny|small|medium>`). Model files are pinned by revision, size and SHA-256 and checked again before each use. Edge Voice still installs and downloads nothing itself; engine 0.3.0 keeps reading aloud.
+- Edge Voice tells you once when a newer recommended engine is available, with manual update steps. The check is local; nothing is looked up online.
+- Matching shortcut pickers for reading and dictation, with conflict checks. One short tap of a mode's key now stops it (double-tap still starts); the player's pause/resume is unchanged.
+
+### Fixed
+
+- Settings rows keep their descriptions readable: when buttons don't fit beside the text (for example Storage → Downloaded voices), they move onto their own line instead of squeezing the text into a narrow column.
+- Get another voice keeps its instructions and download command full width when a voice is selected.
+
 ## [0.1.5] - 2026-11-05
 
 ### Added
@@ -84,7 +99,8 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - The speech engine starts isolated: Python and linker settings in your environment (`PYTHONPATH`, `DYLD_*`/`LD_*`) can't change what runs. It never downloads: a voice that isn't on your computer gets a notice with the command that fetches it.
 - The speech engine and its connection check what passes between them: voice IDs, text length, speed, audio and reply size; a stuck engine is restarted instead of blocking reading, and settings of the wrong type fall back to their defaults.
 
-[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.5...HEAD
+[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.5...0.2.0
 [0.1.5]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.4...0.1.5
 [0.1.4]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.3...0.1.4
 [0.1.3]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.2...0.1.3

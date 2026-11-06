@@ -17,7 +17,7 @@ export function playChime(direction: "up" | "down"): void {
 	notes.forEach((frequency, i) => note(context!, frequency, start + i * 0.09));
 }
 
-function note(context: AudioContext, frequency: number, at: number): void {
+function note(context: AudioContext, frequency: number, at: number): OscillatorNode {
 	const oscillator = context.createOscillator();
 	oscillator.type = "sine";
 	oscillator.frequency.value = frequency;
@@ -28,4 +28,19 @@ function note(context: AudioContext, frequency: number, at: number): void {
 	oscillator.connect(gain).connect(context.destination);
 	oscillator.start(at);
 	oscillator.stop(at + 0.3);
+	return oscillator;
+}
+
+/** Dictation uses three lower notes, distinct from the two-note reading chime. */
+export async function playDictationChime(recording: boolean): Promise<void> {
+	context ??= new AudioContext();
+	await context.resume();
+	const start = context.currentTime + 0.01;
+	const notes = recording ? [330, 440, 554] : [554, 440, 330];
+	await new Promise<void>((resolve) => {
+		notes.forEach((frequency, i) => {
+			const oscillator = note(context!, frequency, start + i * 0.07);
+			if (i === notes.length - 1) oscillator.onended = () => resolve();
+		});
+	});
 }

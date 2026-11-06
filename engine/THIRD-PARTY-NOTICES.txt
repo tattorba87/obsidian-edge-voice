@@ -3,6 +3,9 @@ Third-party notices for Edge Voice engine releases
 Engine releases redistribute moonshine-voice wheels for macOS, built by this
 repository from Moonshine v0.1.5. They contain the software below; each
 licence follows. Edge Voice itself is MIT licensed (LICENSE in the repository).
+Source for the unmodified Moonshine and bundled libraries, including Eigen's
+MPL-covered headers: https://github.com/moonshine-ai/moonshine/tree/v0.1.5/core/third-party
+The matching release source is freely available at that versioned URL.
 
 - Moonshine (moonshine-voice): MIT
 - ONNX Runtime: MIT

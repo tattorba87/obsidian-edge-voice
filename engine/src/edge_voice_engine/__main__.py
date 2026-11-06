@@ -23,10 +23,14 @@ def main() -> None:
         from edge_voice_engine.storage import main as storage
 
         sys.exit(storage(sys.argv[2:]))
+    elif sys.argv[1:2] == ["models"]:
+        from edge_voice_engine.models import main as models
+
+        sys.exit(models(sys.argv[2:]))
     elif sys.argv[1:]:
         sys.exit(
             f"edge-voice-engine: unknown arguments {' '.join(sys.argv[1:])} "
-            "(try voices, storage, --python or --version)"
+            "(try voices, models, storage, --python or --version)"
         )
     else:
         from edge_voice_engine.server import main as serve

@@ -291,7 +291,14 @@ def test_valid_ids_with_capitals_still_load():
 
 def test_hello_names_the_engine_and_its_protocol(server):
     reply = answer(server, op="hello")
-    assert reply == {"id": reply["id"], "ok": True, "engine": "edge-voice-engine", "version": "0.3.0", "protocol": 1}
+    assert reply == {
+        "id": reply["id"],
+        "ok": True,
+        "engine": "edge-voice-engine",
+        "version": "0.4.0",
+        "protocol": 1,
+        "capabilities": ["dictation-streaming-v1"],
+    }
 
 
 def test_runs_as_a_plain_script_too():
@@ -353,7 +360,7 @@ def run_command(*args, home=None, voice_manifest=None, **extra):
 
 def test_command_prints_its_python_and_version():
     assert run_command("--python").stdout.strip() == sys.executable
-    assert run_command("--version").stdout.strip() == "0.3.0"
+    assert run_command("--version").stdout.strip() == "0.4.0"
     wrong = run_command("--install")
     assert wrong.returncode != 0 and "unknown arguments" in wrong.stderr
 

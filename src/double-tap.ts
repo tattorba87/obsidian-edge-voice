@@ -21,6 +21,29 @@ export const DOUBLE_TAP_PRESETS: string[] = IS_MAC
 	: ["ControlRight", "AltRight", "ShiftRight"];
 
 export const DEFAULT_DOUBLE_TAP_KEY = DOUBLE_TAP_PRESETS[0];
+export const DEFAULT_DICTATION_KEY = IS_MAC ? "MetaLeft" : "ControlLeft";
+export const DICTATION_KEY_PRESETS = [DEFAULT_DICTATION_KEY, ...DOUBLE_TAP_PRESETS];
+
+export interface SpeechShortcuts {
+	doubleTapEnabled: boolean;
+	doubleTapKey: string;
+	dictationEnabled: boolean;
+	dictationDoubleTapEnabled: boolean;
+	dictationKey: string;
+}
+
+export function shortcutConflict(settings: SpeechShortcuts): boolean {
+	return (
+		settings.doubleTapEnabled &&
+		settings.dictationEnabled &&
+		settings.dictationDoubleTapEnabled &&
+		settings.doubleTapKey === settings.dictationKey
+	);
+}
+
+export function isDoubleTapKey(code: string): boolean {
+	return customKeyProblem({ code, metaKey: false, altKey: false, ctrlKey: false, shiftKey: false }) === null;
+}
 
 const MODIFIERS = ["Meta", "Alt", "Control", "Shift"];
 
@@ -83,17 +106,26 @@ export class DoubleTapDetector {
 	private pressedAt?: number;
 	/** When the last tap ended, waiting for a second one. */
 	private lastTapAt?: number;
+	private stoppedAt?: number;
 
 	constructor(
 		private readonly key: () => string | null,
 		private readonly onDoubleTap: () => void,
+		private readonly singleTap?: { active: () => boolean; stop: () => void },
 	) {}
 
 	keydown(event: KeyboardEvent): void {
 		const key = this.key();
-		if (!key) return;
+		if (!key) {
+			this.reset();
+			return;
+		}
 		if (event.code !== key) {
 			// Any other key breaks the sequence: this was part of a shortcut.
+			this.reset();
+			return;
+		}
+		if (customKeyProblem(event) !== null) {
 			this.reset();
 			return;
 		}
@@ -109,6 +141,19 @@ export class DoubleTapDetector {
 			this.lastTapAt = undefined;
 			return;
 		}
+		if (this.stoppedAt !== undefined && event.timeStamp - this.stoppedAt <= DOUBLE_TAP_MS) {
+			this.stoppedAt = undefined;
+			this.lastTapAt = undefined;
+			return;
+		}
+		this.stoppedAt = undefined;
+		if (this.singleTap?.active()) {
+			this.lastTapAt = undefined;
+			this.stoppedAt = event.timeStamp;
+			this.singleTap.stop();
+			return;
+		}
+
 		if (this.lastTapAt !== undefined && event.timeStamp - this.lastTapAt <= DOUBLE_TAP_MS) {
 			this.lastTapAt = undefined;
 			this.onDoubleTap();
@@ -121,5 +166,6 @@ export class DoubleTapDetector {
 	reset(): void {
 		this.pressedAt = undefined;
 		this.lastTapAt = undefined;
+		this.stoppedAt = undefined;
 	}
 }

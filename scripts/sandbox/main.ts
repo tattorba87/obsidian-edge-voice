@@ -62,7 +62,7 @@ async function start(fresh: boolean, python: string | undefined): Promise<void> 
 		const home = sandbox.prepareHome(fresh);
 		sandbox.prepareSettings(fresh, python);
 		say(fresh ? "opening the sandbox with an engine of its own." : "opening the sandbox.");
-		await sandbox.launch(home);
+		await sandbox.launch(home, {}, args.includes("--background"));
 	}
 	ready = true;
 	say("watching for changes. Ctrl+C stops watching; the sandbox stays open.");

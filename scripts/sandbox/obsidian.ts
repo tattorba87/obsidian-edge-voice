@@ -178,13 +178,14 @@ export class Sandbox {
 	}
 
 	/** Starts the sandbox Obsidian with `home` as HOME (plus `env`), and waits until community plugins are on. */
-	async launch(home: string, env: Record<string, string> = {}): Promise<void> {
+	async launch(home: string, env: Record<string, string> = {}, background = false): Promise<void> {
 		// A socket left from an earlier run would look like a running sandbox.
 		rmSync(socketPath(home), { force: true });
 		const envArgs = Object.entries({ ...env, HOME: home }).flatMap(([key, value]) => ["--env", `${key}=${value}`]);
 		// --use-mock-keychain: macOS looks for the login keychain under HOME, finds none in the sandbox's,
 		// and would offer to reset it to defaults. The sandbox stores nothing secret, so it doesn't need one.
 		execFileSync("open", [
+			...(background ? ["-g"] : []),
 			"-n",
 			"-a",
 			APP,
@@ -245,6 +246,8 @@ function cliAt(home: string, ...args: string[]): string {
 			env: { ...process.env, HOME: home },
 			encoding: "utf8",
 			timeout: 30000,
+			// The CLI can ignore SIGTERM while waiting for a socket reply.
+			killSignal: "SIGKILL",
 		}).trim();
 	} catch (error) {
 		const { stdout, message } = error as { stdout?: string; message: string };

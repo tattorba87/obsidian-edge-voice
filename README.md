@@ -1,10 +1,12 @@
-<p align="center"><img src="docs/media/banner.png" alt="Edge Voice: offline text-to-speech for Obsidian. A crystal set in a chip, with sound waves coming from it." width="100%"></p>
+<p align="center"><img src="docs/media/banner-tts-stt.png" alt="Edge Voice: offline reading and English dictation for Obsidian. A purple crystal on a chip, with sound waves coming from it." width="100%"></p>
 
 # Edge Voice
 
-**Text-to-speech (TTS) for Obsidian: listen to your notes and PDFs, and follow along as each word lights up.**
+**Local text-to-speech (TTS) and English dictation (STT) for Obsidian: read notes and PDFs aloud, or write Markdown with your voice.**
 
-**Free. Private.** Free and open source (MIT), with no account, no subscription and no limits. The voices run on your own computer: your notes never leave it, and once it's set up it works offline.
+> Release preparation: this checkout targets plugin **0.2.0** and engine **0.4.0**, for the upcoming stable release. Opt-in prereleases are listed on the [GitHub releases page](https://github.com/tattorba87/obsidian-edge-voice/releases); the stable Community version remains TTS-only. For testing before publication, use the [isolated development setup](docs/experimental-dictation.md).
+
+**Free. Private.** Free and open source (MIT), with no account, no subscription and no limits. Speech synthesis and recognition run on your own computer: your notes and microphone audio stay local, and once it's set up it works offline.
 
 ![Edge Voice reading a note aloud in Obsidian, highlighting the sentence and the word being spoken](docs/media/demo.gif)
 
@@ -14,6 +16,7 @@
 
 - **Read along.** The sentence and the word being spoken are highlighted as you listen, in notes (editing, Live Preview and Reading view) and in PDFs.
 - **Natural voices.** 66 English voices, American and British, from [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) and [Piper](https://github.com/rhasspy/piper). On Apple silicon, a faster engine runs the Kokoro voices on the GPU.
+- **Write with your voice.** Dictate English into a Markdown note with a microphone button or Left ⌘ double tap. Local streaming recognition, optional sounds, lowercase output and automatic stopping.
 - **Start anywhere.** Right-click a sentence and choose _Start text-to-speech here_. Pause, skip sentences and change the speed from the player bar.
 
 ![Edge Voice reading the abstract of a research paper in Obsidian's PDF view, with the sentence and the current word highlighted](docs/media/reading-a-pdf.png)
@@ -22,14 +25,29 @@
 
 English only for now. Obsidian desktop only (macOS, Windows, Linux); not on phones or tablets.
 
+## Write with your voice
+
+![English dictation inserting words into a Markdown note, with a microphone glow and input-driven status bars](docs/media/dictation-dark.gif)
+
+▶ **[Watch the dictation demo with sound](https://github.com/user-attachments/assets/fe08ed58-8f0d-4998-8886-9cf76395186a)** ·
+[Dictation settings](docs/media/dictation-settings.png)
+
+<sub>Michael Faraday's _The Chemical History of a Candle_, read by Availle for LibriVox (public domain). This is a real-time recording with licensed audio routed as microphone input, the real Moonshine Medium recognizer and uncorrected live text. No speed-up or waits removed. It demonstrates transcription, not a live microphone. [Source, rights and recording details](docs/media/README.md).</sub>
+
+Enable **Settings → Edge Voice → English dictation**, download one English model with the command it shows, and click the microphone to start or finish. Double-tap **Left ⌘** on Mac (**Left Ctrl** elsewhere) to start, and tap once to stop. The reading shortcut uses the right key by default; both have the same preset/custom picker and reject conflicts. The player keeps its layout: reading controls grey out during dictation, and the mic greys out during reading. The processing glow stays on until the final text arrives; the microphone glow and three **Dictating** status bars follow your voice and fall to zero when quiet.
+
+Optional sounds, lowercase output and a configurable inactivity timeout are in the same settings group. Dictation works in Source mode and Live Preview, one mode at a time with TTS. [Full setup, models, controls, limitations and troubleshooting](docs/dictation.md).
+
+For opt-in beta testing through Obsidian's BRAT plugin, see [beta setup and release preparation](docs/beta-testing.md). Use the exact beta tag offered through GitHub releases.
+
 ## Is it safe?
 
 Obsidian's directory scans every plugin and lists what it could do. Here is what Edge Voice actually does:
 
 - **No internet.** The plugin makes no network requests: no telemetry, no account. Your notes never leave your computer.
 - **Runs one program: its own speech engine.** That's what Obsidian lists as "shell execution". Edge Voice starts the engine you installed, directly, without a shell, so nothing in a note can become a command. It runs nothing else.
-- **No file access of its own.** It reads notes and PDFs through Obsidian, and nothing else. Its downloads are listed and removed by the engine, with commands you run.
-- **Clipboard: write only.** It copies a setup or voice command when you press Copy. It never reads your clipboard.
+- **Local note edits and microphone use.** It reads notes and PDFs and inserts dictated words through Obsidian. Microphone access begins only when you start dictation; audio stays in memory and is not saved. Voice/model files are managed by the engine with commands you run.
+- **Clipboard: write only.** It copies a setup, voice or model command when you press Copy. It never reads your clipboard.
 - **Open source and verifiable.** MIT licensed. Obsidian rebuilds each release from this source and checks it matches, and every plugin release file carries a signed GitHub attestation ([Verifying downloads](#verifying-downloads)).
 
 More detail: [Privacy and network use](#privacy-and-network-use).
@@ -49,18 +67,22 @@ The effects are small to moderate, and Edge Voice isn't a treatment for anything
 
 Edge Voice doesn't install or download anything itself. Its speech engine is a small Python program you set up once, with the commands below; Edge Voice shows the same commands for your computer, each with a Copy button, when it can't find the engine.
 
-1. **Install the plugin** from Obsidian's Community plugins (until it's listed there, with [BRAT](https://github.com/TfTHacker/obsidian42-brat) from this repository) and enable it.
+1. **Install the plugin** from [Obsidian's Community plugins](https://community.obsidian.md/plugins/edge-voice) and enable it.
 2. **Install [uv](https://docs.astral.sh/uv/getting-started/installation/)**, Astral's widely used Python installer, if you don't have it.
-3. **Run the commands for your computer** in Terminal (PowerShell on Windows).
-4. **Back in Obsidian**, open Settings, choose Edge Voice under Community plugins in the left bar, open **Advanced** and click **Check again**.
+3. **Install the shared engine** with the commands for your computer below, in Terminal (PowerShell on Windows).
+4. **Choose the features you want:** run `voices get` for TTS reading aloud, `models get` for STT dictation, or both. These are separate optional downloads.
+5. **Back in Obsidian**, open Settings, choose Edge Voice under Community plugins in the left bar, open **Advanced** and click **Check again**. For STT, turn on **English dictation → Enable dictation**, select the model you downloaded and leave **Custom model folder** empty.
 
 **macOS (Apple silicon, macOS 14 or later)**, with the faster engine:
 
 ```sh
 brew install uv
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
-uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-darwin-arm64-mlx.txt
+uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-darwin-arm64-mlx.txt
+# Optional TTS: read aloud
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella --faster
+# Optional STT: English dictation
+~/.edge-voice/engine/bin/edge-voice-engine models get medium
 ```
 
 **macOS (Intel, or Apple silicon on macOS 13.4 or later)**: replace `darwin-arm64-mlx` with `darwin-x64` (Intel) or `darwin-arm64`, and leave out `--faster`:
@@ -68,8 +90,11 @@ uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r http
 ```sh
 brew install uv
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
-uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-darwin-x64.txt
+uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-darwin-x64.txt
+# Optional TTS: read aloud
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella
+# Optional STT: English dictation
+~/.edge-voice/engine/bin/edge-voice-engine models get medium
 ```
 
 **Windows** (PowerShell; on Windows on ARM, use `--python cpython-3.12-windows-x86_64-none` in the second line):
@@ -77,8 +102,11 @@ uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r http
 ```powershell
 winget install --id=astral-sh.uv -e
 uv venv --clear --managed-python "$HOME\.edge-voice\engine" --python 3.12
-uv pip install --python "$HOME\.edge-voice\engine" --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-win32-x64.txt
+uv pip install --python "$HOME\.edge-voice\engine" --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-win32-x64.txt
+# Optional TTS: read aloud
 & "$HOME\.edge-voice\engine\Scripts\edge-voice-engine.exe" voices get kokoro_af_bella
+# Optional STT: English dictation
+& "$HOME\.edge-voice\engine\Scripts\edge-voice-engine.exe" models get medium
 ```
 
 Open a new PowerShell window after installing uv, so it's found.
@@ -87,15 +115,25 @@ Open a new PowerShell window after installing uv, so it's found.
 
 ```sh
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
-uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-linux-x64.txt
+uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-linux-x64.txt
+# Optional TTS: read aloud
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella
+# Optional STT: English dictation
+~/.edge-voice/engine/bin/edge-voice-engine models get medium
 ```
+
+**Reading only:** skip `models get`. **Dictation only:** skip `voices get`; the standard engine is sufficient, and MLX/faster voice packages are optional for TTS. **Both:** run both download commands. The plugin runs neither command itself.
+
+The examples download English **Medium** (269 MB), which prioritizes word accuracy. For speed and lower resource use, replace `medium` with **`small`** (142 MB) or **`tiny`** (45 MB), accepting more recognition errors, especially with Tiny. Select the same model in **English dictation** settings. [Full dictation guide](docs/dictation.md).
 
 What these do:
 
 - `uv venv` makes the engine's own folder, `~/.edge-voice/engine`, with its own Python 3.12, so nothing else on your computer changes.
 - `uv pip install` installs the engine from this repository's engine release. The file at the end lists every package at an exact version with its fingerprint (SHA-256); open it to read it first if you like. If anything downloaded differs from its fingerprint, nothing is installed. Nothing is compiled, and nothing needs administrator rights.
-- `voices get` downloads a voice (see [Voices](#voices)), checking every file against its fingerprint.
+- `voices get` downloads a TTS voice (see [Voices](#voices)), checking every file against its fingerprint.
+- `models get medium` downloads the English streaming STT model, verifies each file against its size and SHA-256 fingerprint, and stores it in `~/.edge-voice/models/`. It is separate from TTS voices.
+
+**Check again verifies the engine installation**, not downloaded models or microphone permissions. Once dictation is enabled, click the mic and grant access when prompted. Existing installations need engine **0.4.0** for STT; BRAT does not update Python. See [engine updates](#updating-the-plugin-and-speech-engine).
 
 Everything goes into `~/.edge-voice` (about 100 MB for the engine, a few hundred MB more with the faster engine) and Moonshine's voice folder (see [Files outside your vault](#files-outside-your-vault)). Nothing runs at login. To remove it all, delete those folders.
 
@@ -105,12 +143,41 @@ On Apple silicon Macs with macOS 14 or later there's a faster engine: Kokoro on 
 
 | Platform                       | Needs               | Engine package                                                              | Tested                          |
 | ------------------------------ | ------------------- | --------------------------------------------------------------------------- | ------------------------------- |
-| macOS, Apple Silicon and Intel | macOS 13.4 or later | Built by this repository from the moonshine release (PyPI has no Intel one) | macOS 14 and 15, in CI          |
+| macOS, Apple Silicon and Intel | macOS 13.4 or later | Built by this repository from the moonshine release (PyPI has no Intel one) | macOS 15 and 26, in CI          |
 | Windows x64                    | Windows 10 or later | PyPI                                                                        | In CI                           |
 | Windows on ARM                 | Windows 11          | PyPI's x64 package, run with Windows' built-in x64 emulation                | Not yet                         |
 | Linux x64 and ARM64            | glibc 2.34 or later | PyPI                                                                        | Ubuntu, in CI; Flatpak/Snap not |
 
 The macOS packages come from this repository's `moonshine-voice-*` release, built by `.github/workflows/engine-wheels.yml`. Engine releases (`engine-*`) are built by `.github/workflows/engine-release.yml`; nothing is published to PyPI.
+
+## Updating the plugin and speech engine
+
+The plugin and Python speech engine are updated separately. Update **Edge Voice** through Obsidian's **Community plugins → Check for updates**, then reload it. That updates the plugin; it does not install or update Python packages or voices.
+
+**When is a manual engine update needed?** Check **Settings → Edge Voice → Advanced → Speech engine**. It shows the installed engine version and Python path. Edge Voice compares that version with the engine release recommended by the plugin and offers setup steps once per recommended engine version when it is older, including for engine bug fixes that keep the same protocol. This is a local comparison: the plugin does not check GitHub or PyPI. A plugin update brings the new recommendation; no online version check runs.
+
+A compatible older engine can still read aloud. An incompatible engine gets setup guidance; an engine newer than the plugin understands asks you to update the plugin. New optional features can require an engine capability as well: English dictation checks for that separately and preserves a saved choice to turn dictation off. Plugin-only fixes do not require a Python reinstall. Engine release notes identify changes that do.
+
+**To update the normal engine:**
+
+1. Read the plugin and engine release notes, and note any custom Python path under Advanced. The standard commands below target `~/.edge-voice/engine`; adapt them if you installed elsewhere.
+2. Stop reading and quit Obsidian so the engine is not in use. From [Setup](#setup), rerun the commands to create the environment and install the engine for your platform. `uv venv --clear` replaces only that engine environment; the installation uses exact package versions and SHA-256 checksums from the named engine release. Use the commands from the updated plugin or this README, rather than an unrestricted package upgrade.
+3. Downloaded voices live outside that Python environment and normally do not need downloading again. Rerun the voice command only if a voice is missing, its files changed, or you are enabling the faster engine. A normal Python bug-fix update does not change your notes, plugin settings or voice selection.
+4. Reopen Obsidian. Under **Advanced**, click **Check again**, confirm the engine version, and try reading a short note. If you use a custom Python environment, select its full Python path there.
+
+You can check the installed engine version directly:
+
+```sh
+# macOS / Linux
+~/.edge-voice/engine/bin/python -I -m edge_voice_engine --version
+```
+
+```powershell
+# Windows PowerShell
+& "$HOME\.edge-voice\engine\Scripts\python.exe" -I -m edge_voice_engine --version
+```
+
+**Updating from the TTS-only release:** your voice, speed, shortcuts and downloaded voices are kept. An existing choice to turn dictation off is retained. To enable it, update the engine to 0.4.0, get a model under English dictation, then enable the feature. TTS still works with compatible engine 0.3.0, but that engine cannot dictate. ASR models also live outside the Python environment and survive a normal engine update. A changed model manifest can require rerunning its download command; a missing or damaged file is reported before loading it.
 
 ### Development
 
@@ -126,6 +193,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md): setup, the sandbox (`bun run sandbox`, a
 | Next / Previous sentence                  | Skip around while reading                                                                                      |
 | Read faster / Read slower                 | Between 1×, 1.5× and 2×                                                                                        |
 | Stop reading                              | Stops and clears the highlight                                                                                 |
+| Start / stop English dictation            | Starts capture in the current Markdown editor, or finishes it                                                  |
+| Stop dictation                            | Releases the microphone and writes the final text                                                              |
 | Show or hide player controls              | Toggles the floating player bar                                                                                |
 
 Reading starts from the selected text if there is any, otherwise from the top of what's in view.
@@ -139,25 +208,27 @@ Reading belongs to the page it started on.
 - **Play** on the page that was paused resumes it. On any other page it starts reading that page.
 - **Stop** ends reading.
 
-**Double-tap shortcut** (off by default): under Settings → Double-tap shortcut, turn it on and pick Right Command (Right Ctrl outside a Mac), Right Option (Alt) or Right Shift, or choose _Custom…_ and press the key you want: the box shows it before you save, and only a single modifier or function key is accepted. A soft chime confirms each double tap, rising to play and falling to pause; turn it off under _Chime on double tap_. Double-tap to start; double-tap again to pause, and again to resume. Paused on a different page, a double tap stops instead, and the next one starts on the page you're on. It works while Obsidian is the active app; a plugin can't listen for keys system-wide.
+**Double-tap shortcut** (off by default): under Settings → Double-tap shortcut, turn it on and pick Right Command (Right Ctrl outside a Mac), Right Option (Alt) or Right Shift, or choose _Custom…_ and press the key you want: the box shows it before you save, and only a single modifier or function key is accepted. Optional reading shortcut sounds rise to start and fall to stop. Double-tap to start; tap the shortcut key once to stop, including while the voice loads. Use the player to pause and resume. It works while Obsidian is the active app; a plugin can't listen for keys system-wide.
 
 ### Player bar and status bar
 
-When reading starts, a player bar floats above the status bar: previous / play-pause / next / stop, the speed with − and + buttons (1×, 1.5× or 2×; click the speed to pick one), and a speaker icon with a vertical volume slider that pops up on hover (click the icon to mute, or scroll over it). A new speed is heard from the next sentence; volume changes at once. While a sentence is being synthesized, a glow runs around the bar's edge. The ⌄ button shrinks the bar to a small pill in the corner, and _Show player controls_ in settings turns it off.
+When reading starts, or dictation is enabled, a player bar floats above the status bar: previous / play-pause / next / stop, the speed with − and + buttons (1×, 1.5× or 2×; click the speed to pick one), and a speaker icon with a vertical volume slider that pops up on hover (click the icon to mute, or scroll over it). A new speed is heard from the next sentence; volume changes at once. While a sentence is being synthesized, a glow runs around the bar's edge. The ⌄ button shrinks the bar to a small pill in the corner, and _Show player controls_ in settings turns it off.
 
-The status bar shows what's happening: a spinner while a voice loads or a sentence is prepared, moving bars while reading, and resting bars while paused, with the page position and speed. Click it for the speed presets.
+Dictation adds a microphone button without rearranging the controls. Its own input glow follows microphone volume; the full processing glow continues through startup, recording and finalization.
+
+The status bar shows what's happening: a spinner while a voice loads or a sentence is prepared, moving bars while reading, and resting bars while paused, with the page position and speed. Click it for the speed presets. Dictation shows **Dictating** with three input-driven bars, and a spinner while starting or finishing.
 
 ### Look and storage
 
 Pick the highlight colour under Settings → Highlight colour: amber, blue, green, pink, purple, red or grey. Each sets a soft tint for the sentence and a deeper shade for the spoken word; a preview shows the result.
 
-Settings → Storage (near the bottom) lists the downloaded voices with their sizes, as the engine reports them, to keep them from piling up. Edge Voice doesn't delete files itself: each voice has a **Copy remove command** button, and you run the command (`edge-voice-engine storage remove <ID>`), as with setup. You can also run `edge-voice-engine storage` yourself to see the list. Get a removed voice again with its command (see Voices). The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
+Settings → Storage (near the bottom) lists the downloaded voices with their sizes, as the engine reports them, to keep them from piling up. Edge Voice doesn't delete files itself: each voice has a **Copy remove command** button, and you run the command (`edge-voice-engine storage remove <ID>`), as with setup. You can also run `edge-voice-engine storage` yourself to see the list. Get a removed voice again with its command (see Voices). ASR models are listed and removed with `edge-voice-engine models list` / `models remove <size>` instead; see [dictation storage](docs/dictation.md#storage-and-verification). The engine itself isn't listed there; to remove everything, delete `~/.edge-voice`.
 
 Bind the commands you use to hotkeys under Settings → Hotkeys.
 
 ## Voices
 
-Kokoro voices (`kokoro_*`, the default is `kokoro_af_bella`) sound the most natural and synthesize about twice as fast as they play, even on a 2020 Intel i5. Piper voices (`piper_*`) are faster still, so reading starts sooner. Pick one under Settings → Edge Voice → Voice, which lists the voices on your computer. To get another, choose it under _Get another voice_ (grouped, with sizes and links to hear them), copy the command and run it, then click **Check again**. In a terminal, `edge-voice-engine voices list` shows every voice in a table, and `voices get` takes several at once:
+Kokoro voices (`kokoro_*`, the default is `kokoro_af_bella`) sound the most natural and synthesize about twice as fast as they play, even on a 2020 Intel i5. Piper voices (`piper_*`) are faster still, so reading starts sooner. Pick one under Settings → Edge Voice → Voice, which lists the voices on your computer. To get another, choose it under _Get another voice_ (grouped, with sizes and links to hear them). The download command appears below the instructions; click **Copy command**, run it in your terminal, then click **Check again**. In a terminal, `edge-voice-engine voices list` shows every voice in a table, and `voices get` takes several at once:
 
 ```sh
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_heart kokoro_bf_emma
@@ -254,12 +325,15 @@ Voices have their own licences: Kokoro's are Apache 2.0; each Piper voice's lice
 
 ## How it works
 
-The plugin starts the speech engine (`python -I -m edge_voice_engine`, from the environment you set up) and asks it for one sentence of audio at a time over stdin/stdout. While serving the plugin, the engine reads voices from disk only and makes no downloads. The separate `edge-voice-engine voices get` command downloads voices only when you run it. The plugin plays the audio with Web Audio and synthesizes a couple of sentences ahead, so there is no gap between them.
+The plugin starts the speech engine (`python -I -m edge_voice_engine`, from the environment you set up) and asks it for one sentence of audio at a time over stdin/stdout. While serving the plugin, the engine reads voices from disk only and makes no downloads. The separate `edge-voice-engine voices get` and `models get` commands download files only when you run them. Dictation uses a bounded in-memory PCM queue to the same local sidecar and applies real streaming/final transcripts to the selected Markdown range. Only one speech mode runs at a time. The plugin plays the audio with Web Audio and synthesizes a couple of sentences ahead, so there is no gap between them.
 
 - **PDFs**: text comes from pdf.js (Obsidian's `loadPdfJs`), page by page. The sentence and the word being spoken are drawn as boxes over the page, positioned from the viewer's text layer, and the view follows along onto the next page.
 - **Notes**: reads from the cursor to the end of the note. It skips frontmatter, code, comments, embeds, tables and URLs. Highlighting works in Source mode, Live Preview (including rendered callouts and math blocks) and Reading view: rendered text is matched word by word and painted with the CSS Custom Highlight API.
 
 ## Limits
+
+- Dictation is English only, in Markdown editing views. It produces text and recognizer punctuation, not spoken Markdown commands. Partial text can change, undo can step through partial results, and switching/closing notes can discard a final revision. Stop and wait before editing; see [dictation behavior](docs/dictation.md#working-in-a-note).
+- Native Moonshine STT uses its own runtime. MLX acceleration currently applies to Kokoro TTS only. Dictation speed and accuracy depend on the model, microphone, accent and machine.
 
 - Before speaking, text is rewritten the way a person would read it: "5.90%" becomes "5.90 percent", "2–7 GB" becomes "2 to 7 gigabytes", "$4.99" becomes "4 dollars 99 cents", version numbers like "1.2.3" become "1 point 2 point 3", acronyms like GPU are spelled out, model names like "Qwen3-ASR-1.7B" are split into parts, and citation markers like "[12]" are dropped. The rules are in `src/normalize.ts`; names that a rule gets wrong can be added there.
 - Word timing is estimated from word length and punctuation within each sentence's audio, so the word highlight can run slightly early or late on unusual words.
@@ -269,33 +343,35 @@ The plugin starts the speech engine (`python -I -m edge_voice_engine`, from the 
 
 ## Privacy and network use
 
-Edge Voice reads your notes and PDFs on your computer, and the plugin itself never connects to the internet: no telemetry, no account, nothing sent anywhere. Reading works offline.
+Edge Voice reads your notes and PDFs on your computer, and the plugin itself never connects to the internet: no telemetry, no account, nothing sent anywhere. Reading and dictation work offline once their files are installed.
 
 What the plugin does on your computer, and why (Obsidian's review lists these):
 
 - **Starts the speech engine** as a separate program (Node's `child_process`): the Python in `~/.edge-voice/engine` (or the one you set under Advanced), with fixed arguments, no shell, and Python's isolated mode. To find an engine installed elsewhere, it may also run `edge-voice-engine --python` if that command is on your PATH. It runs nothing else.
-- **Reads and writes no files itself.** Notes and PDFs are read through Obsidian. The sizes in Settings → Storage come from the engine, and removing voices is a command you run.
-- **Writes to the clipboard** only when you press a Copy button for a setup or voice command. It never reads the clipboard.
+- **Reads notes/PDFs and writes dictated text through Obsidian.** The sizes in Settings → Storage come from the engine, and removing voices is a command you run.
+- **Uses the microphone only when you start dictation.** Audio goes to the local speech engine in memory; recordings and transcript logs are not saved. Dictated text is inserted into the note you choose.
+- **Writes to the clipboard** only when you press a Copy button for a setup, voice or model command. It never reads the clipboard.
 
 Only the commands you run yourself download anything, and only when you run them:
 
-| What                                  | From                                                                                                    | Why                                                                |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| uv                                    | [Astral](https://docs.astral.sh/uv/), through your package manager or its installer                     | Sets up Python programs without touching the rest of your system   |
-| Python 3.12                           | uv's Python builds ([python-build-standalone](https://github.com/astral-sh/python-build-standalone))    | The engine's own Python                                            |
-| The engine and its packages           | This repository's engine release on GitHub, and PyPI                                                    | Every file is checked against the SHA-256 in the requirements file |
-| Voices (`voices get`)                 | Moonshine's server, `download.moonshine.ai`                                                             | The voice files; each is checked against its SHA-256               |
-| Faster engine voices (`--faster`)     | [Hugging Face](https://huggingface.co/mlx-community/Kokoro-82M-bf16), at a pinned commit; telemetry off | Kokoro for MLX on Apple silicon; checked against SHA-256           |
-| spaCy's English model (faster engine) | Explosion's GitHub release, named in the requirements file with its SHA-256                             | English pronunciation for the faster engine                        |
+| What                                  | From                                                                                                    | Why                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| uv                                    | [Astral](https://docs.astral.sh/uv/), through your package manager or its installer                     | Sets up Python programs without touching the rest of your system           |
+| Python 3.12                           | uv's Python builds ([python-build-standalone](https://github.com/astral-sh/python-build-standalone))    | The engine's own Python                                                    |
+| The engine and its packages           | This repository's engine release on GitHub, and PyPI                                                    | Every file is checked against the SHA-256 in the requirements file         |
+| Voices (`voices get`)                 | Moonshine's server, `download.moonshine.ai`                                                             | The voice files; each is checked against its SHA-256                       |
+| English ASR models (`models get`)     | Moonshine's server, `download.moonshine.ai`, at a pinned English streaming revision                     | SHA-256 checked before installation and again before managed model loading |
+| Faster engine voices (`--faster`)     | [Hugging Face](https://huggingface.co/mlx-community/Kokoro-82M-bf16), at a pinned commit; telemetry off | Kokoro for MLX on Apple silicon; checked against SHA-256                   |
+| spaCy's English model (faster engine) | Explosion's GitHub release, named in the requirements file with its SHA-256                             | English pronunciation for the faster engine                                |
 
 ## Files outside your vault
 
 Edge Voice keeps its engine and voices outside your vault, because they're shared by all your vaults and too big to sync:
 
-- `~/.edge-voice` (`%USERPROFILE%\.edge-voice` on Windows): the engine (about 100 MB, a few hundred MB more with the faster engine) and the faster engine's voices.
+- `~/.edge-voice` (`%USERPROFILE%\.edge-voice` on Windows): the engine (about 100 MB, a few hundred MB more with the faster engine) the faster engine's voices, and English ASR models under `models/` (45–269 MB each).
 - Moonshine's voice folder: `~/Library/Caches/moonshine_voice` on macOS, `~/.cache/moonshine_voice` on Linux, a folder under `%LOCALAPPDATA%\moonshine_voice` on Windows.
 
-Settings → Storage shows their sizes and the commands that remove voices. Obsidian has no uninstall step for plugins, so to remove everything after uninstalling Edge Voice, delete those two folders. Inside your vault, Edge Voice only reads the notes and PDFs you ask it to read and stores its settings in its plugin folder.
+Settings → Storage shows TTS voice sizes and their removal commands. Use `models list`, `models check <size>` and `models remove <size>` for ASR models. Custom ASR folders remain yours to manage. Obsidian has no uninstall step for plugins, so to remove everything after uninstalling Edge Voice, delete those two folders. Inside your vault, Edge Voice reads the notes and PDFs you ask it to read, inserts dictated text into the Markdown note you choose, and stores its settings in its plugin folder.
 
 ## Verifying downloads
 
@@ -312,10 +388,13 @@ The community directory also rebuilds `main.js` from the source and checks it ma
 Edge Voice is MIT licensed ([LICENSE](LICENSE)). It doesn't include the speech engine's libraries, models or voices; the setup commands download them, under their own licences:
 
 - [Moonshine](https://github.com/moonshine-ai/moonshine) (`moonshine-voice`, the speech engine): MIT. Its speech data files carry their own licences, listed in its [data README](https://github.com/moonshine-ai/moonshine/blob/main/core/moonshine-tts/data/README.md); the English pronunciation dictionary derives from [CMUdict](https://github.com/cmusphinx/cmudict).
+- English Moonshine Tiny/Small/Medium **streaming ASR models**: MIT, including weights; a copy of the notice is bundled with the engine and installed with managed models. No Community-licensed non-English legacy models are offered. [Model licensing audit](docs/licenses.md).
 - [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (the Kokoro model and voices): Apache 2.0.
 - [Piper](https://github.com/rhasspy/piper) voices: each voice's licence and dataset credit are in its model card in [piper-voices](https://huggingface.co/rhasspy/piper-voices).
 - Faster engine: [MLX](https://github.com/ml-explore/mlx) and [mlx-audio](https://github.com/Blaizzy/mlx-audio) (MIT), [misaki](https://github.com/hexgrad/misaki) (Apache 2.0), [spaCy](https://github.com/explosion/spaCy) and its English model (MIT).
 - [uv](https://github.com/astral-sh/uv): MIT or Apache 2.0.
+
+Demo media have separate source credits and reuse terms in [docs/media/README.md](docs/media/README.md). Copy-ready Community listing descriptions and upload instructions are in [docs/community-listing/README.md](docs/community-listing/README.md).
 
 The engine release includes macOS wheels of Moonshine that this repository builds; they contain ONNX Runtime (MIT) and other open-source libraries, whose licences are in the release's `THIRD-PARTY-NOTICES.txt` (from [`engine/THIRD-PARTY-NOTICES.txt`](engine/THIRD-PARTY-NOTICES.txt)).
 

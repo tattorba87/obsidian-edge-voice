@@ -376,6 +376,59 @@ body.theme-dark {
 	font-size: var(--font-ui-smaller);
 }
 
+/* Every row keeps a readable description: when its buttons don't fit beside the
+   text, they move onto their own line underneath instead of squeezing it into a
+   narrow column. */
+.edge-voice-settings .setting-item:not(.setting-item-heading) {
+	flex-wrap: wrap;
+	row-gap: 10px;
+}
+
+.edge-voice-settings .setting-item:not(.setting-item-heading) > .setting-item-info {
+	flex: 1 1 18rem;
+	min-width: min(18rem, 100%);
+}
+
+.edge-voice-settings .setting-item:not(.setting-item-heading) > .setting-item-control {
+	flex: 0 1 auto;
+	flex-wrap: wrap;
+	max-width: 100%;
+	min-width: 0;
+	margin-inline-start: auto;
+}
+
+/* Long voice labels and download commands need the full settings width. */
+.setting-item.edge-voice-download-setting {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 12px;
+}
+
+.edge-voice-download-setting > .setting-item-info {
+	min-width: 0;
+	margin-inline-end: 0;
+}
+
+.edge-voice-download-setting > .setting-item-control {
+	min-width: 0;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+}
+
+.edge-voice-download-setting select.dropdown {
+	flex: 1 1 16rem;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.edge-voice-download-setting .edge-voice-command {
+	margin-top: 8px;
+}
+
+.edge-voice-download-setting .edge-voice-command[hidden] {
+	display: none;
+}
+
 .edge-voice-notice-button {
 	margin-top: 8px;
 }
@@ -427,6 +480,20 @@ body.theme-dark {
 .edge-voice-status[data-state="paused"] .edge-voice-eq-bar {
 	animation-play-state: paused;
 	background-color: var(--text-muted);
+}
+
+/* Dictation bars follow microphone amplitude and collapse completely in silence. */
+.edge-voice-status[data-state="dictating"] .edge-voice-eq-bar {
+	animation: none;
+	transform: scaleY(var(--edge-voice-input-level, 0));
+}
+
+.edge-voice-status[data-state="dictating"] .edge-voice-eq-bar:first-child {
+	transform: scaleY(calc(var(--edge-voice-input-level, 0) * 0.7));
+}
+
+.edge-voice-status[data-state="dictating"] .edge-voice-eq-bar:last-child {
+	transform: scaleY(calc(var(--edge-voice-input-level, 0) * 0.85));
 }
 
 /* Preparing or loading: the bars give way to a spinning ring. */
@@ -573,4 +640,37 @@ body.theme-dark {
 
 .edge-voice-key-message.is-error {
 	color: var(--text-error);
+}
+
+/* Modes keep the same controls; only the currently available actions are interactive. */
+.edge-voice-bar button:disabled,
+.edge-voice-bar .edge-voice-volume[aria-disabled="true"] {
+	opacity: 0.4;
+	color: var(--text-muted);
+	cursor: not-allowed;
+}
+
+.edge-voice-volume[aria-disabled="true"] .edge-voice-volume-popup {
+	display: none;
+}
+
+.edge-voice-bar.edge-voice-recording .edge-voice-microphone {
+	color: var(--text-on-accent);
+	background: rgba(var(--edge-voice-accent), calc(0.35 + var(--edge-voice-mic-level, 0) * 0.65));
+	box-shadow: 0 0 calc(4px + var(--edge-voice-mic-level, 0) * 22px)
+		rgba(var(--edge-voice-accent), calc(0.2 + var(--edge-voice-mic-level, 0) * 0.6));
+}
+
+.edge-voice-bar.edge-voice-recording .edge-voice-microphone svg {
+	filter: drop-shadow(0 0 calc(var(--edge-voice-mic-level, 0) * 5px) currentColor);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.edge-voice-bar.edge-voice-recording .edge-voice-microphone {
+		box-shadow: 0 0 4px rgba(var(--edge-voice-accent), 0.4);
+		background: rgb(var(--edge-voice-accent));
+	}
+	.edge-voice-bar.edge-voice-recording .edge-voice-microphone svg {
+		filter: none;
+	}
 }

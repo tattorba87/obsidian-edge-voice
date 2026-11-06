@@ -8,8 +8,8 @@
  */
 import { ENGINE_VERSION, setupSteps } from "../src/engine";
 
-const [platform, arch, faster, voice, base] = process.argv.slice(2);
-const steps = setupSteps({ platform, arch, faster: faster === "true" }, voice);
+const [platform, arch, faster, voice, base, dictationModel] = process.argv.slice(2);
+const steps = setupSteps({ platform, arch, faster: faster === "true" }, voice, dictationModel);
 if (!steps) throw new Error(`No setup steps for ${platform}-${arch}`);
 const release = `https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-${ENGINE_VERSION}`;
 const commands = steps.flatMap((step) =>

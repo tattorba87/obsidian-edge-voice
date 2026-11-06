@@ -26,6 +26,10 @@ afterAll(() => {
 		inBackground: "visible",
 		doubleTapEnabled: false,
 		doubleTapCustomKey: null,
+		dictationEnabled: false,
+		dictationDoubleTapEnabled: true,
+		dictationKey: "MetaLeft",
+		dictationCustomKey: null,
 	});
 });
 
@@ -157,7 +161,7 @@ describe("Edge Voice settings in Obsidian", () => {
 			"Emma · British English · female · Kokoro (under 1 MB)",
 			"Santa · American English · male · Kokoro (under 1 MB)",
 		]);
-		expect(list.links).toEqual(["Kokoro voices", "Piper voices"]);
+		expect(list.links).toEqual(["Review voice licenses", "Kokoro voices", "Piper voices"]);
 
 		const picked = run<{ command: string; language: string }>(`
 			const more = ${SETTING("Get another voice")};
@@ -183,6 +187,115 @@ describe("Edge Voice settings in Obsidian", () => {
 		expect(errors()).toEqual([]);
 	});
 
+	it("keeps voice download instructions readable after selection in narrow settings and both themes", () => {
+		const layouts = run<
+			{
+				theme: string;
+				width: number;
+				description: number;
+				row: number;
+				overflow: number;
+				command: string;
+				commandVisible: boolean;
+			}[]
+		>(`
+			const tab = window.edgeVoiceTab.containerEl;
+			const more = ${SETTING("Get another voice")};
+			const select = more.querySelector("select");
+			const originalStyle = tab.style.cssText;
+			const originalTheme = document.body.className;
+			const layouts = [];
+			try {
+				for (const theme of ["theme-light", "theme-dark"]) {
+					document.body.classList.remove("theme-light", "theme-dark");
+					document.body.classList.add(theme);
+					for (const width of [700, 480, 360]) {
+						tab.style.width = width + "px";
+						for (const voice of ["", "kokoro_bf_emma"]) {
+							select.value = voice;
+							select.dispatchEvent(new Event("change"));
+							await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
+							layouts.push({
+								theme, width,
+								description: more.querySelector(".setting-item-description").getBoundingClientRect().width,
+								row: more.getBoundingClientRect().width,
+								// Obsidian keeps an invisible, unconstrained select to measure labels.
+								// Check the visible UI rather than that measurement helper.
+								overflow: Math.max(0, ...[more.querySelector(".setting-item-description"),
+									select, ...more.querySelectorAll("button"), more.querySelector("code")]
+									.filter(el => el.getClientRects().length > 0)
+									.map(el => Math.max(el.getBoundingClientRect().right - more.getBoundingClientRect().right,
+										el === select ? 0 : el.scrollWidth - el.clientWidth))),
+								command: more.querySelector("code").textContent,
+								commandVisible: more.querySelector("code").getClientRects().length > 0,
+							});
+						}
+					}
+				}
+			} finally {
+				tab.style.cssText = originalStyle;
+				document.body.className = originalTheme;
+				select.value = "";
+				select.dispatchEvent(new Event("change"));
+			}
+			return layouts;
+		`);
+		for (const layout of layouts) {
+			expect(layout.description, JSON.stringify(layout)).toBeGreaterThanOrEqual(Math.min(300, layout.row * 0.8));
+			expect(layout.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(1);
+			expect(layout.commandVisible).toBe(Boolean(layout.command));
+		}
+	});
+
+	it("never squeezes a row's description into a narrow column beside its buttons", async () => {
+		// Reported on Storage → Downloaded voices: two wide buttons left the text one word wide.
+		await until(() => run<boolean>(`return window.edgeVoiceTab.storage.status === "done";`));
+		run(`window.edgeVoiceTab.display();`);
+		await until(() => run<boolean>(`return !!${SETTING("Downloaded voices")};`));
+		const rows = run<
+			{ name: string; theme: string; width: number; description: number; row: number; overflow: number }[]
+		>(`
+			const tab = window.edgeVoiceTab.containerEl;
+			const originalStyle = tab.style.cssText;
+			const originalTheme = document.body.className;
+			const rows = [];
+			try {
+				for (const theme of ["theme-light", "theme-dark"]) {
+					document.body.classList.remove("theme-light", "theme-dark");
+					document.body.classList.add(theme);
+					for (const width of [700, 480, 360]) {
+						tab.style.width = width + "px";
+						await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+						for (const item of tab.querySelectorAll(".setting-item:not(.setting-item-heading)")) {
+							const description = item.querySelector(".setting-item-description");
+							if (!description || !description.textContent.trim() || !item.getClientRects().length) continue;
+							const box = item.getBoundingClientRect();
+							rows.push({
+								name: item.querySelector(".setting-item-name")?.textContent ?? "",
+								theme, width,
+								description: description.getBoundingClientRect().width,
+								row: box.width,
+								overflow: Math.max(0, ...[...item.querySelectorAll("button, select, input, .setting-item-description")]
+									// Obsidian keeps an invisible select (.is-measuring) to size dropdown labels.
+									.filter((el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden")
+									.map((el) => el.getBoundingClientRect().right - box.right)),
+							});
+						}
+					}
+				}
+			} finally {
+				tab.style.cssText = originalStyle;
+				document.body.className = originalTheme;
+			}
+			return rows;
+		`);
+		expect(rows.some((row) => row.name === "Downloaded voices")).toBe(true);
+		for (const row of rows) {
+			expect(row.description, JSON.stringify(row)).toBeGreaterThanOrEqual(Math.min(240, row.row * 0.7));
+			expect(row.overflow, JSON.stringify(row)).toBeLessThanOrEqual(1);
+		}
+	});
+
 	it("says why when the voice list can't be had, without freezing Obsidian", () => {
 		// As for someone whose engine isn't set up yet. This used to hang Obsidian at 100% CPU:
 		// the failure path returned a Setting, whose then() method a promise keeps calling.
@@ -197,5 +310,60 @@ describe("Edge Voice settings in Obsidian", () => {
 		`);
 		expect(description).toBe("Could not list voices: the engine isn't set up");
 		expect(run<number>(`return 1 + 1;`)).toBe(2);
+	});
+});
+
+describe("Consistent speech shortcut settings", () => {
+	it("uses symbolic presets and refuses a dictation preset already used for reading", () => {
+		const result = run<{ labels: string[]; key: string }>(`
+            Object.assign(${PLUGIN}.settings,{doubleTapEnabled:true,doubleTapKey:"MetaRight",dictationEnabled:true,dictationDoubleTapEnabled:true,dictationKey:"MetaLeft",dictationCustomKey:null});
+            window.edgeVoiceTab.display();
+            const row=${SETTING("Dictation double-tap key")};
+            const menu=row.querySelector("select.edge-voice-key-menu");
+            const labels=[...menu.options].map((option)=>option.textContent);
+            menu.value="MetaRight"; menu.dispatchEvent(new Event("change"));
+            return {labels,key:${PLUGIN}.settings.dictationKey};
+        `);
+		expect(result.labels).toContain("Left ⌘");
+		expect(result.labels).toContain("Custom");
+		expect(result.key).toBe("MetaLeft");
+	});
+	it("uses the same custom capture panel and blocks conflicts in both directions", () => {
+		const result = run<{ blocked: boolean; message: string; key: string; reverseBlocked: boolean }>(`
+            Object.assign(${PLUGIN}.settings,{doubleTapEnabled:true,doubleTapKey:"F13",dictationEnabled:true,dictationDoubleTapEnabled:true,dictationKey:"MetaLeft",dictationCustomKey:null});
+            window.edgeVoiceTab.display();
+            const row=${SETTING("Dictation double-tap key")};
+            const menu=row.querySelector("select"); menu.value="custom"; menu.dispatchEvent(new Event("change"));
+            const capture=row.querySelector(".edge-voice-key-capture");
+            const save=[...row.querySelectorAll("button")].find((button)=>button.textContent==="Save");
+            capture.focus(); capture.dispatchEvent(new KeyboardEvent("keydown",{code:"F13",bubbles:true}));
+            const blocked=save.disabled,message=row.querySelector(".edge-voice-key-message").textContent;
+            capture.dispatchEvent(new KeyboardEvent("keydown",{code:"F14",bubbles:true})); save.click(); capture.blur();
+            const key=${PLUGIN}.settings.dictationKey;
+            const reading=${SETTING("Double-tap shortcut")};
+            const readingMenu=reading.querySelector("select"); readingMenu.value="custom"; readingMenu.dispatchEvent(new Event("change"));
+            const readingCapture=reading.querySelector(".edge-voice-key-capture");
+            readingCapture.focus(); readingCapture.dispatchEvent(new KeyboardEvent("keydown",{code:"F14",bubbles:true}));
+            const reverseBlocked=[...reading.querySelectorAll("button")].find((button)=>button.textContent==="Save").disabled;
+            readingCapture.blur();
+            return {blocked,message,key,reverseBlocked};
+        `);
+		expect(result.blocked).toBe(true);
+		expect(result.message).toContain("already used");
+		expect(result.key).toBe("F14");
+		expect(result.reverseBlocked).toBe(true);
+	});
+	it("refuses enabling either shortcut or dictation with a conflicting key", () => {
+		const result = run<{ reading: boolean; dictation: boolean }>(`
+            Object.assign(${PLUGIN}.settings,{doubleTapEnabled:false,doubleTapKey:"F14",dictationEnabled:true,dictationDoubleTapEnabled:true,dictationKey:"F14"});
+            window.edgeVoiceTab.display();
+            ${SETTING("Double-tap shortcut")}.querySelector(".checkbox-container").click();
+            const reading=${PLUGIN}.settings.doubleTapEnabled;
+            Object.assign(${PLUGIN}.settings,{doubleTapEnabled:true,dictationEnabled:false});
+            window.edgeVoiceTab.display();
+            ${SETTING("Enable dictation")}.querySelector(".checkbox-container").click();
+            return {reading,dictation:${PLUGIN}.settings.dictationEnabled};
+        `);
+		expect(result).toEqual({ reading: false, dictation: false });
 	});
 });

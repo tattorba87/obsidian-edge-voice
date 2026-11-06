@@ -1,9 +1,9 @@
 {
 	"id": "edge-voice",
 	"name": "Edge Voice",
-	"version": "0.1.5",
+	"version": "0.2.0",
 	"minAppVersion": "1.14.4",
-	"description": "Free, private text-to-speech (TTS): reads notes and PDFs aloud with on-device voices, highlighting each sentence and word.",
+	"description": "Read notes and PDFs aloud with word highlighting, or dictate English into Markdown. Private, on-device text-to-speech (TTS) and speech-to-text (STT).",
 	"author": "Steven Grima",
 	"isDesktopOnly": true
 }

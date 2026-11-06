@@ -21,11 +21,14 @@ import {
 	DEFAULT_VOICE,
 	EDGE_VOICE_HOME,
 	enginePython,
+	engineUpdateAvailable,
+	ENGINE_VERSION,
 	engineStorage,
 	EngineSearch,
 	findEngine,
 	formatBytes,
 	mlxSupported,
+	modelCommand,
 	OLD_SETUP,
 	removeCommand,
 	setupSteps,
@@ -36,12 +39,19 @@ import { StatusIndicator } from "./status";
 import { IdleUnload, UNLOAD_CHOICES } from "./idle";
 import { CommandNotice, SetupModal } from "./setup-modal";
 import { InBackground, pausesInBackground } from "./background";
-import { playChime } from "./chime";
+import { DictationSession, DictationText } from "./dictation";
+import { captureMicrophone } from "./microphone";
+import { playDictationChime, playChime } from "./chime";
 import { clamp, isEngineId, savedSettings } from "./settings";
+import { openSettingsSection } from "./settings-navigation";
 import { startsReading, statusFor, toggleAction } from "./controls";
 import {
 	customKeyProblem,
 	DEFAULT_DOUBLE_TAP_KEY,
+	DEFAULT_DICTATION_KEY,
+	DICTATION_KEY_PRESETS,
+	isDoubleTapKey,
+	shortcutConflict,
 	DOUBLE_TAP_PRESETS,
 	DoubleTapDetector,
 	keyCap,
@@ -55,6 +65,17 @@ import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "./col
 import { formatSpeed, nearestSpeed, PlayerBar, PlayerControls, showSpeedMenu, SPEEDS, stepSpeed } from "./player-bar";
 
 interface ReaderSettings {
+	engineUpdateNotified: string;
+	dictationEnabled: boolean;
+	dictationModelPath: string;
+	dictationModel: string;
+	dictationKey: string;
+	dictationCustomKey: string | null;
+	dictationDoubleTapEnabled: boolean;
+	dictationChime: boolean;
+	dictationSilence: number;
+	dictationLowercase: boolean;
+
 	/** A Python with the engine installed, as a full path; empty means the one in ~/.edge-voice/engine. */
 	pythonPath: string;
 	language: string;
@@ -83,6 +104,17 @@ interface ReaderSettings {
 }
 
 const DEFAULT_SETTINGS: ReaderSettings = {
+	engineUpdateNotified: "",
+	dictationEnabled: true,
+	dictationModelPath: "",
+	dictationModel: "medium",
+	dictationKey: DEFAULT_DICTATION_KEY,
+	dictationCustomKey: null,
+	dictationDoubleTapEnabled: true,
+	dictationChime: true,
+	dictationSilence: 10,
+	dictationLowercase: false,
+
 	pythonPath: "",
 	language: "en_us",
 	voice: DEFAULT_VOICE,
@@ -121,6 +153,12 @@ export default class EdgeVoicePlugin extends Plugin {
 	settings: ReaderSettings = DEFAULT_SETTINGS;
 	sidecar!: Sidecar;
 	private reader!: Reader;
+	private readingStart = 0;
+	private readingStarting = false;
+	private dictation?: DictationSession;
+	private dictationStatus?: StatusIndicator;
+	private disposed = false;
+
 	/** The voice loaded or loading in the sidecar, shared by everyone waiting on it. */
 	private voice?: { key: string; ready: Promise<void> };
 	private status!: StatusIndicator;
@@ -133,6 +171,7 @@ export default class EdgeVoicePlugin extends Plugin {
 	/** The voice was unloaded to free memory; loading it again says "Reloading". */
 	private unloaded = false;
 	private readonly controls: PlayerControls = {
+		dictate: () => void this.toggleDictation(),
 		toggle: () => this.toggle("button"),
 		previous: () => void this.skip(-1),
 		next: () => void this.skip(1),
@@ -163,9 +202,16 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
+		if (shortcutConflict(this.settings))
+			new Notice(
+				"Reading and dictation double-tap shortcuts use the same key. Choose different keys in Edge Voice settings.",
+			);
 		this.idle = new IdleUnload({
 			minutes: () => this.settings.unloadAfter,
-			idle: () => this.sidecar.running && (this.reader.state === "idle" || this.reader.state === "paused"),
+			idle: () =>
+				!this.dictation?.active &&
+				this.sidecar.running &&
+				(this.reader.state === "idle" || this.reader.state === "paused"),
 			busy: () => this.sidecar.busy,
 			unload: () => this.unloadVoice(),
 			setTimer: (run, ms) => window.setTimeout(run, ms),
@@ -182,6 +228,8 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.status = new StatusIndicator(statusEl);
 		this.bar = new PlayerBar(this.controls);
 		this.bar.setEnabled(this.settings.showPlayer);
+		this.bar.setDictationEnabled(this.settings.dictationEnabled);
+		this.bar.setDictationState("idle");
 		this.applyHighlightColor();
 		this.register(() => {
 			document.body.style.removeProperty("--edge-voice-base");
@@ -226,6 +274,7 @@ export default class EdgeVoicePlugin extends Plugin {
 		this.registerContextMenus();
 		this.registerAutoPause();
 		this.registerDoubleTap();
+		this.registerDictation();
 
 		this.addSettingTab(new ReaderSettingTab(this.app, this));
 
@@ -233,6 +282,8 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	onunload(): void {
+		this.disposed = true;
+		this.dictation?.cancel();
 		this.idle.cancel();
 		this.reader.stop();
 		this.sidecar.stop();
@@ -241,7 +292,12 @@ export default class EdgeVoicePlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const saved = (await this.loadData()) as unknown;
 		// Only values of the right type are kept (see settings.ts); then what each must be.
-		const settings: ReaderSettings = { ...DEFAULT_SETTINGS, ...savedSettings(saved, DEFAULT_SETTINGS) };
+		const kept = savedSettings(saved, DEFAULT_SETTINGS);
+		const settings: ReaderSettings = { ...DEFAULT_SETTINGS, ...kept };
+		// Dictation is on for new installs. Someone updating from a version without it keeps
+		// what they had: no microphone button or new shortcut until they turn it on.
+		if (saved !== null && saved !== undefined && kept.dictationEnabled === undefined)
+			settings.dictationEnabled = false;
 		if (!isEngineId(settings.voice)) settings.voice = DEFAULT_SETTINGS.voice;
 		if (!isEngineId(settings.language)) settings.language = DEFAULT_SETTINGS.language;
 		if (!["pause", "visible", "always"].includes(settings.inBackground)) {
@@ -266,15 +322,33 @@ export default class EdgeVoicePlugin extends Plugin {
 		if (!settings.doubleTapCustomKey && !DOUBLE_TAP_PRESETS.includes(settings.doubleTapKey)) {
 			settings.doubleTapCustomKey = settings.doubleTapKey;
 		}
+		settings.dictationSilence = clamp(settings.dictationSilence, 0, 300);
+		if (!["tiny", "small", "medium"].includes(settings.dictationModel)) settings.dictationModel = "medium";
+		if (!isDoubleTapKey(settings.dictationKey)) settings.dictationKey = DEFAULT_DICTATION_KEY;
+		if (settings.dictationCustomKey && !isDoubleTapKey(settings.dictationCustomKey))
+			settings.dictationCustomKey = null;
+		if (!settings.dictationCustomKey && !DICTATION_KEY_PRESETS.includes(settings.dictationKey))
+			settings.dictationCustomKey = settings.dictationKey;
+		// New default must not take an existing user's reading shortcut away.
+		if (
+			kept.dictationKey === undefined &&
+			shortcutConflict({ ...settings, dictationEnabled: true, dictationDoubleTapEnabled: true })
+		) {
+			settings.dictationKey =
+				DICTATION_KEY_PRESETS.find((key) => key !== settings.doubleTapKey) ?? DEFAULT_DICTATION_KEY;
+		}
 		this.settings = settings;
 	}
 
 	async saveSettings(): Promise<void> {
+		if (!this.settings.dictationEnabled && this.dictation?.active) void this.dictation.finish();
+		this.bar?.setDictationEnabled(this.settings.dictationEnabled);
 		await this.saveData(this.settings);
 	}
 
 	/** Restarts the sidecar, e.g. after the Python path changed. */
 	restartSidecar(): void {
+		this.dictation?.cancel();
 		this.reader.stop();
 		this.sidecar.stop();
 		this.voice = undefined;
@@ -299,6 +373,13 @@ export default class EdgeVoicePlugin extends Plugin {
 		if (!search.engine) {
 			this.offerSetup(search.problem);
 			return;
+		}
+		if (engineUpdateAvailable(search.engine.version) && this.settings.engineUpdateNotified !== ENGINE_VERSION) {
+			this.settings.engineUpdateNotified = ENGINE_VERSION;
+			await this.saveSettings();
+			this.offerSetup(
+				`Speech engine ${search.engine.version} can still read aloud. Engine ${ENGINE_VERSION} is available with updates; open the setup steps to update it manually.`,
+			);
 		}
 		if (this.settings.preloadVoice) void this.preloadVoice();
 	}
@@ -361,10 +442,12 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	private async preloadVoice(): Promise<void> {
+		if (this.dictation?.active || this.disposed) return;
 		try {
 			await this.ensureVoice();
 		} catch (error) {
-			console.warn("[edge-voice] preloading the voice failed", error);
+			if (!this.dictation?.active && !this.disposed)
+				console.warn("[edge-voice] preloading the voice failed", error);
 		} finally {
 			if (this.reader.state === "idle") this.status.show("hidden");
 			this.idle.reset();
@@ -397,6 +480,7 @@ export default class EdgeVoicePlugin extends Plugin {
 	 * on, while a double tap stops (and the next one starts).
 	 */
 	private toggle(origin: "button" | "double-tap"): void {
+		if (this.blockReadingForDictation()) return;
 		switch (toggleAction(this.reader.state, this.onTargetPage(), origin)) {
 			case "pause":
 				this.reader.pause();
@@ -422,6 +506,7 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	private async skip(delta: number): Promise<void> {
+		if (this.blockReadingForDictation()) return;
 		if (await this.reload()) this.reader.skip(delta);
 	}
 
@@ -436,6 +521,7 @@ export default class EdgeVoicePlugin extends Plugin {
 			this.showState(this.state, this.stateDetail);
 			return true;
 		} catch (error) {
+			if (this.dictation?.active || this.disposed) return false;
 			if (error instanceof MissingVoiceError) this.showMissingVoice(error.voice);
 			else new Notice(`Edge Voice could not load the voice: ${(error as Error).message}`, 10000);
 			this.showState(this.state, this.stateDetail);
@@ -456,6 +542,8 @@ export default class EdgeVoicePlugin extends Plugin {
 
 	/** Stops reading the target page and forgets it. */
 	private stop(): void {
+		++this.readingStart;
+		this.readingStarting = false;
 		this.reader.stop();
 		this.target = undefined;
 	}
@@ -548,10 +636,13 @@ export default class EdgeVoicePlugin extends Plugin {
 		);
 	}
 
-	/** Double-tapping the chosen key reads aloud, pauses and resumes, in every Obsidian window. */
+	/** Double-tap starts reading; one tap stops, including while the voice is loading. */
 	private registerDoubleTap(): void {
 		const detector = new DoubleTapDetector(
-			() => (this.settings.doubleTapEnabled && !this.recordingKey ? this.settings.doubleTapKey : null),
+			() =>
+				this.settings.doubleTapEnabled && !this.recordingKey && !shortcutConflict(this.settings)
+					? this.settings.doubleTapKey
+					: null,
 			() => {
 				if (this.settings.doubleTapChime)
 					playChime(
@@ -561,6 +652,13 @@ export default class EdgeVoicePlugin extends Plugin {
 					);
 				this.toggle("double-tap");
 			},
+			{
+				active: () => this.readingStarting || this.reader.state !== "idle",
+				stop: () => {
+					if (this.settings.doubleTapChime) playChime("down");
+					this.stop();
+				},
+			},
 		);
 		const watch = (win: Window) => {
 			this.registerDomEvent(win, "keydown", (event) => detector.keydown(event), { capture: true });
@@ -569,6 +667,170 @@ export default class EdgeVoicePlugin extends Plugin {
 		};
 		watch(window);
 		this.registerEvent(this.app.workspace.on("window-open", (_workspaceWindow, win) => watch(win)));
+	}
+
+	private blockReadingForDictation(): boolean {
+		if (!this.dictation?.active) return false;
+		new Notice("Stop dictation before reading aloud.");
+		return true;
+	}
+
+	private registerDictation(): void {
+		const status = this.addStatusBarItem();
+		status.addClass("edge-voice-dictation-status");
+		this.dictationStatus = new StatusIndicator(status);
+		this.addCommand({
+			id: "toggle-dictation",
+			name: "Start / stop English dictation",
+			callback: () => void this.toggleDictation(),
+		});
+		this.addCommand({
+			id: "stop-dictation",
+			name: "Stop dictation",
+			callback: () => void this.dictation?.finish(),
+		});
+		const detector = new DoubleTapDetector(
+			() =>
+				this.settings.dictationEnabled &&
+				this.settings.dictationDoubleTapEnabled &&
+				!this.recordingKey &&
+				!shortcutConflict(this.settings)
+					? this.settings.dictationKey
+					: null,
+			() => void this.toggleDictation(),
+			{ active: () => this.dictation?.active === true, stop: () => void this.dictation?.finish() },
+		);
+		const watch = (win: Window) => {
+			this.registerDomEvent(win, "keydown", (event) => detector.keydown(event), { capture: true });
+			this.registerDomEvent(win, "keyup", (event) => detector.keyup(event), { capture: true });
+			this.registerDomEvent(win, "blur", () => {
+				detector.reset();
+				this.dictation?.blur();
+			});
+		};
+		watch(window);
+		this.registerEvent(this.app.workspace.on("window-open", (_workspaceWindow, win) => watch(win)));
+	}
+
+	private async toggleDictation(): Promise<void> {
+		if (this.dictation?.active) {
+			await this.dictation.finish();
+			return;
+		}
+		if (!this.settings.dictationEnabled) {
+			const notice = new Notice(
+				createFragment((fragment) => {
+					fragment.createDiv({ text: "English dictation is turned off. Open its settings to enable it." });
+					fragment.createEl("button", {
+						text: "Open dictation settings",
+						cls: "mod-cta edge-voice-notice-button",
+					});
+				}),
+				10000,
+			);
+			this.registerDomEvent(
+				notice.messageEl,
+				"click",
+				() => {
+					notice.hide();
+					try {
+						this.register(
+							openSettingsSection(this.app, this.manifest.id, ".edge-voice-dictation-settings"),
+						);
+					} catch {
+						new Notice("Open settings → Edge Voice → English dictation to enable it.");
+					}
+				},
+				{ once: true },
+			);
+			return;
+		}
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view?.file || view.getMode() !== "source") {
+			new Notice("Open a Markdown note in editing mode to dictate.");
+			return;
+		}
+		const editor = view.editor;
+		const path = view.file.path;
+		let text: DictationText | undefined;
+		const ownsTarget = () =>
+			this.app.workspace.getLeavesOfType("markdown").some((leaf) => leaf.view === view) &&
+			view.file?.path === path &&
+			view.getMode() === "source";
+		this.stop();
+		this.sidecar.stop();
+		this.voice = undefined;
+		this.idle.cancel();
+		const session = new DictationSession({
+			backend: this.sidecar,
+			capture: captureMicrophone,
+			ready: () => {
+				if (!ownsTarget()) throw new Error("Dictation stopped because the original note changed or closed.");
+				text = new DictationText(
+					editor.getValue(),
+					editor.posToOffset(editor.getCursor("from")),
+					editor.posToOffset(editor.getCursor("to")),
+					this.settings.dictationLowercase,
+				);
+			},
+			cancelled: () => new Notice("Dictation start cancelled."),
+			level: (level) => {
+				this.bar.setMicrophoneLevel(level);
+				this.dictationStatus?.setInputLevel(level);
+			},
+			apply: (transcript) => {
+				if (!ownsTarget() || !text)
+					throw new Error("Dictation stopped because the original note changed or closed.");
+				const change = text.update(editor.getValue(), transcript);
+				if (change)
+					editor.replaceRange(change.text, editor.offsetToPos(change.from), editor.offsetToPos(change.to));
+			},
+			state: (state) => {
+				this.dictationStatus?.show(
+					state === "idle" ? "hidden" : state === "recording" ? "dictating" : "busy",
+					state === "idle"
+						? ""
+						: state === "recording"
+							? "Dictating"
+							: state === "starting"
+								? "Starting dictation…"
+								: "Finishing dictation…",
+				);
+				this.bar.setDictationState(state);
+				if (state === "idle") cleanup();
+			},
+			error: (message) => new Notice(`Edge Voice dictation: ${message}`, 10000),
+			chime: async (recording) => {
+				if (!this.settings.dictationChime) return;
+				try {
+					await playDictationChime(recording);
+				} catch {
+					console.warn("[edge-voice] could not play the dictation chime");
+				}
+			},
+			setTimer: (run, ms) => window.setTimeout(run, ms),
+			clearTimer: (id) => window.clearTimeout(id),
+			now: () => Date.now(),
+		});
+		this.dictation = session;
+		const stopOnChange = () => {
+			const activePage = this.app.workspace.getActiveViewOfType(FileView);
+			// Sidebar focus is not navigation away from the note being dictated.
+			if (!ownsTarget() || (activePage && activePage !== view)) void session.finish();
+		};
+		const event = this.app.workspace.on("active-leaf-change", stopOnChange);
+		const fileEvent = this.app.workspace.on("file-open", stopOnChange);
+		const layoutEvent = this.app.workspace.on("layout-change", stopOnChange);
+		const cleanup = () => {
+			this.app.workspace.offref(event);
+			this.app.workspace.offref(fileEvent);
+			this.app.workspace.offref(layoutEvent);
+		};
+		await session.start(
+			this.settings.dictationModelPath.trim(),
+			this.settings.dictationModel,
+			this.settings.dictationSilence,
+		);
 	}
 
 	/**
@@ -597,7 +859,11 @@ export default class EdgeVoicePlugin extends Plugin {
 		const faster = this.settings.fasterEngine && mlxSupported();
 		const voice = this.settings.voice;
 		new SetupModal(this.app, {
-			steps: setupSteps({ platform: process.platform, arch: process.arch, faster }, voice),
+			steps: setupSteps(
+				{ platform: process.platform, arch: process.arch, faster },
+				voice,
+				this.settings.dictationModel,
+			),
 			problem: this.engineSearch?.problem,
 			check: async () => {
 				const search = await this.checkEngine();
@@ -611,26 +877,51 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	private async startReading(view: FileView, source: SegmentSource): Promise<void> {
-		// The bar and its glow show at once, while the voice loads, not only once synthesis starts.
+		if (this.blockReadingForDictation()) {
+			source.dispose();
+			return;
+		}
+		const request = ++this.readingStart;
+		this.readingStarting = true;
+		const cancelled = () => request !== this.readingStart || this.dictation?.active || this.disposed;
 		this.bar.update("loading");
-		if (!this.sidecar.running && !(await this.checkEngine()).engine) {
-			// No engine: show how to set it up.
-			source.dispose();
-			this.bar.update("idle");
-			this.openSetup();
-			return;
-		}
 		try {
-			await this.ensureVoice();
-		} catch (error) {
-			source.dispose();
-			this.showState("idle");
-			if (error instanceof MissingVoiceError) this.showMissingVoice(error.voice);
-			else new Notice(`Edge Voice could not load the voice: ${(error as Error).message}`, 10000);
-			return;
+			if (!this.sidecar.running) {
+				const search = await this.checkEngine();
+				if (cancelled()) {
+					source.dispose();
+					return;
+				}
+				if (!search.engine) {
+					source.dispose();
+					this.bar.update("idle");
+					this.openSetup();
+					return;
+				}
+			}
+			try {
+				await this.ensureVoice();
+			} catch (error) {
+				source.dispose();
+				if (cancelled()) return;
+				this.showState("idle");
+				if (error instanceof MissingVoiceError) this.showMissingVoice(error.voice);
+				else new Notice(`Edge Voice could not load the voice: ${(error as Error).message}`, 10000);
+				return;
+			}
+			if (cancelled()) {
+				source.dispose();
+				return;
+			}
+			this.reader.start(source);
+			this.target = {
+				view,
+				path: view.file?.path,
+				mode: view instanceof MarkdownView ? view.getMode() : undefined,
+			};
+		} finally {
+			if (request === this.readingStart) this.readingStarting = false;
 		}
-		this.reader.start(source);
-		this.target = { view, path: view.file?.path, mode: view instanceof MarkdownView ? view.getMode() : undefined };
 	}
 
 	private addMenuItems(menu: Menu, view: FileView, source: () => SegmentSource): void {
@@ -730,6 +1021,8 @@ export default class EdgeVoicePlugin extends Plugin {
 	}
 
 	private ensureVoice(): Promise<void> {
+		if (this.dictation?.active || this.disposed)
+			return Promise.reject(new Error("Stop dictation before reading aloud."));
 		const engine = this.fasterReady ? "mlx" : undefined;
 		const key = `${this.settings.language}/${this.settings.voice}/${engine ?? "moonshine"}`;
 		if (this.voice?.key === key && this.sidecar.running) return this.voice.ready;
@@ -849,6 +1142,8 @@ class ReaderSettingTab extends PluginSettingTab {
 		private readonly plugin: EdgeVoicePlugin,
 	) {
 		super(app, plugin);
+		// Lets rows put wide controls under their description instead of squeezing it (styles.css).
+		this.containerEl.addClass("edge-voice-settings");
 	}
 
 	/** The Voice row, filled in together with Get another voice (see showVoices). */
@@ -863,6 +1158,17 @@ class ReaderSettingTab extends PluginSettingTab {
 	}
 
 	setControlValue(key: string, value: unknown): void {
+		if (
+			key === "dictationEnabled" &&
+			value === true &&
+			shortcutConflict({ ...this.plugin.settings, dictationEnabled: true })
+		) {
+			new Notice(
+				"That key is already used for reading aloud. Choose a different dictation key before enabling dictation.",
+			);
+			this.update();
+			return;
+		}
 		if (key === "speed") return this.plugin.setSpeed(Number(value));
 		if (key === "showPlayer") return this.plugin.setPlayerShown(value === true);
 		if (key === "unloadAfter") return this.plugin.setUnloadAfter(Number(value));
@@ -891,6 +1197,7 @@ class ReaderSettingTab extends PluginSettingTab {
 		return [
 			{
 				type: "group",
+				heading: "Reading aloud",
 				items: [
 					{
 						name: "Voice",
@@ -934,14 +1241,14 @@ class ReaderSettingTab extends PluginSettingTab {
 					),
 					{
 						name: "Double-tap shortcut",
-						desc: "Double-tap a key to start reading, and again to pause or resume. Works while Obsidian is the active app.",
+						desc: "Double-tap a key to start reading. Tap it once to stop. Works while Obsidian is the active app.",
 						aliases: ["Hotkey", "Key"],
 						render: (setting) => this.doubleTapSetting(setting),
 					},
 					toggle(
 						"doubleTapChime",
-						"Chime on double tap",
-						"A short chime, rising when reading starts or resumes and falling when it pauses.",
+						"Reading shortcut sounds",
+						"A short chime, rising when the shortcut starts reading and falling when it stops.",
 						() => !settings.doubleTapEnabled,
 					),
 					toggle(
@@ -1024,6 +1331,83 @@ class ReaderSettingTab extends PluginSettingTab {
 					},
 				],
 			},
+			{
+				type: "group",
+				heading: "English dictation",
+				cls: "edge-voice-dictation-settings",
+				items: [
+					toggle(
+						"dictationEnabled",
+						"Enable dictation",
+						"Write into Markdown notes with your microphone. Requires a downloaded English model. Reading and dictation run one at a time.",
+					),
+					{
+						name: "English streaming model",
+						desc: "Medium prioritizes word accuracy. Small and Tiny prioritize speed and lower resource use, with more recognition errors expected. Download each model before selecting it.",
+						control: {
+							type: "dropdown",
+							key: "dictationModel",
+							options: { tiny: "Tiny (45 MB)", small: "Small (142 MB)", medium: "Medium (269 MB)" },
+						},
+					},
+					{
+						name: "Get the dictation model",
+						desc: "Show a command to run yourself. It downloads the selected MIT-licensed English model from download.moonshine.ai and verifies SHA-256 fingerprints. Edge Voice downloads nothing.",
+						render: (setting) => {
+							setting.addButton((button) =>
+								button.setButtonText("Show command").onClick(() => {
+									new CommandNotice(
+										"Run this in Terminal (PowerShell on Windows), then start dictation. Requires speech engine 0.4.0 or later. For a custom Python installation, use its edge-voice-engine command.",
+										modelCommand(settings.dictationModel),
+									);
+								}),
+							);
+						},
+					},
+					{
+						name: "Custom model folder (advanced)",
+						desc: "Leave empty to use the verified model downloaded by the command above. A full path can reuse a trusted English Moonshine streaming folder. Custom files are not authenticated; the selected size must match.",
+						render: (setting) => {
+							setting.addText((input) =>
+								input.setValue(settings.dictationModelPath).onChange((value) => {
+									settings.dictationModelPath = value;
+									void this.plugin.saveSettings();
+								}),
+							);
+						},
+					},
+					{
+						name: "Dictation double-tap key",
+						desc: "Double-tap to start dictation; tap once to stop. Choose a different key from reading aloud. Works while Obsidian is active.",
+						render: (setting) => this.doubleTapSetting(setting, "dictation"),
+					},
+					toggle(
+						"dictationChime",
+						"Dictation sounds",
+						"Play a short sound when dictation starts or stops, from the microphone button or shortcut.",
+					),
+					toggle(
+						"dictationLowercase",
+						"Lowercase dictation",
+						"Otherwise preserve the recognizer's capitalization and punctuation. Takes effect next session.",
+					),
+					{
+						name: "Stop after silence",
+						desc: "Seconds without a transcript change; 0 disables automatic stopping. Maximum 300 seconds.",
+						render: (setting) => {
+							setting.addText((input) =>
+								input.setValue(String(settings.dictationSilence)).onChange((value) => {
+									const seconds = Number(value);
+									if (Number.isFinite(seconds)) {
+										settings.dictationSilence = clamp(seconds, 0, 300);
+										void this.plugin.saveSettings();
+									}
+								}),
+							);
+						},
+					},
+				],
+			},
 		];
 	}
 
@@ -1062,7 +1446,7 @@ class ReaderSettingTab extends PluginSettingTab {
 			void this.plugin.checkEngine().then(({ engine: found, problem }) => {
 				setting.setDesc(
 					found
-						? `Ready: speech engine ${found.version}, in ${found.python}.`
+						? `Ready: speech engine ${found.version}, in ${found.python}.${engineUpdateAvailable(found.version) ? ` Engine ${ENGINE_VERSION} is available. Use Setup steps to update manually; reading still works.` : ""}`
 						: (problem ?? "Not set up yet. See the setup steps."),
 				);
 				setting.controlEl.querySelector("button")?.toggleClass("mod-cta", !found);
@@ -1147,7 +1531,14 @@ class ReaderSettingTab extends PluginSettingTab {
 	 * command that downloads the one picked (to copy), and Check again.
 	 */
 	private anotherVoice(setting: Setting, catalog: VoiceInfo[], downloadable: string[], refresh: () => void): void {
+		setting.settingEl.addClass("edge-voice-download-setting");
 		const samples = setting.descEl.createDiv();
+		samples.appendText("Voice licenses vary; some Piper voices have noncommercial terms. ");
+		samples.createEl("a", {
+			text: "Review voice licenses",
+			href: "https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/piper-licenses.md",
+		});
+		samples.appendText(". ");
 		samples.appendText("Hear them first: ");
 		samples.createEl("a", { text: "Kokoro voices", href: VOICE_SAMPLES.Kokoro });
 		samples.appendText(", ");
@@ -1205,10 +1596,19 @@ class ReaderSettingTab extends PluginSettingTab {
 	 * there is one custom key, replaced each time. The chime is its own row,
 	 * disabled with the shortcut (refreshDomState).
 	 */
-	private doubleTapSetting(setting: Setting): void {
+	private doubleTapSetting(setting: Setting, mode: "reading" | "dictation" = "reading"): void {
 		const settings = this.plugin.settings;
+		const key = mode === "reading" ? "doubleTapKey" : "dictationKey";
+		const custom = mode === "reading" ? "doubleTapCustomKey" : "dictationCustomKey";
+		const enabled = mode === "reading" ? "doubleTapEnabled" : "dictationDoubleTapEnabled";
+		const presets = mode === "reading" ? DOUBLE_TAP_PRESETS : DICTATION_KEY_PRESETS;
+		const defaultKey = mode === "reading" ? DEFAULT_DOUBLE_TAP_KEY : DEFAULT_DICTATION_KEY;
+		const action = mode === "reading" ? "read" : "dictate";
+		const conflict = (code: string, on = settings[enabled]) =>
+			shortcutConflict({ ...settings, [key]: code, [enabled]: on });
+		const conflictMessage = `That key is already used for ${mode === "reading" ? "dictation" : "reading aloud"}. Choose a different key.`;
 		const CUSTOM = "custom";
-		const isPreset = (code: string) => DOUBLE_TAP_PRESETS.includes(code);
+		const isPreset = (code: string) => presets.includes(code);
 		const save = () => void this.plugin.saveSettings();
 
 		// Custom: a panel inside the setting's own box, with the key, Save and clear in a row
@@ -1245,17 +1645,21 @@ class ReaderSettingTab extends PluginSettingTab {
 		/** The resting state: the saved custom key, or the placeholder. */
 		const rest = () => {
 			pending = null;
-			const saved = settings.doubleTapCustomKey;
+			const saved = settings[custom];
 			showKey(saved);
 			capture.removeClass("is-invalid");
 			confirm.disabled = true;
 			clear.disabled = !saved;
-			say(saved ? `Double-tap ${keyLabel(saved)} to read.` : "Click the key above, then press the one you want.");
+			say(
+				saved
+					? `Double-tap ${keyLabel(saved)} to ${action}; tap once to stop.`
+					: "Click the key above, then press the one you want.",
+			);
 		};
 		const refresh = () => {
-			dropdown.setValue(isPreset(settings.doubleTapKey) ? settings.doubleTapKey : CUSTOM);
-			dropdown.setDisabled(!settings.doubleTapEnabled);
-			panel.hidden = !settings.doubleTapEnabled || dropdown.getValue() !== CUSTOM;
+			dropdown.setValue(isPreset(settings[key]) ? settings[key] : CUSTOM);
+			dropdown.setDisabled(!settings[enabled]);
+			panel.hidden = !settings[enabled] || dropdown.getValue() !== CUSTOM;
 			// The chime row follows the shortcut's on/off.
 			this.refreshDomState();
 		};
@@ -1280,7 +1684,7 @@ class ReaderSettingTab extends PluginSettingTab {
 				capture.blur();
 				return;
 			}
-			const problem = customKeyProblem(event);
+			const problem = customKeyProblem(event) ?? (conflict(event.code) ? conflictMessage : null);
 			showKey(event.code);
 			capture.toggleClass("is-invalid", problem !== null);
 			if (problem) {
@@ -1300,8 +1704,13 @@ class ReaderSettingTab extends PluginSettingTab {
 		});
 		confirm.addEventListener("click", () => {
 			if (!pending) return;
-			settings.doubleTapCustomKey = pending;
-			settings.doubleTapKey = pending;
+			if (conflict(pending)) {
+				say(conflictMessage, true);
+				confirm.disabled = true;
+				return;
+			}
+			settings[custom] = pending;
+			settings[key] = pending;
 			save();
 			rest();
 			refresh();
@@ -1312,17 +1721,22 @@ class ReaderSettingTab extends PluginSettingTab {
 				rest();
 				return;
 			}
-			const wasActive = settings.doubleTapKey === settings.doubleTapCustomKey;
-			settings.doubleTapCustomKey = null;
-			if (wasActive) settings.doubleTapKey = DEFAULT_DOUBLE_TAP_KEY;
+			const wasActive = settings[key] === settings[custom];
+			settings[custom] = null;
+			if (wasActive) settings[key] = [defaultKey, ...presets].find((code) => !conflict(code)) ?? defaultKey;
 			save();
 			rest();
 			refresh();
 		});
 
 		setting.addToggle((toggle) =>
-			toggle.setValue(settings.doubleTapEnabled).onChange((value) => {
-				settings.doubleTapEnabled = value;
+			toggle.setValue(settings[enabled]).onChange((value) => {
+				if (value && conflict(settings[key], true)) {
+					toggle.setValue(settings[enabled]);
+					new Notice(conflictMessage);
+					return;
+				}
+				settings[enabled] = value;
 				save();
 				refresh();
 			}),
@@ -1330,21 +1744,31 @@ class ReaderSettingTab extends PluginSettingTab {
 		setting.addDropdown((component) => {
 			dropdown = component;
 			dropdown.selectEl.addClass("edge-voice-key-menu");
-			for (const code of DOUBLE_TAP_PRESETS) dropdown.addOption(code, shortKeyLabel(code));
+			for (const code of presets) dropdown.addOption(code, shortKeyLabel(code));
 			dropdown.addOption(CUSTOM, "Custom");
 			dropdown.onChange((value) => {
 				rest();
 				if (value === CUSTOM) {
 					// The saved custom key comes back; with none yet, the panel waits for one.
-					if (settings.doubleTapCustomKey) {
-						settings.doubleTapKey = settings.doubleTapCustomKey;
+					if (settings[custom]) {
+						if (conflict(settings[custom])) {
+							new Notice(conflictMessage);
+							refresh();
+							return;
+						}
+						settings[key] = settings[custom];
 						save();
 					}
 					panel.hidden = false;
-					if (!settings.doubleTapCustomKey) capture.focus();
+					if (!settings[custom]) capture.focus();
 					return;
 				}
-				settings.doubleTapKey = value;
+				if (conflict(value)) {
+					new Notice(conflictMessage);
+					refresh();
+					return;
+				}
+				settings[key] = value;
 				save();
 				refresh();
 			});

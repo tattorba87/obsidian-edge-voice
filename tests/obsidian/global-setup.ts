@@ -22,16 +22,26 @@ export async function setup(): Promise<() => Promise<void>> {
 	sandbox.prepareSettings(false, join(REPO, "tests", "obsidian", "fake-python"));
 	// The faster engine only sets itself up with the plugin's own Python, but say so anyway.
 	const settings = join(sandbox.paths.plugin, "data.json");
-	writeFileSync(settings, JSON.stringify({ ...JSON.parse(readFileSync(settings, "utf8")), fasterEngine: false }));
+	writeFileSync(
+		settings,
+		JSON.stringify({ ...JSON.parse(readFileSync(settings, "utf8")), fasterEngine: false, dictationEnabled: false }),
+	);
 
-	await sandbox.launch(home, {
-		EDGE_VOICE_FAKE_LOG: REQUESTS,
-		// About as long as Kokoro takes to say it, so a sentence stays highlighted long enough to look at.
-		EDGE_VOICE_FAKE_SECONDS_PER_CHAR: "0.06",
-		// A moment of synthesis, so the bar's glow while waiting can be seen.
-		EDGE_VOICE_FAKE_DELAY: "0.3",
-	});
+	await sandbox.launch(
+		home,
+		{
+			EDGE_VOICE_FAKE_LOG: REQUESTS,
+			// About as long as Kokoro takes to say it, so a sentence stays highlighted long enough to look at.
+			EDGE_VOICE_FAKE_SECONDS_PER_CHAR: "0.06",
+			// A moment of synthesis, so the bar's glow while waiting can be seen.
+			EDGE_VOICE_FAKE_DELAY: "0.3",
+		},
+		true,
+	);
 	await sandbox.waitForPlugin("edge-voice");
+	// Keep lazy-rendered note/PDF sections painting when the test window is occluded.
+	// This changes only the throwaway test window, not the plugin or everyday Obsidian.
+	sandbox.eval(`require("@electron/remote").getCurrentWindow().webContents.setBackgroundThrottling(false)`);
 
 	return async () => {
 		sandbox.cli("dev:screenshot", `path=${join(sandbox.paths.root, "last.png")}`);

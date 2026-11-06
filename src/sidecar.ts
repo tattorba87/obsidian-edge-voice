@@ -222,6 +222,32 @@ export class Sidecar {
 		return { samples, sampleRate: rate };
 	}
 
+	async startDictation(modelPath: string, model: string): Promise<void> {
+		const hello = await this.ask({ op: "hello" }, undefined, this.limits.answerMs);
+		if (!Array.isArray(hello.capabilities) || !hello.capabilities.includes("dictation-streaming-v1")) {
+			throw new Error(
+				"This installed speech engine supports reading only. Update it manually using Settings → Edge Voice → Advanced → Speech engine, then get an English dictation model. Your existing TTS voices are kept.",
+			);
+		}
+		await this.ask({ op: "asr_start", modelPath, model }, undefined, this.limits.answerMs);
+	}
+
+	async dictationAudio(samples: Float32Array, sampleRate: number): Promise<string> {
+		const bytes = Buffer.alloc(samples.length * 4);
+		samples.forEach((sample, i) => bytes.writeFloatLE(sample, i * 4));
+		return this.dictationReply({ op: "asr_audio", audio: bytes.toString("base64"), sampleRate });
+	}
+
+	async stopDictation(): Promise<string> {
+		return this.dictationReply({ op: "asr_stop" });
+	}
+
+	private async dictationReply(body: Record<string, unknown>): Promise<string> {
+		const reply = await this.ask(body, undefined, this.limits.answerMs);
+		if (typeof reply.text !== "string" || reply.text.length > 200_000) throw new Error("Invalid dictation reply");
+		return reply.text;
+	}
+
 	/** Sends `body` once the engine is free. `deadline` (ms) counts from sending; past it, the engine is restarted. */
 	private async ask(
 		body: Record<string, unknown>,

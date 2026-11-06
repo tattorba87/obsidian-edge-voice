@@ -245,3 +245,97 @@ describe("speeds", () => {
 		expect(stepSpeed(1.6, 1)).toBe(2);
 	});
 });
+
+describe("Speech shortcut separation", () => {
+	it("defaults dictation to the left key and reading to the right", async () => {
+		const { DEFAULT_DICTATION_KEY, DEFAULT_DOUBLE_TAP_KEY, DICTATION_KEY_PRESETS } =
+			await import("../src/double-tap");
+		expect(DEFAULT_DICTATION_KEY).toBe(process.platform === "darwin" ? "MetaLeft" : "ControlLeft");
+		expect(DEFAULT_DICTATION_KEY).not.toBe(DEFAULT_DOUBLE_TAP_KEY);
+		expect(DICTATION_KEY_PRESETS[0]).toBe(DEFAULT_DICTATION_KEY);
+	});
+	it("detects preset and custom-key conflicts only when both actions are enabled", async () => {
+		const { shortcutConflict } = await import("../src/double-tap");
+		const both = {
+			doubleTapEnabled: true,
+			doubleTapKey: "F13",
+			dictationEnabled: true,
+			dictationDoubleTapEnabled: true,
+			dictationKey: "F13",
+		};
+		expect(shortcutConflict(both)).toBe(true);
+		expect(shortcutConflict({ ...both, dictationKey: "F14" })).toBe(false);
+		for (const key of ["doubleTapEnabled", "dictationEnabled", "dictationDoubleTapEnabled"])
+			expect(shortcutConflict({ ...both, [key]: false })).toBe(false);
+	});
+	it("keeps valid saved custom keys while refusing text keys", async () => {
+		const { isDoubleTapKey } = await import("../src/double-tap");
+		for (const key of ["MetaLeft", "AltRight", "F13"]) expect(isDoubleTapKey(key)).toBe(true);
+		for (const key of ["KeyA", "CapsLock", "Escape", ""]) expect(isDoubleTapKey(key)).toBe(false);
+	});
+});
+
+describe("Single-tap stop", () => {
+	const setup = () => {
+		let active = false,
+			starts = 0,
+			stops = 0;
+		const detector = new DoubleTapDetector(
+			() => "MetaRight",
+			() => {
+				active = true;
+				starts++;
+			},
+			{
+				active: () => active,
+				stop: () => {
+					active = false;
+					stops++;
+				},
+			},
+		);
+		const event = (code: string, timeStamp: number, extra: Partial<KeyboardEvent> = {}) =>
+			({ code, timeStamp, repeat: false, ...extra }) as KeyboardEvent;
+		const tap = (down: number, up = down + 60) => {
+			detector.keydown(event("MetaRight", down));
+			detector.keyup(event("MetaRight", up));
+		};
+		return {
+			detector,
+			event,
+			tap,
+			activate: () => {
+				active = true;
+			},
+			counts: () => ({ active, starts, stops }),
+		};
+	};
+	it("requires two taps to start and one to stop, without arming the second stop tap", () => {
+		const h = setup();
+		h.tap(0);
+		expect(h.counts().starts).toBe(0);
+		h.tap(200);
+		expect(h.counts()).toEqual({ active: true, starts: 1, stops: 0 });
+		h.tap(400);
+		expect(h.counts()).toEqual({ active: false, starts: 1, stops: 1 });
+		h.tap(600);
+		expect(h.counts().starts).toBe(1);
+		h.tap(1200);
+		expect(h.counts().starts).toBe(1);
+		h.tap(1400);
+		expect(h.counts()).toEqual({ active: true, starts: 2, stops: 1 });
+	});
+	it("ignores combinations, held keys and another modifier already being held", () => {
+		const h = setup();
+		h.activate();
+		h.detector.keydown(h.event("MetaRight", 0));
+		h.detector.keydown(h.event("KeyC", 20));
+		h.detector.keyup(h.event("MetaRight", 60));
+		h.tap(200, 800);
+		h.detector.keydown(h.event("MetaRight", 1000, { altKey: true }));
+		h.detector.keyup(h.event("MetaRight", 1060));
+		expect(h.counts()).toEqual({ active: true, starts: 0, stops: 0 });
+		h.tap(1500);
+		expect(h.counts().stops).toBe(1);
+	});
+});
