@@ -186,7 +186,7 @@ A workflow added only on a feature branch may need its initial branch-push valid
 
 ## Dictation release and media checks
 
-Read [the release checklist](docs/release-readiness.md), [license audit](docs/licenses.md) and [Community listing kit](docs/community-listing/README.md) before publication. Stage engine and plugin versions together but publish the engine first; verify all platform requirements URLs before the plugin is published. Keep protocol 1 and the ASR capability probe so existing TTS-only installations keep reading. Dictation stays disabled after migration. Never install or download from the plugin.
+Read [the release checklist](docs/release-readiness.md), [license audit](docs/licenses.md) and [Community listing kit](docs/community-listing/README.md) before publication. Stage engine and plugin versions together but publish the engine first; verify all platform requirements URLs before the plugin is published. Keep protocol 1 and the ASR capability probe so existing TTS-only installations keep reading. Dictation is enabled when no preference exists; preserve a saved off choice and keep microphone capture gated on an explicit start. Never install or download from the plugin.
 
 For managed ASR files, `models.json` pins English Tiny/Small/Medium streaming revisions, sizes and SHA-256. `models get` must verify before atomic replacement, retain the MIT notice, reuse verified files, reject escaping symlinks and leave custom folders alone. The offline loader rechecks managed files before native parsing. Re-audit licenses and test real recognition if changing models; checksums alone do not establish licensing or quality.
 

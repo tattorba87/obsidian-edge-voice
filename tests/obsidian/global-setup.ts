@@ -22,7 +22,10 @@ export async function setup(): Promise<() => Promise<void>> {
 	sandbox.prepareSettings(false, join(REPO, "tests", "obsidian", "fake-python"));
 	// The faster engine only sets itself up with the plugin's own Python, but say so anyway.
 	const settings = join(sandbox.paths.plugin, "data.json");
-	writeFileSync(settings, JSON.stringify({ ...JSON.parse(readFileSync(settings, "utf8")), fasterEngine: false }));
+	writeFileSync(
+		settings,
+		JSON.stringify({ ...JSON.parse(readFileSync(settings, "utf8")), fasterEngine: false, dictationEnabled: false }),
+	);
 
 	await sandbox.launch(
 		home,

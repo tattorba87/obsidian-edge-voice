@@ -55,6 +55,23 @@ const content = () => run<string>(`return app.workspace.getMostRecentLeaf().view
 const active = () => run<boolean>(`return ${PLUGIN}.dictation?.active ?? false;`);
 
 describe("Dictation in the real Markdown editor", () => {
+	it("shows the model command in speech-engine setup even before dictation is enabled", () => {
+		setSettings({ dictationEnabled: false, dictationModel: "tiny" });
+		const result = run<{ commands: string[]; text: string }>(`
+            ${PLUGIN}.openSetup();
+            const modal=document.querySelector(".edge-voice-setup");
+            if(!modal)throw new Error("Speech setup window did not open");
+            try {
+                return {commands:[...modal.querySelectorAll("code")].map(el=>el.textContent),text:modal.textContent};
+            } finally {
+                [...modal.querySelectorAll("button")].find(button=>button.textContent==="Close").click();
+            }
+        `);
+		expect(result.commands.some((command) => command.endsWith("models get tiny"))).toBe(true);
+		expect(result.commands.some((command) => command.includes("voices get"))).toBe(true);
+		expect(result.text).toContain("The last two steps are optional");
+		expect(result.text).toContain("Skip this if you only want reading aloud");
+	});
 	it("uses the managed model when no custom folder is configured", async () => {
 		setSettings({ dictationModelPath: "" });
 		command("toggle-dictation");

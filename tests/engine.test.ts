@@ -20,6 +20,19 @@ import {
 const mac = { platform: "darwin", arch: "arm64", faster: false };
 
 describe("The engine's setup steps", () => {
+	it.each(["tiny", "small", "medium"])("includes an optional %s dictation command when requested", (model) => {
+		const steps = setupSteps(mac, "kokoro_af_bella", model)!;
+		expect(steps).toHaveLength(5);
+		expect(steps[3].text).toContain("Skip this if you only want dictation");
+		expect(steps[4].title).toBe("Download a dictation model (optional)");
+		expect(steps[4].command).toBe(`~/.edge-voice/engine/bin/edge-voice-engine models get ${model}`);
+		expect(steps[4].text).toContain("Skip this if you only want reading aloud");
+		expect(setupSteps({ ...mac, platform: "win32", arch: "x64" }, "kokoro_af_bella", model)![4].command).toBe(
+			`& "$HOME\\.edge-voice\\engine\\Scripts\\edge-voice-engine.exe" models get ${model}`,
+		);
+		// Existing TTS-only setup/benchmark callers do not download an ASR model.
+		expect(setupSteps(mac, "kokoro_af_bella")).toHaveLength(4);
+	});
 	it.each([
 		["darwin", "arm64", false, "requirements-darwin-arm64.txt"],
 		["darwin", "arm64", true, "requirements-darwin-arm64-mlx.txt"],
@@ -44,7 +57,7 @@ describe("The engine's setup steps", () => {
 			"Install uv",
 			"Create the engine's folder",
 			"Install the engine",
-			"Download a voice",
+			"Download a reading voice (optional)",
 		]);
 		expect(steps[0].command).toBeUndefined();
 		expect(steps[0].link).toBe("https://docs.astral.sh/uv/getting-started/installation/");

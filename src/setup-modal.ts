@@ -35,7 +35,7 @@ export class SetupModal extends Modal {
 
 		contentEl.createEl("p", {
 			text:
-				"Edge Voice reads aloud with a speech engine that runs on your computer; your notes never leave it. " +
+				"Edge Voice reads aloud and transcribes English speech with an engine on your computer; your notes and audio stay local. " +
 				"Obsidian plugins can't install programs, so you set the engine up yourself, once. Everything goes " +
 				"into one folder, .edge-voice in your home folder, and nothing needs administrator rights.",
 		});
@@ -48,6 +48,9 @@ export class SetupModal extends Modal {
 				text: `There's no speech engine for this computer (${process.platform}, ${process.arch}) yet.`,
 			});
 		} else {
+			contentEl.createEl("p", {
+				text: "Install the shared engine first, then choose your features: download a voice for reading aloud, a model for dictation, or both. The last two steps are optional. All commands are run by you; nothing is downloaded by the plugin.",
+			});
 			const list = contentEl.createEl("ol", { cls: "edge-voice-setup-steps" });
 			for (const step of steps) this.showStep(list.createEl("li"), step);
 			contentEl.createEl("p", {
@@ -90,7 +93,7 @@ export class SetupModal extends Modal {
 		button.disabled = false;
 		if (engine) {
 			this.messageEl.setText(
-				`Ready: speech engine ${engine.version}. Right-click in a note or PDF to start reading.`,
+				`Speech engine ${engine.version} found. Reading needs a downloaded voice; dictation needs a downloaded model and Enable dictation turned on in settings. This check verifies the engine, not model files or microphone access.`,
 			);
 			button.setText("Done");
 			this.ready = true;

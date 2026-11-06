@@ -68,8 +68,9 @@ Edge Voice doesn't install or download anything itself. Its speech engine is a s
 
 1. **Install the plugin** from [Obsidian's Community plugins](https://community.obsidian.md/plugins/edge-voice) and enable it.
 2. **Install [uv](https://docs.astral.sh/uv/getting-started/installation/)**, Astral's widely used Python installer, if you don't have it.
-3. **Run the commands for your computer** in Terminal (PowerShell on Windows).
-4. **Back in Obsidian**, open Settings, choose Edge Voice under Community plugins in the left bar, open **Advanced** and click **Check again**.
+3. **Install the shared engine** with the commands for your computer below, in Terminal (PowerShell on Windows).
+4. **Choose the features you want:** run `voices get` for TTS reading aloud, `models get` for STT dictation, or both. These are separate optional downloads.
+5. **Back in Obsidian**, open Settings, choose Edge Voice under Community plugins in the left bar, open **Advanced** and click **Check again**. For STT, turn on **English dictation → Enable dictation**, select the model you downloaded and leave **Custom model folder** empty.
 
 **macOS (Apple silicon, macOS 14 or later)**, with the faster engine:
 
@@ -77,7 +78,10 @@ Edge Voice doesn't install or download anything itself. Its speech engine is a s
 brew install uv
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
 uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-darwin-arm64-mlx.txt
+# Optional TTS: read aloud
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella --faster
+# Optional STT: English dictation
+~/.edge-voice/engine/bin/edge-voice-engine models get medium
 ```
 
 **macOS (Intel, or Apple silicon on macOS 13.4 or later)**: replace `darwin-arm64-mlx` with `darwin-x64` (Intel) or `darwin-arm64`, and leave out `--faster`:
@@ -86,7 +90,10 @@ uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r http
 brew install uv
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
 uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-darwin-x64.txt
+# Optional TTS: read aloud
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella
+# Optional STT: English dictation
+~/.edge-voice/engine/bin/edge-voice-engine models get medium
 ```
 
 **Windows** (PowerShell; on Windows on ARM, use `--python cpython-3.12-windows-x86_64-none` in the second line):
@@ -95,7 +102,10 @@ uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r http
 winget install --id=astral-sh.uv -e
 uv venv --clear --managed-python "$HOME\.edge-voice\engine" --python 3.12
 uv pip install --python "$HOME\.edge-voice\engine" --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-win32-x64.txt
+# Optional TTS: read aloud
 & "$HOME\.edge-voice\engine\Scripts\edge-voice-engine.exe" voices get kokoro_af_bella
+# Optional STT: English dictation
+& "$HOME\.edge-voice\engine\Scripts\edge-voice-engine.exe" models get medium
 ```
 
 Open a new PowerShell window after installing uv, so it's found.
@@ -105,16 +115,24 @@ Open a new PowerShell window after installing uv, so it's found.
 ```sh
 uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12
 uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-linux-x64.txt
+# Optional TTS: read aloud
 ~/.edge-voice/engine/bin/edge-voice-engine voices get kokoro_af_bella
+# Optional STT: English dictation
+~/.edge-voice/engine/bin/edge-voice-engine models get medium
 ```
 
-For dictation only, skip the final `voices get` line and follow [English dictation setup](docs/dictation.md#set-up) after installing the engine. To use both modes, download a TTS voice and an ASR model separately. Neither is downloaded by the plugin.
+**Reading only:** skip `models get`. **Dictation only:** skip `voices get`; the standard engine is sufficient, and MLX/faster voice packages are optional for TTS. **Both:** run both download commands. The plugin runs neither command itself.
+
+The examples download English **Medium** (269 MB), which prioritizes word accuracy. For speed and lower resource use, replace `medium` with **`small`** (142 MB) or **`tiny`** (45 MB), accepting more recognition errors, especially with Tiny. Select the same model in **English dictation** settings. [Full dictation guide](docs/dictation.md).
 
 What these do:
 
 - `uv venv` makes the engine's own folder, `~/.edge-voice/engine`, with its own Python 3.12, so nothing else on your computer changes.
 - `uv pip install` installs the engine from this repository's engine release. The file at the end lists every package at an exact version with its fingerprint (SHA-256); open it to read it first if you like. If anything downloaded differs from its fingerprint, nothing is installed. Nothing is compiled, and nothing needs administrator rights.
-- `voices get` downloads a voice (see [Voices](#voices)), checking every file against its fingerprint.
+- `voices get` downloads a TTS voice (see [Voices](#voices)), checking every file against its fingerprint.
+- `models get medium` downloads the English streaming STT model, verifies each file against its size and SHA-256 fingerprint, and stores it in `~/.edge-voice/models/`. It is separate from TTS voices.
+
+**Check again verifies the engine installation**, not downloaded models or microphone permissions. Once dictation is enabled, click the mic and grant access when prompted. Existing installations need engine **0.4.0** for STT; BRAT does not update Python. See [engine updates](#updating-the-plugin-and-speech-engine).
 
 Everything goes into `~/.edge-voice` (about 100 MB for the engine, a few hundred MB more with the faster engine) and Moonshine's voice folder (see [Files outside your vault](#files-outside-your-vault)). Nothing runs at login. To remove it all, delete those folders.
 
@@ -137,7 +155,7 @@ The plugin and Python speech engine are updated separately. Update **Edge Voice*
 
 **When is a manual engine update needed?** Check **Settings → Edge Voice → Advanced → Speech engine**. It shows the installed engine version and Python path. Edge Voice compares that version with the engine release recommended by the plugin and offers setup steps once per recommended engine version when it is older, including for engine bug fixes that keep the same protocol. This is a local comparison: the plugin does not check GitHub or PyPI. A plugin update brings the new recommendation; no online version check runs.
 
-A compatible older engine can still read aloud. An incompatible engine gets setup guidance; an engine newer than the plugin understands asks you to update the plugin. New optional features can require an engine capability as well: English dictation checks for that separately and remains off for existing users. Plugin-only fixes do not require a Python reinstall. Engine release notes identify changes that do.
+A compatible older engine can still read aloud. An incompatible engine gets setup guidance; an engine newer than the plugin understands asks you to update the plugin. New optional features can require an engine capability as well: English dictation checks for that separately and preserves a saved choice to turn dictation off. Plugin-only fixes do not require a Python reinstall. Engine release notes identify changes that do.
 
 **To update the normal engine:**
 
@@ -158,7 +176,7 @@ You can check the installed engine version directly:
 & "$HOME\.edge-voice\engine\Scripts\python.exe" -I -m edge_voice_engine --version
 ```
 
-**Updating from the TTS-only release:** your voice, speed, shortcuts and downloaded voices are kept. Dictation remains off. To enable it, update the engine to 0.4.0, get a model under English dictation, then enable the feature. TTS still works with compatible engine 0.3.0, but that engine cannot dictate. ASR models also live outside the Python environment and survive a normal engine update. A changed model manifest can require rerunning its download command; a missing or damaged file is reported before loading it.
+**Updating from the TTS-only release:** your voice, speed, shortcuts and downloaded voices are kept. An existing choice to turn dictation off is retained. To enable it, update the engine to 0.4.0, get a model under English dictation, then enable the feature. TTS still works with compatible engine 0.3.0, but that engine cannot dictate. ASR models also live outside the Python environment and survive a normal engine update. A changed model manifest can require rerunning its download command; a missing or damaged file is reported before loading it.
 
 ### Development
 

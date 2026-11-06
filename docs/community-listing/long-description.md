@@ -31,7 +31,7 @@ The STT recording uses Michael Faraday's _The Chemical History of a Candle_, rea
 
 Install Edge Voice from Community plugins, then follow its setup commands to install the separate local Python speech engine. **The plugin installs and downloads nothing.** You run the commands yourself; packages and managed models use pinned versions and SHA-256 checks. For TTS, get a voice; for STT, get an English model. You can use either or both modes, one at a time.
 
-Existing users keep their reading preferences and downloaded voices. Dictation remains off after updating. It requires engine **0.4.0 or later** and a separate model download. Obsidian's plugin update does not update Python: Edge Voice shows the installed engine version and offers manual setup steps when it is older than the bundled recommendation. This check is local and does not query a server.
+Existing users keep their reading preferences and downloaded voices. Dictation defaults on when no preference exists; a saved off choice is retained. It requires engine **0.4.0 or later** and a separate model download. Obsidian's plugin update does not update Python: Edge Voice shows the installed engine version and offers manual setup steps when it is older than the bundled recommendation. This check is local and does not query a server.
 
 [Setup and engine update instructions](https://github.com/tattorba87/obsidian-edge-voice#setup) · [Dictation guide and troubleshooting](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/dictation.md)
 

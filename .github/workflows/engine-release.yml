@@ -63,8 +63,9 @@ jobs:
               platform=$1 arch=$2 faster=$3
               shift 3
               echo "**$*:**"
+              echo "After installing the engine, choose either or both optional downloads: voices get for TTS, models get for English STT. Medium prioritizes accuracy; Small/Tiny prioritize speed with more recognition errors."
               echo '```'
-              bun scripts/setup-steps.ts "$platform" "$arch" "$faster" kokoro_af_bella | python3 -I -c "import json, sys; print('\n'.join(json.load(sys.stdin)))"
+              bun scripts/setup-steps.ts "$platform" "$arch" "$faster" kokoro_af_bella "" medium | python3 -I -c "import json, sys; print('\n'.join(json.load(sys.stdin)))"
               echo '```'
             done
             echo

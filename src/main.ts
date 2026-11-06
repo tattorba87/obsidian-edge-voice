@@ -43,6 +43,7 @@ import { DictationSession, DictationText } from "./dictation";
 import { captureMicrophone } from "./microphone";
 import { playDictationChime, playChime } from "./chime";
 import { clamp, isEngineId, savedSettings } from "./settings";
+import { openSettingsSection } from "./settings-navigation";
 import { startsReading, statusFor, toggleAction } from "./controls";
 import {
 	customKeyProblem,
@@ -104,7 +105,7 @@ interface ReaderSettings {
 
 const DEFAULT_SETTINGS: ReaderSettings = {
 	engineUpdateNotified: "",
-	dictationEnabled: false,
+	dictationEnabled: true,
 	dictationModelPath: "",
 	dictationModel: "medium",
 	dictationKey: DEFAULT_DICTATION_KEY,
@@ -291,7 +292,8 @@ export default class EdgeVoicePlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const saved = (await this.loadData()) as unknown;
 		// Only values of the right type are kept (see settings.ts); then what each must be.
-		const settings: ReaderSettings = { ...DEFAULT_SETTINGS, ...savedSettings(saved, DEFAULT_SETTINGS) };
+		const kept = savedSettings(saved, DEFAULT_SETTINGS);
+		const settings: ReaderSettings = { ...DEFAULT_SETTINGS, ...kept };
 		if (!isEngineId(settings.voice)) settings.voice = DEFAULT_SETTINGS.voice;
 		if (!isEngineId(settings.language)) settings.language = DEFAULT_SETTINGS.language;
 		if (!["pause", "visible", "always"].includes(settings.inBackground)) {
@@ -323,6 +325,11 @@ export default class EdgeVoicePlugin extends Plugin {
 			settings.dictationCustomKey = null;
 		if (!settings.dictationCustomKey && !DICTATION_KEY_PRESETS.includes(settings.dictationKey))
 			settings.dictationCustomKey = settings.dictationKey;
+		// New default must not take an existing user's reading shortcut away.
+		if (kept.dictationEnabled === undefined && kept.dictationKey === undefined && shortcutConflict(settings)) {
+			settings.dictationKey =
+				DICTATION_KEY_PRESETS.find((key) => key !== settings.doubleTapKey) ?? DEFAULT_DICTATION_KEY;
+		}
 		this.settings = settings;
 	}
 
@@ -704,7 +711,31 @@ export default class EdgeVoicePlugin extends Plugin {
 			return;
 		}
 		if (!this.settings.dictationEnabled) {
-			new Notice("Enable English dictation in Edge Voice settings first.");
+			const notice = new Notice(
+				createFragment((fragment) => {
+					fragment.createDiv({ text: "English dictation is turned off. Open its settings to enable it." });
+					fragment.createEl("button", {
+						text: "Open dictation settings",
+						cls: "mod-cta edge-voice-notice-button",
+					});
+				}),
+				10000,
+			);
+			this.registerDomEvent(
+				notice.messageEl,
+				"click",
+				() => {
+					notice.hide();
+					try {
+						this.register(
+							openSettingsSection(this.app, this.manifest.id, ".edge-voice-dictation-settings"),
+						);
+					} catch {
+						new Notice("Open settings → Edge Voice → English dictation to enable it.");
+					}
+				},
+				{ once: true },
+			);
 			return;
 		}
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -821,7 +852,11 @@ export default class EdgeVoicePlugin extends Plugin {
 		const faster = this.settings.fasterEngine && mlxSupported();
 		const voice = this.settings.voice;
 		new SetupModal(this.app, {
-			steps: setupSteps({ platform: process.platform, arch: process.arch, faster }, voice),
+			steps: setupSteps(
+				{ platform: process.platform, arch: process.arch, faster },
+				voice,
+				this.settings.dictationModel,
+			),
 			problem: this.engineSearch?.problem,
 			check: async () => {
 				const search = await this.checkEngine();
@@ -1290,6 +1325,7 @@ class ReaderSettingTab extends PluginSettingTab {
 			{
 				type: "group",
 				heading: "English dictation",
+				cls: "edge-voice-dictation-settings",
 				items: [
 					toggle(
 						"dictationEnabled",
@@ -1298,7 +1334,7 @@ class ReaderSettingTab extends PluginSettingTab {
 					),
 					{
 						name: "English streaming model",
-						desc: "Medium for accuracy; Small or Tiny for lighter computers. Changing the model requires its own download.",
+						desc: "Medium prioritizes word accuracy. Small and Tiny prioritize speed and lower resource use, with more recognition errors expected. Download each model before selecting it.",
 						control: {
 							type: "dropdown",
 							key: "dictationModel",

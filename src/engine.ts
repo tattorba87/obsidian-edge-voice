@@ -96,7 +96,7 @@ function engineTool(platform: string): string {
 }
 
 /** The setup steps for this computer, or null if there's no engine for it. */
-export function setupSteps(where: Platform, voice: string): Step[] | null {
+export function setupSteps(where: Platform, voice: string, dictationModel?: string): Step[] | null {
 	const file = requirementsFile(where);
 	if (!file) return null;
 	const windows = where.platform === "win32";
@@ -131,13 +131,25 @@ export function setupSteps(where: Platform, voice: string): Step[] | null {
 			link: `${RELEASE}/${file}`,
 		},
 		{
-			title: "Download a voice",
+			title: "Download a reading voice (optional)",
 			text:
 				`This downloads the voice ${voice} from Moonshine's server (download.moonshine.ai)` +
 				(faster ? ", and its files for the faster engine from Hugging Face" : "") +
-				". You can get more voices later; Edge Voice's settings show the command for each.",
+				". Skip this if you only want dictation. You can get more voices later in Edge Voice settings.",
 			command: voiceCommand(voice, faster, where.platform),
 		},
+		...(dictationModel
+			? [
+					{
+						title: "Download a dictation model (optional)",
+						text:
+							`For English speech-to-text, this downloads the ${dictationModel} streaming model from Moonshine (download.moonshine.ai), with SHA-256 verification. ` +
+							"Skip this if you only want reading aloud. Medium (269 MB) prioritizes word accuracy; Small (142 MB) and Tiny (45 MB) prioritize speed and lower resource use, with more recognition errors expected. " +
+							"Choose another model in Settings → Edge Voice → English dictation, then use its download command. After downloading, enable dictation and leave Custom model folder empty.",
+						command: modelCommand(dictationModel, where.platform),
+					},
+				]
+			: []),
 	];
 }
 

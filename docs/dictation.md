@@ -1,11 +1,11 @@
 # English dictation
 
-Write Markdown with your voice using Moonshine's local streaming speech recognition. Dictation and reading aloud run one at a time. Dictation starts disabled, including after updating an existing installation; no microphone permission is requested until you start it.
+Write Markdown with your voice using Moonshine's local streaming speech recognition. Dictation and reading aloud run one at a time. Dictation is enabled by default when no preference has been saved. A saved choice to turn it off is preserved. Recording starts only when you click the microphone or use its shortcut; no microphone permission is requested at startup.
 
 ## Set up
 
 1. Install the speech engine using the [README setup steps](../README.md#setup). Dictation needs **engine 0.4.0 or later**; an older compatible engine can still read aloud. You can skip the voice download if you only want dictation.
-2. Open **Settings → Edge Voice → English dictation**. Choose a model, then **Get the dictation model → Show command**. Run that command yourself in Terminal or PowerShell. The plugin never downloads anything.
+2. Open **Settings → Edge Voice → English dictation**. The **Set up the speech engine** window includes an optional model command too. Choose a model, then **Get the dictation model → Show command**. Run that command yourself in Terminal or PowerShell. The plugin never downloads anything.
 3. Turn on **Enable dictation**. Open a Markdown note in Source mode or Live Preview and put the cursor where you want the words.
 4. Click the microphone in the player bar. Grant Obsidian microphone access when your operating system asks. Wait for **Dictating** before speaking. Click the microphone again to finish and insert the final words.
 
@@ -27,17 +27,19 @@ The commands above target the standard installation. If **Advanced → Python pa
 
 ## Choose a model
 
-| English model    | Parameters  | Download | When to try it                                                         |
-| ---------------- | ----------- | -------- | ---------------------------------------------------------------------- |
-| Medium Streaming | 245 million | 269.1 MB | Default; try first for accuracy, also the family used by MoonshineFlow |
-| Small Streaming  | 123 million | 142.3 MB | Lighter alternative if Medium cannot keep up                           |
-| Tiny Streaming   | 34 million  | 45.2 MB  | Smallest download; expect more recognition errors                      |
+| English model    | Parameters  | Download | When to try it                                                                   |
+| ---------------- | ----------- | -------- | -------------------------------------------------------------------------------- |
+| Medium Streaming | 245 million | 269.1 MB | Prioritizes word accuracy; default, also the family used by MoonshineFlow        |
+| Small Streaming  | 123 million | 142.3 MB | Prioritizes speed and lower resource use over word accuracy                      |
+| Tiny Streaming   | 34 million  | 45.2 MB  | Prioritizes speed and the smallest footprint; expect the most recognition errors |
 
 All three are **MIT licensed**, explicitly including their weights, according to [Moonshine's versioned license](https://github.com/moonshine-ai/moonshine/blob/v0.1.5/LICENSE). Sizes are the pinned quantized ORT files, not runtime memory. Parameter counts come from [Moonshine's model documentation](https://moonshine-voice.readthedocs.io/en/latest/models/available-models/). These are model choices, not plugin accuracy benchmarks. Changing the dropdown does not download its model; run its command first.
 
 The original non-streaming Tiny/Base models are different and are not supported by this loader. No English Base Streaming checkpoint is offered. Other languages are not supported.
 
 **Apple silicon:** recognition uses Moonshine's native streaming runtime. **Faster voice engine** enables MLX for Kokoro TTS only; it does not change STT. An MLX STT adapter has not been implemented or validated. [MLX-Audio's Moonshine adapter](https://github.com/Blaizzy/mlx-audio/blob/main/mlx_audio/stt/models/moonshine/README.md) documents the original Tiny/Base family rather than these streaming models.
+
+If you previously turned dictation off, its notice has an **Open dictation settings** button; clicking the notice or button opens the English dictation section directly. Upgrading preserves that saved off preference, so enable it once there if needed.
 
 ## Controls and preferences
 

@@ -39,15 +39,19 @@ Opt-in English dictation beta for Obsidian BRAT. Stable Community users remain o
 
 In Obsidian, install BRAT and use **Add a beta plugin with frozen version based on a release tag**. Enter **tattorba87/obsidian-edge-voice** and select **${version}**. Try it in a separate test vault: it uses the same edge-voice plugin ID and replaces the plugin files in that vault.
 
+## Setup and preferences
+
+The speech-engine setup window and README list optional TTS voice and STT model commands for each platform. Medium prioritizes word accuracy; Small and Tiny prioritize speed and lower resource use, with more recognition errors expected. Dictation is enabled for new settings, while an existing off choice is preserved. The disabled notice opens English dictation settings directly.
+
 ## Set up the local engine
 
-BRAT updates the plugin only. Dictation requires **speech engine 0.4.0** and an English Tiny, Small or Medium streaming model. Follow [setup and update instructions](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/README.md#setup), then **Settings → Edge Voice → English dictation → Get the dictation model**. Run the shown command yourself and enable dictation. Existing TTS voices/settings are retained; dictation starts disabled.
+BRAT updates the plugin only. Dictation requires **speech engine 0.4.0** and an English Tiny, Small or Medium streaming model. Follow [setup and update instructions](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/README.md#setup), then **Settings → Edge Voice → English dictation → Get the dictation model**. Run the shown command yourself and enable dictation. Existing TTS voices/settings are retained; dictation is enabled by default for new settings; a saved off choice is retained.
 
 Click the microphone to start/finish, or double-tap Left Command (Left Ctrl elsewhere) to start and tap once to stop. TTS and STT run one at a time.
 
 ## Beta limits and checks
 
-English Markdown editing only. MLX accelerates TTS only. Automated checks passed locally: 234 unit tests, 83 Python tests, 52 Obsidian tests, production build and fresh packaged-engine offline TTS → STT → TTS. Additional workflow results are available in Actions. The real-engine demo uses a cleared recording routed as input; physical microphone permission/device behavior and sustained speech on every platform still need tester feedback. Partial text can change; stop and wait for final text before editing or switching notes.
+English Markdown editing only. MLX accelerates TTS only. Automated checks passed locally: unit/Python/Obsidian tests, production build and fresh packaged-engine offline TTS → STT → TTS. Additional workflow results are available in Actions. The real-engine demo uses a cleared recording routed as input; physical microphone permission/device behavior and sustained speech on every platform still need tester feedback. Partial text can change; stop and wait for final text before editing or switching notes.
 
 For rollback, select stable 0.1.5 explicitly in BRAT or reinstall stable, then remove beta tracking. Do not assume an automatic downgrade.
 
