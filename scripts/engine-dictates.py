@@ -46,7 +46,7 @@ def main():
             raise RuntimeError("Recognizer did not recover the smoke sentence")
         ask(op="load", voice=voice, language="en_us")
         ask(op="synth", text="Reading still works after dictation.", speed=1.0)
-        print("TTS → STT → TTS passed with managed model verification.")
+        print("TTS -> STT -> TTS passed with managed model verification.")
     finally:
         proc.stdin.close()
         try:

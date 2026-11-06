@@ -41,8 +41,12 @@ for line in sys.stdin:
 			await expect(sidecar.startDictation("/model", "medium")).rejects.toThrow("supports reading only");
 			await expect(sidecar.load("en_us", "any")).resolves.toMatchObject({ engine: "moonshine" });
 		} finally {
+			// Windows holds the working directory until the child process exits.
+			const proc = (sidecar as unknown as { proc?: ChildProcess } | undefined)?.proc;
+			const exited = proc && proc.exitCode === null && proc.signalCode === null ? once(proc, "exit") : undefined;
 			sidecar?.stop();
-			rmSync(dir, { recursive: true, force: true });
+			await exited;
+			rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
 		}
 	});
 	it("loads and synthesizes", async () => {
