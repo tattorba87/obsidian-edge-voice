@@ -74,6 +74,8 @@ interface ReaderSettings {
 	dictationDoubleTapEnabled: boolean;
 	dictationChime: boolean;
 	dictationSilence: number;
+	/** Which defaults these settings were saved with, for one-time migrations. */
+	settingsVersion: number;
 	dictationLowercase: boolean;
 
 	/** A Python with the engine installed, as a full path; empty means the one in ~/.edge-voice/engine. */
@@ -112,7 +114,8 @@ const DEFAULT_SETTINGS: ReaderSettings = {
 	dictationCustomKey: null,
 	dictationDoubleTapEnabled: true,
 	dictationChime: true,
-	dictationSilence: 10,
+	dictationSilence: 6,
+	settingsVersion: 2,
 	dictationLowercase: false,
 
 	pythonPath: "",
@@ -322,6 +325,9 @@ export default class EdgeVoicePlugin extends Plugin {
 		if (!settings.doubleTapCustomKey && !DOUBLE_TAP_PRESETS.includes(settings.doubleTapKey)) {
 			settings.doubleTapCustomKey = settings.doubleTapKey;
 		}
+		// 0.2.0 saved its default of 10 seconds; the default is now 6. A chosen value is kept from 0.2.1 on.
+		if (kept.settingsVersion === undefined && kept.dictationSilence === 10) settings.dictationSilence = 6;
+		settings.settingsVersion = DEFAULT_SETTINGS.settingsVersion;
 		settings.dictationSilence = clamp(settings.dictationSilence, 0, 300);
 		if (!["tiny", "small", "medium"].includes(settings.dictationModel)) settings.dictationModel = "medium";
 		if (!isDoubleTapKey(settings.dictationKey)) settings.dictationKey = DEFAULT_DICTATION_KEY;
@@ -773,10 +779,29 @@ export default class EdgeVoicePlugin extends Plugin {
 					this.settings.dictationLowercase,
 				);
 			},
+			finished: () => {
+				// Leave the cursor one space after the dictated words, ready to type or dictate on.
+				const place = text?.cursorAfter();
+				if (!place || !ownsTarget()) return;
+				if (place.insertSpace) editor.replaceRange(" ", editor.offsetToPos(place.at - 1));
+				editor.setCursor(editor.offsetToPos(place.at));
+				// Only if it's still the note in front: never pull you back from another tab.
+				if (this.app.workspace.getActiveViewOfType(MarkdownView) === view) editor.focus();
+			},
 			cancelled: () => new Notice("Dictation start cancelled."),
 			level: (level) => {
 				this.bar.setMicrophoneLevel(level);
 				this.dictationStatus?.setInputLevel(level);
+			},
+			done: (stopsIn) => {
+				this.bar.setDictationDone(stopsIn);
+				if (!session.recordingNow) return;
+				if (stopsIn === null) this.dictationStatus?.show("dictating", "Dictating");
+				else
+					this.dictationStatus?.show(
+						"done",
+						stopsIn > 0 ? `Done · stops in ${stopsIn} s` : "Done · tap to stop",
+					);
 			},
 			apply: (transcript) => {
 				if (!ownsTarget() || !text)

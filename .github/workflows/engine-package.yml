@@ -2,8 +2,7 @@ name: Engine package
 
 # People set up the engine themselves, with the steps Edge Voice shows
 # (src/engine.ts). This builds an engine release, serves it from localhost
-# (the repository's releases can't be downloaded anonymously while it's
-# private), and on every platform runs exactly those steps: create the
+# (so it tests this commit, not a published release), and on every platform runs exactly those steps: create the
 # engine's folder, install the engine hash-checked from wheels, download a
 # voice. Then it has the engine speak with the network cut off, which proves
 # the engine Edge Voice runs reads only what's on disk. It also checks changed
@@ -98,13 +97,14 @@ jobs:
     needs: build
     strategy:
       fail-fast: false
-      # While the repository is private, GitHub bills macOS minutes at 10x and
-      # Windows and ARM ones at 2x or more: pull requests then set up Linux x64
-      # only (scripts/check-engine-local.sh covers the Mac it's run on). A run
-      # started by hand, and every run once the repository is public, covers
-      # all six.
       matrix:
-        include: ${{ fromJSON(github.event.repository.private && github.event_name != 'workflow_dispatch' && '[{"steps":"linux-x64-false","runner":"ubuntu-latest"}]' || '[{"steps":"linux-x64-false","runner":"ubuntu-latest"},{"steps":"linux-arm64-false","runner":"ubuntu-24.04-arm"},{"steps":"win32-x64-false","runner":"windows-latest"},{"steps":"darwin-x64-false","runner":"macos-15-intel","tag":"macosx_13_0_x86_64"},{"steps":"darwin-arm64-false","runner":"macos-26","tag":"macosx_13_0_arm64"},{"steps":"darwin-arm64-false","runner":"macos-15","tag":"macosx_13_0_arm64"}]') }}
+        include:
+          - { steps: linux-x64-false, runner: ubuntu-latest }
+          - { steps: linux-arm64-false, runner: ubuntu-24.04-arm }
+          - { steps: win32-x64-false, runner: windows-latest }
+          - { steps: darwin-x64-false, runner: macos-15-intel, tag: macosx_13_0_x86_64 }
+          - { steps: darwin-arm64-false, runner: macos-26, tag: macosx_13_0_arm64 }
+          - { steps: darwin-arm64-false, runner: macos-15, tag: macosx_13_0_arm64 }
     runs-on: ${{ matrix.runner }}
     steps:
       # Whatever uv people have today, and no cache: a cached, already-verified
@@ -256,8 +256,6 @@ jobs:
   mlx:
     name: Faster engine set up and speaking offline (macos-15)
     needs: build
-    # macOS minutes: only once public, or when started by hand (see install).
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: macos-15
     steps:
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0

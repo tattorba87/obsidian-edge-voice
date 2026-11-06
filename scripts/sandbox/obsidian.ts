@@ -133,8 +133,13 @@ export class Sandbox {
 		}
 	}
 
-	/** The sandbox's HOME: links to your engine's heavy parts, or when fresh, an empty one of its own. */
-	prepareHome(fresh: boolean): string {
+	/**
+	 * The sandbox's HOME, its own and separate from yours: its engine, voices and
+	 * models live there (see `bun run sandbox:engine`), never in your ~/.edge-voice.
+	 * When fresh, an empty one, as for a new user. Only `shareYourEngine` (the TTS demo
+	 * recorder) links to your engine's heavy parts instead of installing its own.
+	 */
+	prepareHome(fresh: boolean, shareYourEngine = false): string {
 		const { home, freshHome } = this.paths;
 		if (fresh) {
 			rmSync(freshHome, { recursive: true, force: true });
@@ -142,6 +147,7 @@ export class Sandbox {
 			return freshHome;
 		}
 		mkdirSync(home, { recursive: true });
+		if (!shareYourEngine) return home;
 		for (const { path, target } of engineLinks(homedir(), home, process.platform, existsSync)) {
 			const current = lstatSync(path, { throwIfNoEntry: false });
 			if (current?.isSymbolicLink() && readlinkSync(path) === target) continue;
@@ -163,18 +169,22 @@ export class Sandbox {
 		writeFileSync(file, JSON.stringify({ ...saved, ...profileConfig(this.paths.vault, Date.now()) }));
 	}
 
-	/** The plugin's interpreter for this start: `python` (remembered), none when fresh. */
+	/**
+	 * The plugin's interpreter for this start: `python` if given, for this start only;
+	 * otherwise none, so the plugin uses the engine in the sandbox's own HOME. Nothing is
+	 * remembered, so the sandbox never drifts back onto an engine outside it.
+	 */
 	prepareSettings(fresh: boolean, python: string | undefined): void {
-		if (python) {
-			const path = resolve(python);
-			if (!existsSync(path)) throw new SandboxError(`no Python at ${path}.`);
-			writeFileSync(this.paths.python, path);
+		let chosen: string | null = null;
+		if (python && !fresh) {
+			chosen = resolve(python);
+			if (!existsSync(chosen)) throw new SandboxError(`no Python at ${chosen}.`);
 		}
-		const remembered =
-			!fresh && existsSync(this.paths.python) ? readFileSync(this.paths.python, "utf8").trim() : null;
+		// An older sandbox remembered its last --python here; forget it.
+		rmSync(this.paths.python, { force: true });
 		const file = join(this.paths.plugin, "data.json");
 		const saved = existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>) : null;
-		writeFileSync(file, JSON.stringify(pluginSettings(saved, remembered), null, 2));
+		writeFileSync(file, JSON.stringify(pluginSettings(saved, chosen), null, 2));
 	}
 
 	/** Starts the sandbox Obsidian with `home` as HOME (plus `env`), and waits until community plugins are on. */

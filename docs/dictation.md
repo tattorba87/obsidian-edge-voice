@@ -48,7 +48,9 @@ If you previously turned dictation off, its notice has an **Open dictation setti
 - **Feedback:** the player has the same processing glow as TTS through startup, recording and finalization. The microphone glow and three status-bar bars follow input volume and return to zero when quiet. **Dictating** means capture is active; **Finishing dictation…** means capture has stopped and queued audio/final text is still being processed. Text can continue changing during this final step.
 - **Dictation sounds:** optional start/stop sounds, separate from the reading shortcut sounds. Dictation starts capture after its start sound finishes.
 - **Lowercase dictation:** lowercases recognizer output. Otherwise capitalization and punctuation are preserved. It does not add Markdown formatting, spoken commands or an LLM rewrite.
-- **Stop after silence:** default 10 seconds, maximum 300; set 0 to turn it off. This measures time since the **transcript last changed**, as in MoonshineFlow, rather than acoustic silence. Slow recognition or unrecognized speech can therefore stop early. Casing and timeout settings apply next session.
+- **Starting:** the microphone records as soon as you press it; words spoken while the recognizer loads (about 2 seconds for Medium) appear once it's ready. When dictation stops, the cursor is one space after the dictated words.
+- **Done indicator:** once everything you said has been recognized and the text hasn't changed for a second, the microphone pulses with a green ring and the status bar shows **Done · stops in N s** (or **Done · tap to stop** when automatic stopping is off). It's safe to stop then: nothing more is coming. Speaking again returns to **Dictating**.
+- **Stop after silence:** default 6 seconds, maximum 300; set 0 to turn it off. This measures time since the **transcript last changed**, as in MoonshineFlow, rather than acoustic silence. Slow recognition or unrecognized speech can therefore stop early. Casing and timeout settings apply next session.
 
 ## Working in a note
 
@@ -88,4 +90,4 @@ On Windows use the executable shown in the setup command. Stop dictation before 
 | Mic is grey                       | Stop reading, including paused playback, before starting dictation.                                                                  |
 | Words keep changing after Stop    | Capture has ended; wait for finalization before editing or switching the note.                                                       |
 
-For a safe test environment see [development setup](experimental-dictation.md); for existing users see [updating the plugin and engine](../README.md#updating-the-plugin-and-speech-engine).
+For a safe test environment see [the sandbox](../CONTRIBUTING.md#the-sandbox); for existing users see [updating the plugin and engine](../README.md#updating-the-plugin-and-speech-engine).

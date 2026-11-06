@@ -378,18 +378,20 @@ body.theme-dark {
 
 /* Every row keeps a readable description: when its buttons don't fit beside the
    text, they move onto their own line underneath instead of squeezing it into a
-   narrow column. */
-.edge-voice-settings .setting-item:not(.setting-item-heading) {
+   narrow column. Get another voice lays itself out as a column below and is left alone. */
+.edge-voice-settings .setting-item:not(.setting-item-heading, .edge-voice-download-setting) {
 	flex-wrap: wrap;
 	row-gap: 10px;
 }
 
-.edge-voice-settings .setting-item:not(.setting-item-heading) > .setting-item-info {
-	flex: 1 1 18rem;
+.edge-voice-settings .setting-item:not(.setting-item-heading, .edge-voice-download-setting) > .setting-item-info {
+	/* Basis 0, not 18rem: Obsidian stacks rows as a column in narrow panes, where a basis
+	   is a height. min-width still keeps the text at least 18rem wide. */
+	flex: 1 1 0;
 	min-width: min(18rem, 100%);
 }
 
-.edge-voice-settings .setting-item:not(.setting-item-heading) > .setting-item-control {
+.edge-voice-settings .setting-item:not(.setting-item-heading, .edge-voice-download-setting) > .setting-item-control {
 	flex: 0 1 auto;
 	flex-wrap: wrap;
 	max-width: 100%;
@@ -672,5 +674,71 @@ body.theme-dark {
 	}
 	.edge-voice-bar.edge-voice-recording .edge-voice-microphone svg {
 		filter: none;
+	}
+}
+
+/* Dictation done: everything heard is recognized and it's only waiting to stop.
+   A green ring pings outward from the microphone, unlike the voice glow, and the
+   status bars turn green and blink in time with it. */
+.edge-voice-bar.edge-voice-recording.edge-voice-dictation-done .edge-voice-microphone {
+	position: relative;
+	color: var(--text-on-accent);
+	background: rgba(var(--color-green-rgb), 0.9);
+	box-shadow: 0 0 10px rgba(var(--color-green-rgb), 0.55);
+}
+
+.edge-voice-bar.edge-voice-recording.edge-voice-dictation-done .edge-voice-microphone svg {
+	filter: none;
+}
+
+.edge-voice-bar.edge-voice-dictation-done .edge-voice-microphone::after {
+	content: "";
+	position: absolute;
+	inset: -3px;
+	border-radius: inherit;
+	border: 2px solid rgba(var(--color-green-rgb), 0.9);
+	pointer-events: none;
+	animation: edge-voice-done-ping 1.4s ease-out infinite;
+}
+
+@keyframes edge-voice-done-ping {
+	0% {
+		transform: scale(1);
+		opacity: 0.9;
+	}
+	80%,
+	100% {
+		transform: scale(1.8);
+		opacity: 0;
+	}
+}
+
+.edge-voice-status[data-state="done"] .edge-voice-eq-bar {
+	background-color: rgb(var(--color-green-rgb));
+	transform: scaleY(0.6);
+	animation: edge-voice-done-blink 1.4s ease-in-out infinite;
+}
+
+.edge-voice-status[data-state="done"] .edge-voice-status-text {
+	color: rgb(var(--color-green-rgb));
+}
+
+@keyframes edge-voice-done-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.edge-voice-bar.edge-voice-dictation-done .edge-voice-microphone::after {
+		animation: none;
+		opacity: 1;
+	}
+	.edge-voice-status[data-state="done"] .edge-voice-eq-bar {
+		animation: none;
 	}
 }

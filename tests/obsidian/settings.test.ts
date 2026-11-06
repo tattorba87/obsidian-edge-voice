@@ -247,13 +247,21 @@ describe("Edge Voice settings in Obsidian", () => {
 		}
 	});
 
-	it("never squeezes a row's description into a narrow column beside its buttons", async () => {
+	it("never squeezes a row's description beside its buttons, nor leaves an empty gap", async () => {
 		// Reported on Storage → Downloaded voices: two wide buttons left the text one word wide.
 		await until(() => run<boolean>(`return window.edgeVoiceTab.storage.status === "done";`));
 		run(`window.edgeVoiceTab.display();`);
 		await until(() => run<boolean>(`return !!${SETTING("Downloaded voices")};`));
 		const rows = run<
-			{ name: string; theme: string; width: number; description: number; row: number; overflow: number }[]
+			{
+				name: string;
+				theme: string;
+				width: number;
+				gap: number;
+				description: number;
+				row: number;
+				overflow: number;
+			}[]
 		>(`
 			const tab = window.edgeVoiceTab.containerEl;
 			const originalStyle = tab.style.cssText;
@@ -270,9 +278,13 @@ describe("Edge Voice settings in Obsidian", () => {
 							const description = item.querySelector(".setting-item-description");
 							if (!description || !description.textContent.trim() || !item.getClientRects().length) continue;
 							const box = item.getBoundingClientRect();
+							const info = item.querySelector(".setting-item-info");
+							const name = item.querySelector(".setting-item-name");
 							rows.push({
-								name: item.querySelector(".setting-item-name")?.textContent ?? "",
+								name: name?.textContent ?? "",
 								theme, width,
+								// The text area holds the name and description; anything more is an empty gap.
+								gap: info.getBoundingClientRect().height - description.getBoundingClientRect().height - (name?.getBoundingClientRect().height ?? 0),
 								description: description.getBoundingClientRect().width,
 								row: box.width,
 								overflow: Math.max(0, ...[...item.querySelectorAll("button, select, input, .setting-item-description")]
@@ -290,7 +302,10 @@ describe("Edge Voice settings in Obsidian", () => {
 			return rows;
 		`);
 		expect(rows.some((row) => row.name === "Downloaded voices")).toBe(true);
+		expect(rows.some((row) => row.name === "Get another voice")).toBe(true);
 		for (const row of rows) {
+			// 0.2.0 left Get another voice with a tall empty gap above its controls.
+			expect(row.gap, JSON.stringify(row)).toBeLessThanOrEqual(40);
 			expect(row.description, JSON.stringify(row)).toBeGreaterThanOrEqual(Math.min(240, row.row * 0.7));
 			expect(row.overflow, JSON.stringify(row)).toBeLessThanOrEqual(1);
 		}

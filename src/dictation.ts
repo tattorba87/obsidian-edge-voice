@@ -37,10 +37,23 @@ export class DictationText {
 		this.expected = this.prefix + text + this.suffix;
 		return change;
 	}
+
+	/**
+	 * Where to leave the cursor once dictation ends: one space after the dictated words,
+	 * and the space to add first if there isn't one (null if nothing was dictated).
+	 */
+	cursorAfter(): { at: number; insertSpace: boolean } | null {
+		if (!this.inserted) return null;
+		const end = this.from + this.inserted.length;
+		if (/\s$/.test(this.inserted)) return { at: end, insertSpace: false };
+		if (this.suffix.startsWith(" ")) return { at: end + 1, insertSpace: false };
+		return { at: end + 1, insertSpace: true };
+	}
 }
 
 export interface DictationBackend {
-	startDictation(path: string, model: string): Promise<void>;
+	/** Loads the model; calls `supported` as soon as the engine confirms it can dictate, before the slow load. */
+	startDictation(path: string, model: string, supported?: () => void): Promise<void>;
 	dictationAudio(samples: Float32Array, sampleRate: number): Promise<string>;
 	stopDictation(): Promise<string>;
 	stop(): void;
@@ -56,15 +69,25 @@ export interface DictationOptions {
 	capture: (receive: (samples: Float32Array, rate: number) => void, ended: () => void) => Promise<Microphone>;
 	apply: (text: string) => void;
 	ready?: () => void;
+	/** After the final text is in: e.g. to put the cursor after it. */
+	finished?: () => void;
 	cancelled?: () => void;
 	state: (state: DictationState) => void;
 	level?: (level: number) => void;
+	/**
+	 * The recognized text is done and dictation is only waiting: seconds until the
+	 * automatic stop (0 if it's off), or null once speech or recognition resumes.
+	 */
+	done?: (stopsIn: number | null) => void;
 	error: (message: string) => void;
 	chime: (recording: boolean) => Promise<void> | void;
 	setTimer: (run: () => void, ms: number) => number;
 	clearTimer: (id: number) => void;
 	now: () => number;
 }
+
+/** How long the transcript must stay unchanged, with recognition keeping up, to count as done. */
+export const DONE_AFTER_MS = 1000;
 
 /** One bounded audio queue, one request at a time; cancellation invalidates late results. */
 export class DictationSession {
@@ -80,16 +103,28 @@ export class DictationSession {
 	private lastSpeech = 0;
 	private transcript = "";
 	private stopping = false;
+	/** The recognizer's model load, which runs while the microphone already records. */
+	private loading?: Promise<void>;
+	private loaded = false;
 
 	constructor(private readonly options: DictationOptions) {}
 
 	async start(path: string, model: string, silenceSeconds: number): Promise<void> {
 		if (this.active) return;
 		this.active = true;
+		this.loaded = false;
 		const generation = ++this.generation;
 		this.options.state("starting");
 		try {
-			await this.options.backend.startDictation(path, model);
+			// The engine first says whether it can dictate (a fraction of a second), so an old
+			// engine never asks for the microphone. Then the microphone opens at once while the
+			// model loads, and what you say meanwhile is kept and recognized once it's ready.
+			let supported!: () => void;
+			const canDictate = new Promise<void>((done) => (supported = done));
+			const loading = this.options.backend.startDictation(path, model, supported);
+			this.loading = loading;
+			loading.catch(() => undefined);
+			await Promise.race([canDictate, loading]);
 			if (generation !== this.generation) return;
 			const microphone = await this.options.capture(
 				(samples, rate) => this.receive(samples, rate),
@@ -108,14 +143,43 @@ export class DictationSession {
 			this.microphone.start?.();
 			this.lastSpeech = this.options.now();
 			this.options.state("recording");
-			if (silenceSeconds > 0) {
-				const check = () => {
-					if (!this.recording) return;
-					if (this.options.now() - this.lastSpeech >= silenceSeconds * 1000) void this.finish();
-					else this.timer = this.options.setTimer(check, 250);
-				};
+			void loading.then(
+				() => {
+					if (generation !== this.generation) return;
+					this.loaded = true;
+					// The silence countdown starts once words can be recognized.
+					this.lastSpeech = this.options.now();
+					this.pump();
+				},
+				(error: Error) => {
+					if (generation === this.generation) this.fail(error.message);
+				},
+			);
+			// Every quarter second: auto-stop after silence, and say when the text is done.
+			let shown: number | null = null;
+			const check = () => {
+				if (!this.recording) return;
+				const quiet = this.options.now() - this.lastSpeech;
+				if (this.loaded && silenceSeconds > 0 && quiet >= silenceSeconds * 1000) {
+					void this.finish();
+					return;
+				}
+				// Done: words recognized, unchanged for a moment, and recognition keeping up. It
+				// ends only when the words change, so the countdown runs on without flickering
+				// while the microphone keeps sending silence.
+				const done = this.loaded && this.transcript !== "" && quiet >= DONE_AFTER_MS && this.queued < this.rate;
+				const next = !done
+					? null
+					: silenceSeconds > 0
+						? Math.max(1, Math.ceil(silenceSeconds - quiet / 1000))
+						: 0;
+				if (next !== shown) {
+					shown = next;
+					this.options.done?.(next);
+				}
 				this.timer = this.options.setTimer(check, 250);
-			}
+			};
+			this.timer = this.options.setTimer(check, 250);
 		} catch (error) {
 			if (generation === this.generation) this.fail((error as Error).message);
 		}
@@ -135,7 +199,7 @@ export class DictationSession {
 	}
 
 	private pump(): void {
-		if (this.pending || !this.queued || !this.active) return;
+		if (this.pending || !this.queued || !this.active || !this.loaded) return;
 		const audio = new Float32Array(Math.min(this.queued, this.rate * 2));
 		let offset = 0;
 		while (offset < audio.length) {
@@ -184,6 +248,12 @@ export class DictationSession {
 		this.options.state("stopping");
 		void this.options.chime(false);
 		try {
+			// Stopped while the model was still loading: what was said is recognized once it's ready.
+			if (!this.loaded) {
+				await this.loading;
+				if (generation !== this.generation) return;
+				this.loaded = true;
+			}
 			while (this.pending || this.queued) {
 				this.pump();
 				await this.pending;
@@ -192,6 +262,7 @@ export class DictationSession {
 			const text = await this.options.backend.stopDictation();
 			if (generation !== this.generation) return;
 			this.options.apply(text);
+			this.options.finished?.();
 			this.cancel();
 		} catch (error) {
 			if (generation === this.generation) this.fail((error as Error).message);
@@ -206,14 +277,22 @@ export class DictationSession {
 		this.queue = [];
 		this.queued = 0;
 		this.pending = undefined;
+		this.loading = undefined;
+		this.loaded = false;
 		this.transcript = "";
 		this.options.backend.stop();
 		this.options.state("idle");
 	}
 
+	/** True while the microphone is open and recording (not starting or finishing). */
+	get recordingNow(): boolean {
+		return this.recording;
+	}
+
 	private releaseMicrophone(): void {
 		this.recording = false;
 		this.options.level?.(0);
+		this.options.done?.(null);
 		this.microphone?.stop();
 		this.microphone = undefined;
 		if (this.timer !== undefined) this.options.clearTimer(this.timer);

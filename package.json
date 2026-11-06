@@ -20,7 +20,8 @@
 		"sandbox:errors": "bun scripts/sandbox/main.ts errors",
 		"release": "bun scripts/version-bump.mjs",
 		"prepare": "lefthook install || true",
-		"package:beta": "bun scripts/package-beta.ts"
+		"package:beta": "bun scripts/package-beta.ts",
+		"sandbox:engine": "bun scripts/sandbox/engine.ts"
 	},
 	"license": "MIT",
 	"packageManager": "bun@1.4.3",

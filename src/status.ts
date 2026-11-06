@@ -1,5 +1,5 @@
 /** What the status-bar indicator shows. */
-export type StatusKind = "hidden" | "busy" | "download" | "playing" | "paused" | "dictating";
+export type StatusKind = "hidden" | "busy" | "download" | "playing" | "paused" | "dictating" | "done";
 
 /**
  * The status-bar item: an animated indicator and a line of text. A spinner

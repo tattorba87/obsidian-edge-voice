@@ -4,8 +4,6 @@
 
 **Local text-to-speech (TTS) and English dictation (STT) for Obsidian: read notes and PDFs aloud, or write Markdown with your voice.**
 
-> Release preparation: this checkout targets plugin **0.2.0** and engine **0.4.0**, for the upcoming stable release. Opt-in prereleases are listed on the [GitHub releases page](https://github.com/tattorba87/obsidian-edge-voice/releases); the stable Community version remains TTS-only. For testing before publication, use the [isolated development setup](docs/experimental-dictation.md).
-
 **Free. Private.** Free and open source (MIT), with no account, no subscription and no limits. Speech synthesis and recognition run on your own computer: your notes and microphone audio stay local, and once it's set up it works offline.
 
 ![Edge Voice reading a note aloud in Obsidian, highlighting the sentence and the word being spoken](docs/media/demo.gif)
@@ -37,8 +35,6 @@ English only for now. Obsidian desktop only (macOS, Windows, Linux); not on phon
 Enable **Settings → Edge Voice → English dictation**, download one English model with the command it shows, and click the microphone to start or finish. Double-tap **Left ⌘** on Mac (**Left Ctrl** elsewhere) to start, and tap once to stop. The reading shortcut uses the right key by default; both have the same preset/custom picker and reject conflicts. The player keeps its layout: reading controls grey out during dictation, and the mic greys out during reading. The processing glow stays on until the final text arrives; the microphone glow and three **Dictating** status bars follow your voice and fall to zero when quiet.
 
 Optional sounds, lowercase output and a configurable inactivity timeout are in the same settings group. Dictation works in Source mode and Live Preview, one mode at a time with TTS. [Full setup, models, controls, limitations and troubleshooting](docs/dictation.md).
-
-For opt-in beta testing through Obsidian's BRAT plugin, see [beta setup and release preparation](docs/beta-testing.md). Use the exact beta tag offered through GitHub releases.
 
 ## Is it safe?
 
@@ -133,7 +129,7 @@ What these do:
 - `voices get` downloads a TTS voice (see [Voices](#voices)), checking every file against its fingerprint.
 - `models get medium` downloads the English streaming STT model, verifies each file against its size and SHA-256 fingerprint, and stores it in `~/.edge-voice/models/`. It is separate from TTS voices.
 
-**Check again verifies the engine installation**, not downloaded models or microphone permissions. Once dictation is enabled, click the mic and grant access when prompted. Existing installations need engine **0.4.0** for STT; BRAT does not update Python. See [engine updates](#updating-the-plugin-and-speech-engine).
+**Check again verifies the engine installation**, not downloaded models or microphone permissions. Once dictation is enabled, click the mic and grant access when prompted. Existing installations need engine **0.4.0** for STT; updating the plugin doesn't update Python. See [engine updates](#updating-the-plugin-and-speech-engine).
 
 Everything goes into `~/.edge-voice` (about 100 MB for the engine, a few hundred MB more with the faster engine) and Moonshine's voice folder (see [Files outside your vault](#files-outside-your-vault)). Nothing runs at login. To remove it all, delete those folders.
 
@@ -177,7 +173,7 @@ You can check the installed engine version directly:
 & "$HOME\.edge-voice\engine\Scripts\python.exe" -I -m edge_voice_engine --version
 ```
 
-**Updating from the TTS-only release:** your voice, speed, shortcuts and downloaded voices are kept. An existing choice to turn dictation off is retained. To enable it, update the engine to 0.4.0, get a model under English dictation, then enable the feature. TTS still works with compatible engine 0.3.0, but that engine cannot dictate. ASR models also live outside the Python environment and survive a normal engine update. A changed model manifest can require rerunning its download command; a missing or damaged file is reported before loading it.
+**Updating from the TTS-only release:** your voice, speed, shortcuts and downloaded voices are kept, and dictation stays off until you turn it on. To use it, update the engine to 0.4.0, get a model under English dictation, then enable the feature. TTS still works with compatible engine 0.3.0, but that engine cannot dictate. ASR models also live outside the Python environment and survive a normal engine update. A changed model manifest can require rerunning its download command; a missing or damaged file is reported before loading it.
 
 ### Development
 

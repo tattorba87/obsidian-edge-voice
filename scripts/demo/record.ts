@@ -78,7 +78,7 @@ async function main(): Promise<void> {
 	writeFileSync(join(sandbox.paths.vault, `${NOTE_NAME}.md`), NOTE);
 	if (DEMO_PDF) copyFileSync(DEMO_PDF, join(sandbox.paths.vault, PDF_PATH));
 	sandbox.prepareProfile();
-	const home = sandbox.prepareHome(false);
+	const home = sandbox.prepareHome(false, true);
 	sandbox.prepareSettings(false, PYTHON);
 	const settings = join(sandbox.paths.plugin, "data.json");
 	writeFileSync(

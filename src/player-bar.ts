@@ -226,6 +226,7 @@ export class PlayerBar {
 		this.microphoneButton.setAttribute("aria-label", active ? "Stop dictation" : "Start dictation");
 		this.microphoneButton.setAttribute("aria-pressed", String(active));
 		this.el.toggleClass("edge-voice-recording", state === "recording");
+		if (state !== "recording") this.el.removeClass("edge-voice-dictation-done");
 		if (state === "recording") this.animateMicrophone();
 		else {
 			if (this.meterFrame !== undefined) window.cancelAnimationFrame(this.meterFrame);
@@ -234,6 +235,26 @@ export class PlayerBar {
 			this.el.setCssProps({ "--edge-voice-mic-level": "0" });
 		}
 		this.refreshVisibility();
+	}
+
+	/**
+	 * Recognition has caught up and dictation is only waiting to stop: a pulsing
+	 * green ring on the microphone. `stopsIn` is seconds to the automatic stop (0: none);
+	 * null when speech or recognition resumes.
+	 */
+	setDictationDone(stopsIn: number | null): void {
+		const done = stopsIn !== null && this.dictationState === "recording";
+		this.el.toggleClass("edge-voice-dictation-done", done);
+		this.microphoneButton.setAttribute(
+			"aria-label",
+			!done
+				? this.dictationState === "idle"
+					? "Start dictation"
+					: "Stop dictation"
+				: stopsIn > 0
+					? `Text done. Dictation stops in ${stopsIn} seconds; click to stop now`
+					: "Text done. Click to stop dictation",
+		);
 	}
 
 	setMicrophoneLevel(level: number): void {
