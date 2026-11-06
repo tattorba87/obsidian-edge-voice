@@ -16,6 +16,8 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ### Fixed
 
+- The Get another voice instructions and download command keep their full width when a voice is selected; its controls wrap in narrow settings panels.
+
 - Speech-engine setup now includes the optional English STT model command beside the optional TTS voice command. README Setup lists both for every platform and explains model speed/accuracy choices.
 
 - The player keeps the same controls for reading and dictation, disables the unavailable mode, and uses the TTS processing glow through dictation finalization. The microphone and three Dictating bars follow input volume and fall to zero when quiet.

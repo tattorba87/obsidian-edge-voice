@@ -187,6 +187,66 @@ describe("Edge Voice settings in Obsidian", () => {
 		expect(errors()).toEqual([]);
 	});
 
+	it("keeps voice download instructions readable after selection in narrow settings and both themes", () => {
+		const layouts = run<
+			{
+				theme: string;
+				width: number;
+				description: number;
+				row: number;
+				overflow: number;
+				command: string;
+				commandVisible: boolean;
+			}[]
+		>(`
+			const tab = window.edgeVoiceTab.containerEl;
+			const more = ${SETTING("Get another voice")};
+			const select = more.querySelector("select");
+			const originalStyle = tab.style.cssText;
+			const originalTheme = document.body.className;
+			const layouts = [];
+			try {
+				for (const theme of ["theme-light", "theme-dark"]) {
+					document.body.classList.remove("theme-light", "theme-dark");
+					document.body.classList.add(theme);
+					for (const width of [700, 480, 360]) {
+						tab.style.width = width + "px";
+						for (const voice of ["", "kokoro_bf_emma"]) {
+							select.value = voice;
+							select.dispatchEvent(new Event("change"));
+							await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
+							layouts.push({
+								theme, width,
+								description: more.querySelector(".setting-item-description").getBoundingClientRect().width,
+								row: more.getBoundingClientRect().width,
+								// Obsidian keeps an invisible, unconstrained select to measure labels.
+								// Check the visible UI rather than that measurement helper.
+								overflow: Math.max(0, ...[more.querySelector(".setting-item-description"),
+									select, ...more.querySelectorAll("button"), more.querySelector("code")]
+									.filter(el => el.getClientRects().length > 0)
+									.map(el => Math.max(el.getBoundingClientRect().right - more.getBoundingClientRect().right,
+										el === select ? 0 : el.scrollWidth - el.clientWidth))),
+								command: more.querySelector("code").textContent,
+								commandVisible: more.querySelector("code").getClientRects().length > 0,
+							});
+						}
+					}
+				}
+			} finally {
+				tab.style.cssText = originalStyle;
+				document.body.className = originalTheme;
+				select.value = "";
+				select.dispatchEvent(new Event("change"));
+			}
+			return layouts;
+		`);
+		for (const layout of layouts) {
+			expect(layout.description, JSON.stringify(layout)).toBeGreaterThanOrEqual(Math.min(300, layout.row * 0.8));
+			expect(layout.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(1);
+			expect(layout.commandVisible).toBe(Boolean(layout.command));
+		}
+	});
+
 	it("says why when the voice list can't be had, without freezing Obsidian", () => {
 		// As for someone whose engine isn't set up yet. This used to hang Obsidian at 100% CPU:
 		// the failure path returned a Setting, whose then() method a promise keeps calling.

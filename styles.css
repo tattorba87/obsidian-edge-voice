@@ -376,6 +376,38 @@ body.theme-dark {
 	font-size: var(--font-ui-smaller);
 }
 
+/* Long voice labels and download commands need the full settings width. */
+.setting-item.edge-voice-download-setting {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 12px;
+}
+
+.edge-voice-download-setting > .setting-item-info {
+	min-width: 0;
+	margin-inline-end: 0;
+}
+
+.edge-voice-download-setting > .setting-item-control {
+	min-width: 0;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+}
+
+.edge-voice-download-setting select.dropdown {
+	flex: 1 1 16rem;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.edge-voice-download-setting .edge-voice-command {
+	margin-top: 8px;
+}
+
+.edge-voice-download-setting .edge-voice-command[hidden] {
+	display: none;
+}
+
 .edge-voice-notice-button {
 	margin-top: 8px;
 }

@@ -1522,6 +1522,7 @@ class ReaderSettingTab extends PluginSettingTab {
 	 * command that downloads the one picked (to copy), and Check again.
 	 */
 	private anotherVoice(setting: Setting, catalog: VoiceInfo[], downloadable: string[], refresh: () => void): void {
+		setting.settingEl.addClass("edge-voice-download-setting");
 		const samples = setting.descEl.createDiv();
 		samples.appendText("Voice licenses vary; some Piper voices have noncommercial terms. ");
 		samples.createEl("a", {
