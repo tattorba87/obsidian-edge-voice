@@ -18,7 +18,9 @@ function harness() {
 	let now = 0;
 	const microphone = { start: vi.fn(), stop: vi.fn() };
 	const backend = {
-		startDictation: vi.fn<(path: string, model: string) => Promise<void>>(async () => {}),
+		startDictation: vi.fn<(path: string, model: string, supported?: () => void) => Promise<void>>(
+			async (_path, _model, supported) => supported?.(),
+		),
 		dictationAudio: vi.fn<(samples: Float32Array, rate: number) => Promise<string>>(async () => "Hello"),
 		stopDictation: vi.fn(async () => "Hello there."),
 		stop: vi.fn(),
@@ -34,6 +36,8 @@ function harness() {
 		state: vi.fn(),
 		ready: vi.fn(),
 		cancelled: vi.fn(),
+		finished: vi.fn(),
+		done: vi.fn<(stopsIn: number | null) => void>(),
 		error: vi.fn(),
 		chime: vi.fn<(recording: boolean) => Promise<void> | void>(),
 		setTimer: vi.fn((run: () => void) => {
@@ -78,6 +82,22 @@ describe("Dictation text ownership", () => {
 		expect(text.update("safe", "Hello")).toEqual({ from: 4, to: 4, text: " Hello" });
 		expect(() => text.update("safe edited Hello", "New text")).toThrow("edited");
 		expect(() => text.update("safe", "New text")).toThrow("edited");
+	});
+});
+
+describe("Cursor after dictation", () => {
+	it("goes one space after the dictated words, adding the space only when needed", () => {
+		const atEnd = new DictationText("Notes: ", 7, 7, false);
+		atEnd.update("Notes: ", "Hello there.");
+		expect(atEnd.cursorAfter()).toEqual({ at: 7 + "Hello there.".length + 1, insertSpace: true });
+		const beforeSpace = new DictationText("A  B", 2, 2, false);
+		beforeSpace.update("A  B", "words");
+		expect(beforeSpace.cursorAfter()).toEqual({ at: 2 + "words".length + 1, insertSpace: false });
+		// Before a word, the inserted text already ends with the separating space.
+		const beforeWord = new DictationText("A B", 2, 2, false);
+		beforeWord.update("A B", "new");
+		expect(beforeWord.cursorAfter()).toEqual({ at: 2 + "new ".length, insertSpace: false });
+		expect(new DictationText("", 0, 0, false).cursorAfter()).toBeNull();
 	});
 });
 
@@ -176,8 +196,117 @@ describe("Dictation session", () => {
 		expect(h.session.active).toBe(false);
 		const off = harness();
 		await off.session.start("/model", "tiny", 0);
-		expect(off.options.setTimer).not.toHaveBeenCalled();
+		off.timeout(10 * 60_000);
+		expect(off.session.active).toBe(true);
 		off.session.cancel();
+	});
+
+	it("says when the text is done and counts down to the automatic stop", async () => {
+		const h = harness();
+		await h.session.start("/model", "medium", 6);
+		// Nothing said yet: listening, not done.
+		h.timeout(2000);
+		expect(h.options.done).not.toHaveBeenCalled();
+		h.audio();
+		await tick();
+		h.timeout(2500); // "Hello" arrived at 2000: changed half a second ago.
+		expect(h.options.done).not.toHaveBeenCalled();
+		h.timeout(3500); // Unchanged for 1.5 s, all audio recognized.
+		expect(h.options.done).toHaveBeenLastCalledWith(5);
+		h.timeout(5000);
+		expect(h.options.done).toHaveBeenLastCalledWith(3);
+		// Speaking again: the new words arrive, so it's no longer done.
+		h.backend.dictationAudio.mockResolvedValueOnce("Hello again");
+		h.audio();
+		await tick();
+		h.timeout(5100);
+		expect(h.options.done).toHaveBeenLastCalledWith(null);
+		h.timeout(6500);
+		expect(h.options.done).toHaveBeenLastCalledWith(5);
+		await h.session.finish();
+		expect(h.options.done).toHaveBeenLastCalledWith(null);
+	});
+
+	it("keeps counting down while silence is still being sent, without flicking back to dictating", async () => {
+		const h = harness();
+		await h.session.start("/model", "medium", 6);
+		h.timeout(2000);
+		h.audio();
+		await tick();
+		h.timeout(3500); // "Hello" arrived at 2000.
+		expect(h.options.done).toHaveBeenLastCalledWith(5);
+		// The microphone keeps sending silence: a request is in flight at the next checks,
+		// and the recognizer answers with the same words.
+		h.backend.dictationAudio.mockImplementation(() => new Promise(() => undefined));
+		h.audio();
+		h.timeout(3750);
+		h.timeout(4600);
+		expect(h.options.done.mock.calls.map(([value]) => value)).toEqual([5, 4]);
+		h.session.cancel();
+	});
+
+	it("records while the model loads, then recognizes what was said meanwhile", async () => {
+		const h = harness();
+		const load = deferred<void>();
+		h.backend.startDictation.mockImplementation((_path, _model, supported) => {
+			supported?.();
+			return load.promise;
+		});
+		void h.session.start("/model", "medium", 6);
+		await tick();
+		// The microphone is open and recording before the model is ready.
+		expect(h.options.capture).toHaveBeenCalled();
+		expect(h.options.state).toHaveBeenLastCalledWith("recording");
+		h.audio();
+		h.audio();
+		await tick();
+		expect(h.backend.dictationAudio).not.toHaveBeenCalled();
+		load.resolve();
+		await tick();
+		expect(h.backend.dictationAudio).toHaveBeenCalledTimes(1);
+		expect(h.backend.dictationAudio.mock.calls[0][0]).toHaveLength(3200);
+		h.session.cancel();
+	});
+
+	it("still recognizes what was said when stopped before the model finished loading", async () => {
+		const h = harness();
+		const load = deferred<void>();
+		h.backend.startDictation.mockImplementation((_path, _model, supported) => {
+			supported?.();
+			return load.promise;
+		});
+		void h.session.start("/model", "medium", 6);
+		await tick();
+		h.audio();
+		const finishing = h.session.finish();
+		await tick();
+		expect(h.backend.stopDictation).not.toHaveBeenCalled();
+		load.resolve();
+		await finishing;
+		expect(h.backend.dictationAudio).toHaveBeenCalledTimes(1);
+		expect(h.options.apply).toHaveBeenLastCalledWith("Hello there.");
+		expect(h.options.finished).toHaveBeenCalled();
+	});
+
+	it("never opens the microphone for an engine that can't dictate", async () => {
+		const h = harness();
+		h.backend.startDictation.mockImplementation(async () => {
+			throw new Error("This installed speech engine supports reading only.");
+		});
+		await h.session.start("/model", "medium", 6);
+		expect(h.options.capture).not.toHaveBeenCalled();
+		expect(h.options.error).toHaveBeenCalledWith("This installed speech engine supports reading only.");
+	});
+
+	it("says done without a countdown when the automatic stop is off", async () => {
+		const h = harness();
+		await h.session.start("/model", "small", 0);
+		h.audio();
+		await tick();
+		h.timeout(5000);
+		expect(h.options.done).toHaveBeenLastCalledWith(0);
+		expect(h.session.active).toBe(true);
+		h.session.cancel();
 	});
 });
 

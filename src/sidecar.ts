@@ -222,13 +222,14 @@ export class Sidecar {
 		return { samples, sampleRate: rate };
 	}
 
-	async startDictation(modelPath: string, model: string): Promise<void> {
+	async startDictation(modelPath: string, model: string, supported?: () => void): Promise<void> {
 		const hello = await this.ask({ op: "hello" }, undefined, this.limits.answerMs);
 		if (!Array.isArray(hello.capabilities) || !hello.capabilities.includes("dictation-streaming-v1")) {
 			throw new Error(
 				"This installed speech engine supports reading only. Update it manually using Settings → Edge Voice → Advanced → Speech engine, then get an English dictation model. Your existing TTS voices are kept.",
 			);
 		}
+		supported?.();
 		await this.ask({ op: "asr_start", modelPath, model }, undefined, this.limits.answerMs);
 	}
 

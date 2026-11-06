@@ -37,5 +37,5 @@ These are optional downloads chosen by the person, not assets redistributed in E
 
 - English ASR manifest: 24 model files, pinned official HTTPS revision, sizes and SHA-256. The release build includes the manifest and MIT notice; offline model loading checks managed files before native parsing. File integrity establishes identity, not licensing by itself.
 - No ASR, TTS voice, dataset or original full audiobook is added to the repository or plugin release. The short cleared demo excerpt is the only new redistributed source audio.
-- The new runtime has no additional Python dependencies; lockfiles/pins remain unchanged. Dependency advisory results and native-library coverage gaps are recorded in [release-readiness.md](release-readiness.md).
+- Dictation adds no Python dependencies. The weekly dependency-advisory scan covers the engine locks; the custom Mac wheels, native libraries and model files aren't covered by it (see CONTRIBUTING's Dependency advisories).
 - Review these sources again if model/runtime/voice pins change. Do not copy an unverified upstream model into our releases based only on its availability for download.

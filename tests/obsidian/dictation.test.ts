@@ -78,7 +78,7 @@ describe("Dictation in the real Markdown editor", () => {
 		expect(await until(() => content().includes("Hello from dictation"))).toBe(true);
 		command("stop-dictation");
 		expect(await until(() => !active())).toBe(true);
-		expect(content()).toBe("# Dictation test\n\nHello from dictation.");
+		expect(content()).toBe("# Dictation test\n\nHello from dictation. ");
 	});
 	it("streams and finalizes text through AudioWorklet and the sidecar, then permits TTS", async () => {
 		run(`document.querySelector(".edge-voice-microphone").click();`);
@@ -128,7 +128,13 @@ describe("Dictation in the real Markdown editor", () => {
 		expect(run<string>(`return ${PLUGIN}.reader.state;`)).toBe("idle");
 		run(`document.querySelector(".edge-voice-microphone").click();`);
 		expect(await until(() => !active())).toBe(true);
-		expect(content()).toBe("# Dictation test\n\nHello from dictation.");
+		expect(content()).toBe("# Dictation test\n\nHello from dictation. ");
+		// The cursor waits one space after the dictated words, ready to go on.
+		expect(
+			run<number>(
+				`const e = app.workspace.getMostRecentLeaf().view.editor; return e.posToOffset(e.getCursor());`,
+			),
+		).toBe("# Dictation test\n\nHello from dictation. ".length);
 		expect(run<string>(`return window.dictationTestStream.getAudioTracks()[0].readyState;`)).toBe("ended");
 		command("toggle");
 		expect(await until(() => run<string>(`return ${PLUGIN}.reader.state;`) === "playing")).toBe(true);
@@ -146,13 +152,38 @@ describe("Dictation in the real Markdown editor", () => {
 		expect(content()).toBe("My manual edit");
 		expect(errors()).toEqual([]);
 	});
+	it("shows when the text is done: a green ring on the microphone and a countdown in the status bar", async () => {
+		setSettings({ dictationSilence: 6 });
+		const look = () =>
+			run<{ done: boolean; status: string; state: string; label: string }>(`
+				const bar = document.querySelector(".edge-voice-bar");
+				const status = document.querySelector(".edge-voice-dictation-status");
+				return {
+					done: bar.classList.contains("edge-voice-dictation-done"),
+					status: status?.querySelector(".edge-voice-status-text")?.textContent ?? "",
+					state: status?.dataset.state ?? "",
+					label: bar.querySelector(".edge-voice-microphone").getAttribute("aria-label"),
+				};
+			`);
+		command("toggle-dictation");
+		expect(await until(() => content().includes("Hello from dictation"))).toBe(true);
+		const done = await until(() => (look().done ? look() : undefined), 6000);
+		expect(done?.status).toMatch(/^Done · stops in [1-6] s$/);
+		expect(done?.state).toBe("done");
+		expect(done?.label).toMatch(/^Text done/);
+		command("stop-dictation");
+		expect(await until(() => !active())).toBe(true);
+		expect(look().done).toBe(false);
+		expect(errors()).toEqual([]);
+	});
+
 	it("applies lowercase to partial and final text", async () => {
 		setSettings({ dictationLowercase: true });
 		command("toggle-dictation");
 		expect(await until(() => content().includes("hello from dictation"))).toBe(true);
 		command("stop-dictation");
 		expect(await until(() => !active())).toBe(true);
-		expect(content()).toBe("# Dictation test\n\nhello from dictation.");
+		expect(content()).toBe("# Dictation test\n\nhello from dictation. ");
 	});
 });
 
@@ -171,7 +202,7 @@ describe("Dictation review regressions in Obsidian", () => {
 		expect(await until(() => content().includes("Hello from dictation"))).toBe(true);
 		command("stop-dictation");
 		expect(await until(() => !active())).toBe(true);
-		expect(content()).toBe("Typed during startup. Hello from dictation.");
+		expect(content()).toBe("Typed during startup. Hello from dictation. ");
 		expect(errors()).toEqual([]);
 	});
 	it("keeps dictating through sidebar focus and preserves the final words", async () => {
@@ -182,7 +213,7 @@ describe("Dictation review regressions in Obsidian", () => {
 		command("stop-dictation");
 		expect(await until(() => !active())).toBe(true);
 		expect(run<string>(`return window.dictationTargetView.editor.getValue();`)).toBe(
-			"# Dictation test\n\nHello from dictation.",
+			"# Dictation test\n\nHello from dictation. ",
 		);
 		expect(errors()).toEqual([]);
 	});
@@ -196,7 +227,7 @@ describe("Dictation review regressions in Obsidian", () => {
         `);
 		expect(await until(() => !active())).toBe(true);
 		expect(run<string>(`return window.dictationTargetView.editor.getValue();`)).toBe(
-			"# Dictation test\n\nHello from dictation.",
+			"# Dictation test\n\nHello from dictation. ",
 		);
 		expect(
 			run<boolean>(`return (await app.vault.read(window.dictationOtherFile)) === window.dictationOtherText;`),
@@ -231,7 +262,7 @@ describe("Dictation review regressions in Obsidian", () => {
 		setSettings({ dictationEnabled: false });
 		expect(run<string>(`return window.dictationTestStream.getAudioTracks()[0].readyState;`)).toBe("ended");
 		expect(await until(() => !active())).toBe(true);
-		expect(content()).toBe("# Dictation test\n\nHello from dictation.");
+		expect(content()).toBe("# Dictation test\n\nHello from dictation. ");
 	});
 	it("preserves an undo made during dictation instead of re-inserting the partial transcript", async () => {
 		command("toggle-dictation");
@@ -305,6 +336,6 @@ it("double-taps to start dictation and single-taps to stop with final text", asy
 	expect(await until(() => content().includes("Hello from dictation"))).toBe(true);
 	run(tap);
 	expect(await until(() => !active())).toBe(true);
-	expect(content()).toBe("# Dictation test\n\nHello from dictation.");
+	expect(content()).toBe("# Dictation test\n\nHello from dictation. ");
 	expect(run<string>(`return window.dictationTestStream.getAudioTracks()[0].readyState;`)).toBe("ended");
 });

@@ -78,12 +78,9 @@ jobs:
         run: ./gitleaks git --redact --no-banner -v .
 
   # The sidecar runs on every desktop OS; its protocol and the setup paths are
-  # where platforms differ, so the tests run on Windows and macOS too. While
-  # the repository is private, GitHub bills macOS minutes at 10x and Windows at
-  # 2x, so these run only once it's public, or when started by hand.
+  # where platforms differ, so the tests run on Windows and macOS too.
   test-other-platforms:
     name: Tests (${{ matrix.os }})
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:

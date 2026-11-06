@@ -4,7 +4,6 @@ name: Engine release
 # "publish" is ticked, publishes it as engine-<version>, with the version
 # from engine/pyproject.toml. Its notes carry the install commands and the
 # files' checksums. The Engine package workflow tests the same build first.
-# Downloads only work once the repository is public.
 on:
   workflow_dispatch:
     inputs:

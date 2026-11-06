@@ -3,13 +3,14 @@
  * sample vault, running the plugin built from this repository. Your everyday
  * Obsidian, its settings and its vaults are never touched.
  *
- *   bun run sandbox [--fresh] [--python <path>]   build, open, and reload on every change
+ *   bun run sandbox [--fresh] [--python <path>]   build, open, and reload on every change (--python: this start only)
  *   bun run sandbox:reset                         put the sample notes and PDFs back
  *   bun run sandbox:errors                        errors from the running sandbox
  *
  * The work of preparing, starting and driving it is in obsidian.ts, shared
  * with the tests against real Obsidian.
  */
+import { join } from "path";
 import esbuild, { BuildResult, Plugin } from "esbuild";
 import { existsSync } from "fs";
 import { fileURLToPath } from "url";
@@ -61,7 +62,9 @@ async function start(fresh: boolean, python: string | undefined): Promise<void> 
 		sandbox.prepareProfile();
 		const home = sandbox.prepareHome(fresh);
 		sandbox.prepareSettings(fresh, python);
-		say(fresh ? "opening the sandbox with an engine of its own." : "opening the sandbox.");
+		say(fresh ? "opening the sandbox with an empty engine folder, as for a new user." : "opening the sandbox.");
+		if (!fresh && !python && !existsSync(join(home, ".edge-voice", "engine")))
+			say("the sandbox has no engine of its own yet: run bun run sandbox:engine (it never uses yours).");
 		await sandbox.launch(home, {}, args.includes("--background"));
 	}
 	ready = true;
