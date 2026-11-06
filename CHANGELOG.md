@@ -4,6 +4,8 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-06
+
 ### Added
 
 - Dictation shows when your text is done: once everything you said has been recognized and nothing changes for a second, the microphone gets a pulsing green ring and the status bar turns green with **Done · stops in 4 s**, counting down to the automatic stop (**Done · tap to stop** when that's off). Speaking again goes straight back to **Dictating**. With Reduce motion, the ring and bars stay still.
@@ -113,7 +115,8 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - The speech engine starts isolated: Python and linker settings in your environment (`PYTHONPATH`, `DYLD_*`/`LD_*`) can't change what runs. It never downloads: a voice that isn't on your computer gets a notice with the command that fetches it.
 - The speech engine and its connection check what passes between them: voice IDs, text length, speed, audio and reply size; a stuck engine is restarted instead of blocking reading, and settings of the wrong type fall back to their defaults.
 
-[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.5...0.2.0
 [0.1.5]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.4...0.1.5
 [0.1.4]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.3...0.1.4
