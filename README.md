@@ -29,7 +29,7 @@ English only for now. Obsidian desktop only (macOS, Windows, Linux); not on phon
 
 ![English dictation inserting words into a Markdown note, with a microphone glow and input-driven status bars](docs/media/dictation-dark.gif)
 
-▶ **[Watch the dictation demo with sound](docs/media/dictation-dark.mp4)** · [Light theme](docs/media/dictation-light.png) · [Dictation settings](docs/media/dictation-settings.png)
+▶ **[Watch the dictation demo with sound](https://github.com/user-attachments/assets/fe08ed58-8f0d-4998-8886-9cf76395186a)** · [Light theme](docs/media/dictation-light.png) · [Dictation settings](docs/media/dictation-settings.png)
 
 <sub>Michael Faraday's _The Chemical History of a Candle_, read by Availle for LibriVox (public domain). This is a real-time recording with licensed audio routed as microphone input, the real Moonshine Medium recognizer and uncorrected live text. No speed-up or waits removed. It demonstrates transcription, not a live microphone. [Source, rights and recording details](docs/media/README.md).</sub>
 
