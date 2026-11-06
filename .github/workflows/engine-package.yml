@@ -104,7 +104,7 @@ jobs:
       # started by hand, and every run once the repository is public, covers
       # all six.
       matrix:
-        include: ${{ fromJSON(github.event.repository.private && github.event_name != 'workflow_dispatch' && '[{"steps":"linux-x64-false","runner":"ubuntu-latest"}]' || '[{"steps":"linux-x64-false","runner":"ubuntu-latest"},{"steps":"linux-arm64-false","runner":"ubuntu-24.04-arm"},{"steps":"win32-x64-false","runner":"windows-latest"},{"steps":"darwin-x64-false","runner":"macos-15-intel","tag":"macosx_13_0_x86_64"},{"steps":"darwin-arm64-false","runner":"macos-14","tag":"macosx_13_0_arm64"},{"steps":"darwin-arm64-false","runner":"macos-15","tag":"macosx_13_0_arm64"}]') }}
+        include: ${{ fromJSON(github.event.repository.private && github.event_name != 'workflow_dispatch' && '[{"steps":"linux-x64-false","runner":"ubuntu-latest"}]' || '[{"steps":"linux-x64-false","runner":"ubuntu-latest"},{"steps":"linux-arm64-false","runner":"ubuntu-24.04-arm"},{"steps":"win32-x64-false","runner":"windows-latest"},{"steps":"darwin-x64-false","runner":"macos-15-intel","tag":"macosx_13_0_x86_64"},{"steps":"darwin-arm64-false","runner":"macos-26","tag":"macosx_13_0_arm64"},{"steps":"darwin-arm64-false","runner":"macos-15","tag":"macosx_13_0_arm64"}]') }}
     runs-on: ${{ matrix.runner }}
     steps:
       # Whatever uv people have today, and no cache: a cached, already-verified

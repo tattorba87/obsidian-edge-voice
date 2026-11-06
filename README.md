@@ -124,7 +124,7 @@ On Apple silicon Macs with macOS 14 or later there's a faster engine: Kokoro on 
 
 | Platform                       | Needs               | Engine package                                                              | Tested                          |
 | ------------------------------ | ------------------- | --------------------------------------------------------------------------- | ------------------------------- |
-| macOS, Apple Silicon and Intel | macOS 13.4 or later | Built by this repository from the moonshine release (PyPI has no Intel one) | macOS 14 and 15, in CI          |
+| macOS, Apple Silicon and Intel | macOS 13.4 or later | Built by this repository from the moonshine release (PyPI has no Intel one) | macOS 15 and 26, in CI          |
 | Windows x64                    | Windows 10 or later | PyPI                                                                        | In CI                           |
 | Windows on ARM                 | Windows 11          | PyPI's x64 package, run with Windows' built-in x64 emulation                | Not yet                         |
 | Linux x64 and ARM64            | glibc 2.34 or later | PyPI                                                                        | Ubuntu, in CI; Flatpak/Snap not |
