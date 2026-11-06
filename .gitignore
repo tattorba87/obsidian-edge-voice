@@ -10,3 +10,4 @@ coverage/
 plans/
 .sandbox-test/
 .sandbox-demo/
+.sandbox-stt-demo/

@@ -1,0 +1,1 @@
+Read notes and PDFs aloud with word highlighting, or dictate English into Markdown. Private, on-device text-to-speech (TTS) and speech-to-text (STT).

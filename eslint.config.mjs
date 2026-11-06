@@ -40,7 +40,17 @@ export default tseslint.config(
 			"obsidianmd/ui/sentence-case": [
 				"warn",
 				{
-					brands: ["Obsidian", "Python", "Kokoro", "Piper", "Moonshine", "Mac", "Edge Voice"],
+					brands: [
+						"Obsidian",
+						"Python",
+						"Kokoro",
+						"Piper",
+						"Moonshine",
+						"Mac",
+						"Edge Voice",
+						"English",
+						"Markdown",
+					],
 					acronyms: ["MB", "PDF"],
 					ignoreWords: ["PDFs"],
 				},
@@ -67,6 +77,7 @@ export default tseslint.config(
 		".sandbox/",
 		".sandbox-test/",
 		".sandbox-demo/",
+		".sandbox-stt-demo/",
 		"coverage/",
 		"scripts/",
 		"package.json",

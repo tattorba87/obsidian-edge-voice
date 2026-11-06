@@ -58,3 +58,45 @@ class TextToSpeech:
 
     def close(self):
         self.closed = True
+
+
+class ModelArch(int):
+    pass
+
+
+class Transcriber:
+    def __init__(self, model_path, model_arch):
+        assert Path(model_path).is_absolute()
+        assert model_arch in (2, 4, 5)
+        self.closed = False
+
+    def create_stream(self, update_interval):
+        assert update_interval == 0.35
+        return StubStream()
+
+    def close(self):
+        self.closed = True
+
+
+class StubStream:
+    def add_listener(self, listener):
+        self.listener = listener
+
+    def start(self):
+        pass
+
+    def emit(self, text, line_id=1):
+        from types import SimpleNamespace
+
+        self.listener(SimpleNamespace(line=SimpleNamespace(line_id=line_id, text=text)))
+
+    def add_audio(self, samples, sample_rate):
+        assert all(-1.0 <= sample <= 1.0 for sample in samples)
+        self.emit("Hello")
+
+    def stop(self):
+        self.emit("Hello world.")
+        self.emit("Next line.", 2)
+
+    def close(self):
+        pass

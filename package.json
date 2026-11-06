@@ -1,8 +1,8 @@
 {
 	"name": "obsidian-edge-voice",
-	"version": "0.1.5",
+	"version": "0.2.0",
 	"private": true,
-	"description": "Obsidian text-to-speech (TTS) plugin that reads notes and PDFs aloud with on-device voices.",
+	"description": "Read notes and PDFs aloud with word highlighting, or dictate English into Markdown. Private, on-device text-to-speech (TTS) and speech-to-text (STT).",
 	"scripts": {
 		"dev": "bun esbuild.config.mjs",
 		"build": "tsc --noEmit && bun esbuild.config.mjs production",
@@ -19,7 +19,8 @@
 		"sandbox:reset": "bun scripts/sandbox/main.ts reset",
 		"sandbox:errors": "bun scripts/sandbox/main.ts errors",
 		"release": "bun scripts/version-bump.mjs",
-		"prepare": "lefthook install || true"
+		"prepare": "lefthook install || true",
+		"package:beta": "bun scripts/package-beta.ts"
 	},
 	"license": "MIT",
 	"packageManager": "bun@1.4.3",

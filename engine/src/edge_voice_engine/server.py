@@ -23,6 +23,16 @@ previous one; additions within a protocol keep older plugins working.
   {"id": 4, "op": "paths"}
   -> {"id": 4, "ok": true, "cache": "/path/to/moonshine_voice/cache"}
 
+Experimental English dictation (optional, same protocol version):
+  {"id": 6, "op": "asr_start", "modelPath": "/local/medium-streaming-en", "model": "medium"}
+  {"id": 7, "op": "asr_audio", "audio": "<base64 float32 LE mono>", "sampleRate": 48000}
+  {"id": 8, "op": "asr_stop"}
+Each replies {"id": n, "ok": true, "text": "<full session transcript>"}.
+Audio chunks contain at most two seconds. Start loads existing local English
+streaming model files only (tiny/small/medium); it closes the TTS voice.
+While ASR is active, load/synth are refused. Stop finalizes and closes ASR.
+Older engines reject these optional operations without affecting TTS.
+
 A failed request gets {"id": n, "error": "..."}. The engine never downloads:
 voices are fetched beforehand by the person, with `edge-voice-engine voices get
 <voice>` (see voices.py). Loading a voice that isn't on disk fails with
@@ -55,7 +65,7 @@ import sys
 from pathlib import Path
 
 # Released with the engine package (engine/pyproject.toml has the same version).
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 PROTOCOL = 1
 
 # Kokoro for MLX on Hugging Face (the model and its voices, as .safetensors),
@@ -202,6 +212,7 @@ def main() -> None:
         protocol.flush()
 
     tts = None
+    asr = None
     send({"event": "ready"})
     for line in sys.stdin:
         line = line.strip()
@@ -212,7 +223,29 @@ def main() -> None:
             request = json.loads(line)
             request_id = request.get("id")
             op = request.get("op")
-            if op == "load":
+            if op in ("load", "synth") and asr is not None:
+                raise RuntimeError("stop dictation before reading aloud")
+            if op == "asr_start":
+                from edge_voice_engine.dictation import Dictation
+
+                if asr is not None:
+                    raise RuntimeError("dictation is already running")
+                if tts is not None:
+                    tts.close()
+                    tts = None
+                asr = Dictation(request.get("modelPath"), request.get("model"))
+                send({"id": request_id, "ok": True, "text": ""})
+            elif op == "asr_audio":
+                if asr is None:
+                    raise RuntimeError("dictation is not running")
+                text = asr.audio(request.get("audio"), request.get("sampleRate"))
+                send({"id": request_id, "ok": True, "text": text})
+            elif op == "asr_stop":
+                if asr is None:
+                    raise RuntimeError("dictation is not running")
+                finishing, asr = asr, None
+                send({"id": request_id, "ok": True, "text": finishing.finish()})
+            elif op == "load":
                 language = engine_id(request.get("language"), "language", "en_us")
                 voice = engine_id(request.get("voice"), "voice")
                 engine = request.get("engine")
@@ -271,6 +304,7 @@ def main() -> None:
                         "engine": "edge-voice-engine",
                         "version": VERSION,
                         "protocol": PROTOCOL,
+                        "capabilities": ["dictation-streaming-v1"],
                     }
                 )
             elif op == "paths":

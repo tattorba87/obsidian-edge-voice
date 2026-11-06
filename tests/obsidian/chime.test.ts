@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { command, errors, openNote, pause, readerState, run, setSettings } from "./obsidian";
 
+async function singleTap(code: string): Promise<void> {
+	run(`window.dispatchEvent(new KeyboardEvent("keydown", {code: ${JSON.stringify(code)}}));`);
+	await pause(40);
+	run(`window.dispatchEvent(new KeyboardEvent("keyup", {code: ${JSON.stringify(code)}}));`);
+}
+
 /** Double-taps `code` as a person would: two short presses close together. */
 async function doubleTap(code: string): Promise<void> {
 	for (let tap = 0; tap < 2; tap++) {
@@ -36,16 +42,16 @@ afterEach(() => {
 });
 
 describe("Double-tap shortcut and its chime", () => {
-	it("starts reading with a rising chime, and pauses with a falling one", async () => {
+	it("starts with two taps and stops with one, using distinct chimes", async () => {
 		openNote("A long note.md", "source");
 		await doubleTap("F13");
 		await pause(300);
 		expect(["loading", "playing"]).toContain(readerState());
 		expect(notes()).toEqual([659, 988]);
 
-		await doubleTap("F13");
-		await pause(300);
-		expect(readerState()).toBe("paused");
+		await singleTap("F13");
+		await pause(100);
+		expect(readerState()).toBe("idle");
 		expect(notes()).toEqual([988, 659]);
 		expect(errors()).toEqual([]);
 	});
@@ -73,4 +79,38 @@ describe("Double-tap shortcut and its chime", () => {
 		expect(readerState()).toBe("idle");
 		expect(notes()).toEqual([]);
 	});
+});
+
+it("does not re-arm a start when the old double-tap stop is used", async () => {
+	openNote("A long note.md", "source");
+	await doubleTap("F13");
+	await pause(300);
+	await doubleTap("F13");
+	await pause(550);
+	expect(readerState()).toBe("idle");
+});
+
+it("cancels a pending voice load on one tap and ignores its late completion", async () => {
+	openNote("A long note.md", "source");
+	run(
+		`const plugin=app.plugins.plugins["edge-voice"]; window.realEnsureVoice=plugin.ensureVoice.bind(plugin); plugin.ensureVoice=()=>new Promise((resolve)=>{window.finishVoiceLoad=resolve;});`,
+	);
+	try {
+		command("read-from-here");
+		for (let tries = 0; tries < 25; tries++) {
+			if (run<boolean>(`return !!window.finishVoiceLoad;`)) break;
+			await pause(40);
+		}
+		expect(run<boolean>(`return app.plugins.plugins["edge-voice"].readingStarting;`)).toBe(true);
+		await singleTap("F13");
+		expect(readerState()).toBe("idle");
+		run(`window.finishVoiceLoad();`);
+		await pause(300);
+		expect(readerState()).toBe("idle");
+		expect(run<boolean>(`return app.plugins.plugins["edge-voice"].readingStarting;`)).toBe(false);
+	} finally {
+		run(
+			`window.finishVoiceLoad?.(); app.plugins.plugins["edge-voice"].ensureVoice=window.realEnsureVoice; delete window.finishVoiceLoad;`,
+		);
+	}
 });

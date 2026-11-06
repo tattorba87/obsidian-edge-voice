@@ -1,4 +1,5 @@
 import { Menu, setIcon } from "obsidian";
+import { DictationState } from "./dictation";
 import { ReaderState } from "./reader";
 
 /** The reading speeds on offer: few, so picking one takes no thought. */
@@ -18,6 +19,7 @@ export function stepSpeed(speed: number, direction: 1 | -1): number {
 }
 
 export interface PlayerControls {
+	dictate?(): void;
 	toggle(): void;
 	previous(): void;
 	next(): void;
@@ -59,6 +61,21 @@ export function showSpeedMenu(controls: PlayerControls, at: MouseEvent): void {
 export class PlayerBar {
 	private readonly el: HTMLElement;
 	private readonly playButton: HTMLElement;
+	private readonly microphoneButton: HTMLButtonElement;
+	private readerState: ReaderState = "idle";
+	private readonly volumeEl: HTMLElement;
+	private dictationEnabled = false;
+	private dictationState: DictationState = "idle";
+	private inputLevel = 0;
+	private displayedLevel = 0;
+	private meterFrame?: number;
+	private readonly motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+	private readonly motionChanged = () => {
+		if (this.motion.matches) {
+			if (this.meterFrame !== undefined) window.cancelAnimationFrame(this.meterFrame);
+			this.meterFrame = undefined;
+		} else this.animateMicrophone();
+	};
 	private readonly speedButton: HTMLElement;
 	private readonly whereEl: HTMLElement;
 	private readonly sizeButton: HTMLElement;
@@ -75,12 +92,17 @@ export class PlayerBar {
 
 	constructor(private readonly controls: PlayerControls) {
 		this.el = document.body.createDiv({ cls: "edge-voice-bar" });
+		this.motion.addEventListener("change", this.motionChanged);
 		this.el.hidden = true;
 		// The glow is drawn by elements of its own, not ::before/::after, which
 		// themes and Obsidian style on many elements and could squash or hide.
 		const glow = this.el.createDiv({ cls: "edge-voice-glow", attr: { "aria-hidden": "true" } });
 		glow.createDiv({ cls: "edge-voice-glow-halo" });
 		glow.createDiv({ cls: "edge-voice-glow-ring" });
+
+		this.microphoneButton = this.button("mic", "Start dictation", () => controls.dictate?.()) as HTMLButtonElement;
+		this.microphoneButton.addClass("edge-voice-microphone");
+		this.microphoneButton.hidden = true;
 
 		this.button("skip-back", "Previous sentence", () => controls.previous(), true);
 		this.playButton = this.button("pause", "Pause", () => controls.toggle());
@@ -99,7 +121,7 @@ export class PlayerBar {
 
 		// Volume: just an icon; a vertical slider pops up above it on hover or
 		// focus. Not shown when the bar is minimized.
-		const volume = this.el.createDiv({ cls: "edge-voice-volume edge-voice-full" });
+		const volume = (this.volumeEl = this.el.createDiv({ cls: "edge-voice-volume edge-voice-full" }));
 		this.volumeButton = volume.createEl("button", {
 			cls: "clickable-icon edge-voice-button",
 			attr: { "aria-label": "Mute" },
@@ -132,6 +154,7 @@ export class PlayerBar {
 		};
 		// The panel is the hit area, so a slightly-off click still lands.
 		panel.addEventListener("pointerdown", (event) => {
+			if (this.dictationState !== "idle") return;
 			event.preventDefault();
 			panel.setPointerCapture(event.pointerId);
 			volume.addClass("is-dragging");
@@ -176,21 +199,84 @@ export class PlayerBar {
 	}
 
 	update(state: ReaderState, detail?: string): void {
+		this.readerState = state;
 		if (state === "idle") this.heard = false;
 		// Shown from the first synthesis on, so its glow says reading has started.
 		if (state === "playing" || state === "loading") this.heard = true;
-		this.el.hidden = !this.heard || !this.enabled;
+		this.refreshVisibility();
 		const playing = state === "playing" || state === "loading";
 		setIcon(this.playButton, playing ? "pause" : "play");
 		this.playButton.setAttribute("aria-label", playing ? "Pause" : "Resume");
-		// Not "is-loading": Obsidian draws its own progress bar on any element with that class.
-		this.el.toggleClass("edge-voice-synthesizing", state === "loading");
-		if (detail) this.whereEl.setText(detail);
+		if (detail || state === "idle") this.whereEl.setText(detail ?? "");
 	}
 
 	setEnabled(enabled: boolean): void {
 		this.enabled = enabled;
-		this.el.hidden = !this.heard || !enabled;
+		this.refreshVisibility();
+	}
+
+	setDictationEnabled(enabled: boolean): void {
+		this.dictationEnabled = enabled;
+		this.refreshVisibility();
+	}
+
+	setDictationState(state: DictationState): void {
+		this.dictationState = state;
+		const active = state !== "idle";
+		this.microphoneButton.setAttribute("aria-label", active ? "Stop dictation" : "Start dictation");
+		this.microphoneButton.setAttribute("aria-pressed", String(active));
+		this.el.toggleClass("edge-voice-recording", state === "recording");
+		if (state === "recording") this.animateMicrophone();
+		else {
+			if (this.meterFrame !== undefined) window.cancelAnimationFrame(this.meterFrame);
+			this.meterFrame = undefined;
+			this.inputLevel = this.displayedLevel = 0;
+			this.el.setCssProps({ "--edge-voice-mic-level": "0" });
+		}
+		this.refreshVisibility();
+	}
+
+	setMicrophoneLevel(level: number): void {
+		const bounded = Number.isFinite(level) ? Math.min(1, Math.max(0, level)) : 0;
+		if (bounded === this.inputLevel) return;
+		this.inputLevel = bounded;
+		this.animateMicrophone();
+	}
+
+	private animateMicrophone(): void {
+		if (
+			this.meterFrame !== undefined ||
+			this.motion.matches ||
+			this.dictationState !== "recording" ||
+			Math.abs(this.inputLevel - this.displayedLevel) < 0.001
+		)
+			return;
+		const frame = () => {
+			this.meterFrame = undefined;
+			const difference = this.inputLevel - this.displayedLevel;
+			this.displayedLevel =
+				Math.abs(difference) < 0.002 ? this.inputLevel : this.displayedLevel + difference * 0.3;
+			this.el.setCssProps({ "--edge-voice-mic-level": this.displayedLevel.toFixed(3) });
+			this.animateMicrophone();
+		};
+		this.meterFrame = window.requestAnimationFrame(frame);
+	}
+
+	private refreshVisibility(): void {
+		const active = this.dictationState !== "idle";
+		this.el.hidden = !active && (!this.enabled || (!this.heard && !this.dictationEnabled));
+		this.el.toggleClass("edge-voice-dictating", active);
+		// Not "is-loading": Obsidian draws its own progress bar on that class.
+		this.el.toggleClass("edge-voice-synthesizing", active || this.readerState === "loading");
+		this.microphoneButton.hidden = !active && !this.dictationEnabled;
+		this.microphoneButton.disabled = this.dictationState === "stopping" || (!active && this.readerState !== "idle");
+		for (const button of this.el.querySelectorAll<HTMLButtonElement>("button")) {
+			if (button !== this.microphoneButton && button !== this.sizeButton) button.disabled = active;
+		}
+		this.volumeEl.inert = active;
+		if (active) this.volumeEl.removeClass("is-dragging");
+		this.volumeEl.setAttribute("aria-disabled", String(active));
+		this.volumeTrack.tabIndex = active ? -1 : 0;
 	}
 
 	showSpeed(speed: number): void {
@@ -198,10 +284,13 @@ export class PlayerBar {
 	}
 
 	destroy(): void {
+		this.motion.removeEventListener("change", this.motionChanged);
+		if (this.meterFrame !== undefined) window.cancelAnimationFrame(this.meterFrame);
 		this.el.remove();
 	}
 
 	private applyVolume(volume: number, final: boolean): void {
+		if (this.dictationState !== "idle") return;
 		const rounded = Math.round(volume * 20) / 20;
 		this.controls.setVolume(rounded, final);
 		this.showVolume(rounded);

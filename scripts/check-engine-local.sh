@@ -68,3 +68,14 @@ else
 	HOME="${WORK}/home" "${SPEAK[@]}"
 fi
 echo "== The engine set up from the release and spoke."
+
+echo "== Getting and verifying the English Tiny streaming model explicitly"
+HOME="${WORK}/home" "${WORK}/home/.edge-voice/engine/bin/edge-voice-engine" models get tiny
+HOME="${WORK}/home" "${WORK}/home/.edge-voice/engine/bin/edge-voice-engine" models check tiny
+DICTATE=(python3 -I "${ROOT}/scripts/engine-dictates.py" "${PYTHON}" "${VOICE}")
+if [ "${PLATFORM}" = darwin ]; then
+	HOME="${WORK}/home" sandbox-exec -p '(version 1)(allow default)(deny network*)' "${DICTATE[@]}"
+else
+	HOME="${WORK}/home" "${DICTATE[@]}"
+fi
+echo "== The packaged engine also dictated offline and returned to TTS."

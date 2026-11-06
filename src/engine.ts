@@ -13,7 +13,7 @@ import { childEnvironment } from "./environment";
  */
 
 /** The engine release these steps install, and the protocol this plugin speaks. */
-export const ENGINE_VERSION = "0.3.0";
+export const ENGINE_VERSION = "0.4.0";
 export const ENGINE_PROTOCOL = 1;
 const RELEASE = `https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-${ENGINE_VERSION}`;
 export const UV_INSTALL = "https://docs.astral.sh/uv/getting-started/installation/";
@@ -55,6 +55,18 @@ export function requirementsFile({ platform, arch, faster }: Platform): string |
 	return null;
 }
 
+/** A newer bundled recommendation, independent of protocol compatibility. No network lookup. */
+export function engineUpdateAvailable(installed: string, recommended: string = ENGINE_VERSION): boolean {
+	const parse = (value: string) => (/^\d+\.\d+\.\d+$/.test(value) ? value.split(".").map(Number) : null);
+	const current = parse(installed);
+	const target = parse(recommended);
+	if (!current || !target) return false;
+	for (let i = 0; i < 3; i++) {
+		if (current[i] !== target[i]) return current[i] < target[i];
+	}
+	return false;
+}
+
 export interface Step {
 	title: string;
 	/** What it does, in plain words. */
@@ -68,6 +80,12 @@ export interface Step {
 /** The command that downloads `voice` (and, with `faster`, its faster-engine files). */
 export function voiceCommand(voice: string, faster: boolean, platform: string = process.platform): string {
 	return `${engineTool(platform)} voices get ${voice}${faster ? " --faster" : ""}`;
+}
+
+/** A manual, SHA-256 verified English ASR download; never executed by the plugin. */
+export function modelCommand(model: string, platform: string = process.platform): string {
+	if (!["tiny", "small", "medium"].includes(model)) throw new Error("Unknown English streaming model");
+	return `${engineTool(platform)} models get ${model}`;
 }
 
 /** The engine's command, as the person types it in Terminal or PowerShell. */

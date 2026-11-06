@@ -15,6 +15,36 @@ let sidecar: Sidecar | undefined;
 afterEach(() => sidecar?.stop());
 
 describe("Sidecar", () => {
+	it("checks ASR capability and transports live/final text", async () => {
+		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
+		await sidecar.startDictation("/model", "medium");
+		expect(await sidecar.dictationAudio(new Float32Array([0.1, -0.1]), 16000)).toBe("Hello from dictation");
+		expect(await sidecar.stopDictation()).toBe("Hello from dictation.");
+	});
+	it("explains how to test dictation with an older engine while retaining TTS", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "edge-voice-old-asr-"));
+		const script = join(dir, "old.py");
+		writeFileSync(
+			script,
+			`import json, sys
+print(json.dumps({"event":"ready"}), flush=True)
+for line in sys.stdin:
+ r=json.loads(line)
+ if r["op"] == "hello": out={"id":r["id"],"ok":True,"protocol":1,"version":"0.3.0"}
+ elif r["op"] == "load": out={"id":r["id"],"ok":True}
+ else: out={"id":r["id"],"error":"unsupported"}
+ print(json.dumps(out), flush=True)
+`,
+		);
+		try {
+			sidecar = new Sidecar(PYTHON, script);
+			await expect(sidecar.startDictation("/model", "medium")).rejects.toThrow("supports reading only");
+			await expect(sidecar.load("en_us", "any")).resolves.toMatchObject({ engine: "moonshine" });
+		} finally {
+			sidecar?.stop();
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 	it("loads and synthesizes", async () => {
 		sidecar = new Sidecar(PYTHON, FAKE_SERVER);
 		await sidecar.load("en_us", "any");

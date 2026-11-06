@@ -26,6 +26,10 @@ afterAll(() => {
 		inBackground: "visible",
 		doubleTapEnabled: false,
 		doubleTapCustomKey: null,
+		dictationEnabled: false,
+		dictationDoubleTapEnabled: true,
+		dictationKey: "MetaLeft",
+		dictationCustomKey: null,
 	});
 });
 
@@ -157,7 +161,7 @@ describe("Edge Voice settings in Obsidian", () => {
 			"Emma · British English · female · Kokoro (under 1 MB)",
 			"Santa · American English · male · Kokoro (under 1 MB)",
 		]);
-		expect(list.links).toEqual(["Kokoro voices", "Piper voices"]);
+		expect(list.links).toEqual(["Review voice licenses", "Kokoro voices", "Piper voices"]);
 
 		const picked = run<{ command: string; language: string }>(`
 			const more = ${SETTING("Get another voice")};
@@ -197,5 +201,60 @@ describe("Edge Voice settings in Obsidian", () => {
 		`);
 		expect(description).toBe("Could not list voices: the engine isn't set up");
 		expect(run<number>(`return 1 + 1;`)).toBe(2);
+	});
+});
+
+describe("Consistent speech shortcut settings", () => {
+	it("uses symbolic presets and refuses a dictation preset already used for reading", () => {
+		const result = run<{ labels: string[]; key: string }>(`
+            Object.assign(${PLUGIN}.settings,{doubleTapEnabled:true,doubleTapKey:"MetaRight",dictationEnabled:true,dictationDoubleTapEnabled:true,dictationKey:"MetaLeft",dictationCustomKey:null});
+            window.edgeVoiceTab.display();
+            const row=${SETTING("Dictation double-tap key")};
+            const menu=row.querySelector("select.edge-voice-key-menu");
+            const labels=[...menu.options].map((option)=>option.textContent);
+            menu.value="MetaRight"; menu.dispatchEvent(new Event("change"));
+            return {labels,key:${PLUGIN}.settings.dictationKey};
+        `);
+		expect(result.labels).toContain("Left ⌘");
+		expect(result.labels).toContain("Custom");
+		expect(result.key).toBe("MetaLeft");
+	});
+	it("uses the same custom capture panel and blocks conflicts in both directions", () => {
+		const result = run<{ blocked: boolean; message: string; key: string; reverseBlocked: boolean }>(`
+            Object.assign(${PLUGIN}.settings,{doubleTapEnabled:true,doubleTapKey:"F13",dictationEnabled:true,dictationDoubleTapEnabled:true,dictationKey:"MetaLeft",dictationCustomKey:null});
+            window.edgeVoiceTab.display();
+            const row=${SETTING("Dictation double-tap key")};
+            const menu=row.querySelector("select"); menu.value="custom"; menu.dispatchEvent(new Event("change"));
+            const capture=row.querySelector(".edge-voice-key-capture");
+            const save=[...row.querySelectorAll("button")].find((button)=>button.textContent==="Save");
+            capture.focus(); capture.dispatchEvent(new KeyboardEvent("keydown",{code:"F13",bubbles:true}));
+            const blocked=save.disabled,message=row.querySelector(".edge-voice-key-message").textContent;
+            capture.dispatchEvent(new KeyboardEvent("keydown",{code:"F14",bubbles:true})); save.click(); capture.blur();
+            const key=${PLUGIN}.settings.dictationKey;
+            const reading=${SETTING("Double-tap shortcut")};
+            const readingMenu=reading.querySelector("select"); readingMenu.value="custom"; readingMenu.dispatchEvent(new Event("change"));
+            const readingCapture=reading.querySelector(".edge-voice-key-capture");
+            readingCapture.focus(); readingCapture.dispatchEvent(new KeyboardEvent("keydown",{code:"F14",bubbles:true}));
+            const reverseBlocked=[...reading.querySelectorAll("button")].find((button)=>button.textContent==="Save").disabled;
+            readingCapture.blur();
+            return {blocked,message,key,reverseBlocked};
+        `);
+		expect(result.blocked).toBe(true);
+		expect(result.message).toContain("already used");
+		expect(result.key).toBe("F14");
+		expect(result.reverseBlocked).toBe(true);
+	});
+	it("refuses enabling either shortcut or dictation with a conflicting key", () => {
+		const result = run<{ reading: boolean; dictation: boolean }>(`
+            Object.assign(${PLUGIN}.settings,{doubleTapEnabled:false,doubleTapKey:"F14",dictationEnabled:true,dictationDoubleTapEnabled:true,dictationKey:"F14"});
+            window.edgeVoiceTab.display();
+            ${SETTING("Double-tap shortcut")}.querySelector(".checkbox-container").click();
+            const reading=${PLUGIN}.settings.doubleTapEnabled;
+            Object.assign(${PLUGIN}.settings,{doubleTapEnabled:true,dictationEnabled:false});
+            window.edgeVoiceTab.display();
+            ${SETTING("Enable dictation")}.querySelector(".checkbox-container").click();
+            return {reading,dictation:${PLUGIN}.settings.dictationEnabled};
+        `);
+		expect(result).toEqual({ reading: false, dictation: false });
 	});
 });

@@ -4,6 +4,20 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- English dictation into Markdown notes using local Moonshine Tiny, Small or Medium streaming ASR. Dictation is opt-in; existing TTS preferences and voices are retained. Use the microphone or an independent Left Command/Left Ctrl shortcut, with optional sounds, lowercase output and an inactivity timeout.
+- A verified model setup command (`edge-voice-engine models get <size>`), plus list/check/path/remove commands. Managed English ASR files are pinned by revision, size and SHA-256, checked again offline before loading, and retain their MIT notice. Custom trusted MoonshineFlow folders remain supported.
+- Matching TTS/STT symbolic and custom shortcut pickers with conflict checks. Double-tap starts either mode; one short tap stops it, including during startup. Player pause/resume is unchanged.
+- A local check for a newer recommended Python engine, including compatible bug fixes, with manual update guidance. Dictation needs engine 0.4.0; compatible older engines keep reading aloud. No automatic installs or downloads.
+- Dual-mode setup, upgrade, privacy, model/license and troubleshooting documentation; real-engine STT videos/GIFs and light/dark screenshots; copy-ready short/long Community listing descriptions and upload instructions. The live listing and releases are unchanged.
+
+### Fixed
+
+- The player keeps the same controls for reading and dictation, disables the unavailable mode, and uses the TTS processing glow through dictation finalization. The microphone and three Dictating bars follow input volume and fall to zero when quiet.
+- Dictation survives permission prompts, snapshots the insertion range when recording begins, protects manual edits and final text in retained editors, and releases capture when stopped/disabled. Loud samples are clamped; a bounded queue reports machines that cannot keep up.
+- Explicit model downloads identify the engine to Moonshine's server; its CDN rejects Python's default downloader user agent. Incomplete or invalid files never replace verified local files.
+
 ## [0.1.5] - 2026-11-05
 
 ### Added

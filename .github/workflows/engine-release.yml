@@ -12,6 +12,10 @@ on:
         description: Publish the release (otherwise build and check only)
         type: boolean
         default: false
+      prerelease:
+        description: Mark a published engine as a prerelease for beta testing
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -107,9 +111,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_PRERELEASE: ${{ inputs.prerelease }}
         run: |
           cd release
           sha256sum -c SHA256SUMS
+          flags=()
+          if [ "$RELEASE_PRERELEASE" = true ]; then flags+=(--prerelease); fi
           # Not marked latest, so it never stands in for a plugin release. Fails if the tag exists.
           gh release create "engine-${VERSION}" ./*.whl ./requirements-*.txt THIRD-PARTY-NOTICES.txt SHA256SUMS \
-            --title "Speech engine ${VERSION}" --notes-file release-notes.md --latest=false --target "$GITHUB_SHA"
+            --title "Speech engine ${VERSION}" --notes-file release-notes.md --latest=false --target "$GITHUB_SHA" "${flags[@]}"

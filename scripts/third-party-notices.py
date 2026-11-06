@@ -50,6 +50,9 @@ def main() -> int:
         "Engine releases redistribute moonshine-voice wheels for macOS, built by this",
         f"repository from Moonshine {MOONSHINE_TAG}. They contain the software below; each",
         "licence follows. Edge Voice itself is MIT licensed (LICENSE in the repository).",
+        "Source for the unmodified Moonshine and bundled libraries, including Eigen's",
+        f"MPL-covered headers: https://github.com/moonshine-ai/moonshine/tree/{MOONSHINE_TAG}/core/third-party",
+        "The matching release source is freely available at that versioned URL.",
         "",
         *(f"- {name}: {licence}" for name, licence, _ in NOTICES),
     ]

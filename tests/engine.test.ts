@@ -4,6 +4,7 @@ import { join } from "path";
 import { describe, expect, it } from "vitest";
 import {
 	ENGINE_PROTOCOL,
+	engineUpdateAvailable,
 	enginePython,
 	findEngine,
 	mlxSupported,
@@ -50,7 +51,7 @@ describe("The engine's setup steps", () => {
 		expect(steps[1].command).toBe("uv venv --clear --managed-python ~/.edge-voice/engine --python 3.12");
 		expect(steps[2].command).toBe(
 			"uv pip install --python ~/.edge-voice/engine --require-hashes --no-build -r " +
-				"https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.3.0/requirements-darwin-arm64.txt",
+				"https://github.com/tattorba87/obsidian-edge-voice/releases/download/engine-0.4.0/requirements-darwin-arm64.txt",
 		);
 		// The file can be read before anything runs.
 		expect(steps[2].link).toBe(steps[2].command!.split(" -r ")[1]);
@@ -186,5 +187,17 @@ describe("Storage, as the engine reports it", () => {
 		expect(formatBytes(512)).toBe("1 KB");
 		expect(formatBytes(84_000_000)).toBe("84 MB");
 		expect(formatBytes(1_250_000_000)).toBe("1.3 GB");
+	});
+});
+
+describe("Engine update recommendation", () => {
+	it("detects bug-fix updates even when protocol compatibility is unchanged", () => {
+		expect(engineUpdateAvailable("0.3.0", "0.3.1")).toBe(true);
+		expect(engineUpdateAvailable("0.2.9", "0.3.0")).toBe(true);
+		expect(engineUpdateAvailable("0.9.0", "0.10.0")).toBe(true);
+	});
+	it("does not suggest a downgrade, reinstall or guessed version", () => {
+		for (const version of ["0.3.0", "0.3.1", "1.0.0", "unknown", "0.3.0-dev"])
+			expect(engineUpdateAvailable(version, "0.3.0")).toBe(false);
 	});
 });

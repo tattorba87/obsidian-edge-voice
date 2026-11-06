@@ -1,0 +1,264 @@
+{
+	"recorded": "2026-11-05",
+	"engine": "0.4.0",
+	"moonshine_voice": "0.1.5",
+	"model": "English Medium Streaming",
+	"model_revision": "quantized_26_08_21",
+	"machine": "Intel macOS",
+	"input": "Web Audio file routed through getUserMedia; no physical microphone",
+	"source_url": "https://archive.org/download/chemical_history_candle_ava_librivox/chemicalhistorycandle_1_faraday.mp3",
+	"catalog_url": "https://librivox.org/the-chemical-history-of-a-candle-by-michael-faraday/",
+	"rights_url": "https://librivox.org/pages/public-domain/",
+	"source_excerpt_seconds": [63.05, 72.15],
+	"added_silence_seconds": 1,
+	"word_count": 27,
+	"reference": "There is not a law under which any part of this universe is governed which does not come into play and is touched upon in these phenomena.",
+	"takes": {
+		"dark": {
+			"transcript": "There is not a law under which any part of this universe is governed which does not come into play and is touched upon in these phenomena.",
+			"normalized_word_errors": 0,
+			"audio_start_seconds": 2.4118,
+			"captured_seconds": 21.8527,
+			"frames": 208,
+			"cuts": 0,
+			"speed": 1,
+			"final_hold_seconds": 5,
+			"notices": [],
+			"decoded_audio_alignment_error_ms": 0.1875,
+			"decoded_audio_correlation": 0.99992,
+			"video_seconds": 22.066667,
+			"gif_seconds": 22.1
+		},
+		"light": {
+			"transcript": "There is not a law under which any part of this universe is governed, which does not come into play and is touched upon in these phenomena.",
+			"normalized_word_errors": 0,
+			"audio_start_seconds": 2.4005,
+			"captured_seconds": 22.2691,
+			"frames": 208,
+			"cuts": 0,
+			"speed": 1,
+			"final_hold_seconds": 5,
+			"notices": [],
+			"decoded_audio_alignment_error_ms": 0.5,
+			"decoded_audio_correlation": 0.99993,
+			"video_seconds": 22.4,
+			"gif_seconds": 22.4
+		}
+	},
+	"assets": {
+		"dictation-dark.mp4": {
+			"bytes": 280407,
+			"sha256": "280e07865160f3be45bf80998095ecc12bd1def34ecbf976a35529d265d51cf2",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "h264",
+						"width": 1200,
+						"height": 800,
+						"duration": "22.066667"
+					},
+					{
+						"codec_name": "aac",
+						"duration": "22.016000"
+					}
+				],
+				"format": {
+					"duration": "22.066667"
+				}
+			}
+		},
+		"dictation-light.mp4": {
+			"bytes": 282190,
+			"sha256": "00e16fd02de8180aa7f4a787b068f710d296a754493d1d9a935674c6abcafc43",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "h264",
+						"width": 1200,
+						"height": 800,
+						"duration": "22.400000"
+					},
+					{
+						"codec_name": "aac",
+						"duration": "22.400000"
+					}
+				],
+				"format": {
+					"duration": "22.400000"
+				}
+			}
+		},
+		"dictation-dark.gif": {
+			"bytes": 915352,
+			"sha256": "da17267f9b3a47b9f54159d179383bfdfcb5029fd6f97a1bdf0330d4e6b686ea",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "gif",
+						"width": 960,
+						"height": 640,
+						"duration": "22.100000"
+					}
+				],
+				"format": {
+					"duration": "22.100000"
+				}
+			}
+		},
+		"dictation-light.gif": {
+			"bytes": 1060908,
+			"sha256": "735c7caa6d3d6201fd078ad37a4911fd4de6e1e9b4af9d4c1c777e597a28994e",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "gif",
+						"width": 960,
+						"height": 640,
+						"duration": "22.400000"
+					}
+				],
+				"format": {
+					"duration": "22.400000"
+				}
+			}
+		},
+		"dictation-dark.png": {
+			"bytes": 39930,
+			"sha256": "96cdc6eb71a793d433f0b19eaa91f76b9fd7e9c92d726d337d62c95e7ffa224b",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "png",
+						"width": 1200,
+						"height": 800
+					}
+				],
+				"format": {}
+			}
+		},
+		"dictation-light.png": {
+			"bytes": 40426,
+			"sha256": "75deb48bf297731be45b949f9a8cd8d25299498f5920d118e091b0e9716e00b5",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "png",
+						"width": 1200,
+						"height": 800
+					}
+				],
+				"format": {}
+			}
+		},
+		"dictation-finished.png": {
+			"bytes": 98510,
+			"sha256": "f11e02cbb51741125806b639f1fdc04cdd4467c0862ad91cbe10565b223c1494",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "png",
+						"width": 1200,
+						"height": 800
+					}
+				],
+				"format": {}
+			}
+		},
+		"dictation-settings.png": {
+			"bytes": 93263,
+			"sha256": "987ec4802e34111e6501a551caca78d95d75066ec57ccf21206cb036ec11279f",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "png",
+						"width": 1200,
+						"height": 800
+					}
+				],
+				"format": {}
+			}
+		},
+		"dictation-input.wav": {
+			"bytes": 323392,
+			"sha256": "3488c88ac52eb25b2eb2bada85b8c1554464259d0ba3568cb3a9b2f343681530",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "pcm_s16le",
+						"duration": "10.100000"
+					}
+				],
+				"format": {
+					"duration": "10.100000"
+				}
+			}
+		},
+		"banner-tts-stt.png": {
+			"bytes": 1476198,
+			"sha256": "ebede52ca975e6cfd23a50bf2995867752bbd77ca462bc8592362964468c6a19",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "png",
+						"width": 1774,
+						"height": 887
+					}
+				],
+				"format": {}
+			}
+		},
+		"listing-reading-note.png": {
+			"bytes": 163664,
+			"sha256": "9c3ea39886b8823840a01d63ef5c105f9bf4905a720a9cdb26cb1b6628c0faf5",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "png",
+						"width": 1200,
+						"height": 800
+					}
+				],
+				"format": {}
+			}
+		},
+		"listing-reading-pdf.png": {
+			"bytes": 399216,
+			"sha256": "ccb794089033079ad87b7f1b31142ec93f0bacd4a0ec6a11129f63018b058df4",
+			"media": {
+				"programs": [],
+				"stream_groups": [],
+				"streams": [
+					{
+						"codec_name": "png",
+						"width": 1200,
+						"height": 800
+					}
+				],
+				"format": {}
+			}
+		}
+	},
+	"source_mp3_sha256": "f99e343b1456ce0bb1a365f3eff922d5fa27f347c9f22500e45d0cf68f18a351"
+}

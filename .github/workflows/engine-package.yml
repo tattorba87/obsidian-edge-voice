@@ -20,6 +20,7 @@ on:
       - scripts/lock-build-tools.py
       - scripts/setup-steps.ts
       - scripts/engine-speaks.py
+      - scripts/engine-dictates.py
       - scripts/lock-voices.py
       - .github/workflows/engine-package.yml
   workflow_dispatch:
@@ -80,7 +81,7 @@ jobs:
             bun scripts/setup-steps.ts "$1" "$2" "$3" "$VOICE" "$BASE" > "steps/$1-$2-$3.json"
           done
           cat steps/*.json
-          cp scripts/engine-speaks.py steps/
+          cp scripts/engine-speaks.py scripts/engine-dictates.py steps/
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: engine-release
@@ -194,13 +195,22 @@ jobs:
               raise RuntimeError("tampered file was not removed")
           EOF
           "$PYTHON" -I -m edge_voice_engine voices get "$VOICE"
-      - name: The engine speaks with the network cut off (Linux)
+      - name: Download and verify the English Tiny streaming model explicitly
+        shell: bash
+        run: |
+          "$PYTHON" -I -m edge_voice_engine models get tiny
+          "$PYTHON" -I -m edge_voice_engine models check tiny
+      - name: The engine speaks and dictates with the network cut off (Linux)
         if: runner.os == 'Linux'
-        run: sudo unshare --net -- sudo -u "$USER" env "HOME=$HOME" "PATH=$PATH" python3 -I steps/engine-speaks.py "$PYTHON" "$VOICE"
-      - name: The engine speaks with the network cut off (macOS)
+        run: |
+          sudo unshare --net -- sudo -u "$USER" env "HOME=$HOME" "PATH=$PATH" python3 -I steps/engine-speaks.py "$PYTHON" "$VOICE"
+          sudo unshare --net -- sudo -u "$USER" env "HOME=$HOME" "PATH=$PATH" python3 -I steps/engine-dictates.py "$PYTHON" "$VOICE"
+      - name: The engine speaks and dictates with the network cut off (macOS)
         if: runner.os == 'macOS'
-        run: sandbox-exec -p '(version 1)(allow default)(deny network*)' python3 -I steps/engine-speaks.py "$PYTHON" "$VOICE"
-      - name: The engine speaks with every download pointed nowhere (Windows)
+        run: |
+          sandbox-exec -p '(version 1)(allow default)(deny network*)' python3 -I steps/engine-speaks.py "$PYTHON" "$VOICE"
+          sandbox-exec -p '(version 1)(allow default)(deny network*)' python3 -I steps/engine-dictates.py "$PYTHON" "$VOICE"
+      - name: The engine speaks and dictates with every download pointed nowhere (Windows)
         # Windows has no per-process network switch on these runners; a dead proxy
         # stops anything that downloads through Python, which is how both do.
         if: runner.os == 'Windows'
@@ -210,7 +220,9 @@ jobs:
           HTTPS_PROXY: http://127.0.0.1:9
           ALL_PROXY: http://127.0.0.1:9
           NO_PROXY: ""
-        run: python -I steps/engine-speaks.py "$PYTHON" "$VOICE"
+        run: |
+          python -I steps/engine-speaks.py "$PYTHON" "$VOICE"
+          python -I steps/engine-dictates.py "$PYTHON" "$VOICE"
 
   tamper:
     name: Changed files are refused
