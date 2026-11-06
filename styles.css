@@ -376,6 +376,27 @@ body.theme-dark {
 	font-size: var(--font-ui-smaller);
 }
 
+/* Every row keeps a readable description: when its buttons don't fit beside the
+   text, they move onto their own line underneath instead of squeezing it into a
+   narrow column. */
+.edge-voice-settings .setting-item:not(.setting-item-heading) {
+	flex-wrap: wrap;
+	row-gap: 10px;
+}
+
+.edge-voice-settings .setting-item:not(.setting-item-heading) > .setting-item-info {
+	flex: 1 1 18rem;
+	min-width: min(18rem, 100%);
+}
+
+.edge-voice-settings .setting-item:not(.setting-item-heading) > .setting-item-control {
+	flex: 0 1 auto;
+	flex-wrap: wrap;
+	max-width: 100%;
+	min-width: 0;
+	margin-inline-start: auto;
+}
+
 /* Long voice labels and download commands need the full settings width. */
 .setting-item.edge-voice-download-setting {
 	flex-direction: column;

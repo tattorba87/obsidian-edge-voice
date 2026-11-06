@@ -6,9 +6,7 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ### Added
 
-- Dictation is enabled by default for new settings; a saved off preference is retained. Clicking the disabled-dictation notice opens its settings section directly, and new defaults avoid taking an existing reading shortcut.
-
-- English dictation into Markdown notes using local Moonshine Tiny, Small or Medium streaming ASR. Dictation is opt-in; existing TTS preferences and voices are retained. Use the microphone or an independent Left Command/Left Ctrl shortcut, with optional sounds, lowercase output and an inactivity timeout.
+- English dictation into Markdown notes using local Moonshine Tiny, Small or Medium streaming ASR. Dictation is on for new installs; if you're updating from 0.1.x it stays off until you turn it on, and your reading settings and voices are kept. Clicking the dictation-off notice opens its settings, and the new shortcut never takes an existing reading key. Use the microphone or an independent Left Command/Left Ctrl shortcut, with optional sounds, lowercase output and an inactivity timeout.
 - A verified model setup command (`edge-voice-engine models get <size>`), plus list/check/path/remove commands. Managed English ASR files are pinned by revision, size and SHA-256, checked again offline before loading, and retain their MIT notice. Custom trusted MoonshineFlow folders remain supported.
 - Matching TTS/STT symbolic and custom shortcut pickers with conflict checks. Double-tap starts either mode; one short tap stops it, including during startup. Player pause/resume is unchanged.
 - A local check for a newer recommended Python engine, including compatible bug fixes, with manual update guidance. Dictation needs engine 0.4.0; compatible older engines keep reading aloud. No automatic installs or downloads.
@@ -16,6 +14,7 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ### Fixed
 
+- Settings rows keep their descriptions readable: when buttons don't fit beside the text (for example Storage → Downloaded voices), they move onto their own line instead of squeezing the text into a narrow column.
 - The Get another voice instructions and download command keep their full width when a voice is selected; its controls wrap in narrow settings panels.
 
 - Speech-engine setup now includes the optional English STT model command beside the optional TTS voice command. README Setup lists both for every platform and explains model speed/accuracy choices.

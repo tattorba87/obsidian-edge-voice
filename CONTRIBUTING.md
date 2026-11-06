@@ -182,11 +182,22 @@ gh workflow run beta-release.yml --ref experiment/english-dictation -f version=0
 
 A workflow added only on a feature branch may need its initial branch-push validation run before GitHub registers it for manual dispatch. If the CLI cannot resolve its filename, use the numeric workflow ID from that run. Do not merge beta version metadata into `main` to make a workflow visible.
 
-**Stable promotion is separate.** After beta feedback, review and the remaining platform/manual gates pass, obtain authorization for the stable release and follow Releases above. Update `main`, the stable changelog/version and Community listing only then. Preserve beta tags/artifacts as test history rather than overwriting them.
+### Promoting a beta to a stable release
+
+A stable release is built from `main` by the normal Release workflow, never by re-labelling a beta's files. Promote only with explicit authorization for the stable release, after beta feedback, review and the remaining manual/platform gates.
+
+1. **Freeze the beta.** Pick the last beta testers used (for example `0.2.0-beta.3`). Any change after it needs a new beta, or a deliberate decision to ship it untested by beta users; record which in the PR.
+2. **Promote the engine first, if the beta needed a new one.** The engine prerelease's assets are already the reviewed, attested build: mark it stable rather than rebuilding (`gh release edit engine-<version> --prerelease=false`). Keep it `latest=false`; the plugin's stable release is the repository's latest. Verify its requirements URLs and checksums again.
+3. **Merge the feature branch into `main` with a PR.** Required checks must pass. `main`'s `manifest.json`/`package.json`/`versions.json` move to the stable version (for example `0.2.0`, without the beta suffix); its `minAppVersion` must match what the beta tested.
+4. **Finish the changelog and listing text.** Move Unreleased entries under the version with the date, describing what changed since the last _stable_ release (not since the last beta). Check that the README, manifest description and `docs/community-listing/` say the same thing and claim nothing untested.
+5. **Run the stable gates on `main`.** `bun run check`, `bun run build`, `bun run test:obsidian` locally; the Release workflow repeats the real-Obsidian check.
+6. **Release from `main`.** Tag the merge commit with the stable version and push the tag, as in Releases above. Verify the draft (attestations, `main.js` identical to a local build of the tag, no `fs`, manifest version) and publish it as **latest**.
+7. **Check the Community directory.** It picks up the stable release from `main`'s manifest within an hour or two. Confirm the listing shows the new version and that its description and scorecard are accurate (new permissions such as the microphone may appear). Update gallery images or description only through the directory's own listing editor.
+8. **Tell beta testers how to move to stable.** BRAT-frozen installs stay on the beta tag: remove the plugin from BRAT and update from Community plugins (or reinstall). Keep beta tags and assets as history; never delete or overwrite them.
 
 ## Dictation release and media checks
 
-Read [the release checklist](docs/release-readiness.md), [license audit](docs/licenses.md) and [Community listing kit](docs/community-listing/README.md) before publication. Stage engine and plugin versions together but publish the engine first; verify all platform requirements URLs before the plugin is published. Keep protocol 1 and the ASR capability probe so existing TTS-only installations keep reading. Dictation is enabled when no preference exists; preserve a saved off choice and keep microphone capture gated on an explicit start. Never install or download from the plugin.
+Read [the release checklist](docs/release-readiness.md), [license audit](docs/licenses.md) and [Community listing kit](docs/community-listing/README.md) before publication. Stage engine and plugin versions together but publish the engine first; verify all platform requirements URLs before the plugin is published. Keep protocol 1 and the ASR capability probe so existing TTS-only installations keep reading. Dictation is on for new installs and off for people updating from 0.1.x until they turn it on; preserve a saved off choice and keep microphone capture gated on an explicit start. Never install or download from the plugin.
 
 For managed ASR files, `models.json` pins English Tiny/Small/Medium streaming revisions, sizes and SHA-256. `models get` must verify before atomic replacement, retain the MIT notice, reuse verified files, reject escaping symlinks and leave custom folders alone. The offline loader rechecks managed files before native parsing. Re-audit licenses and test real recognition if changing models; checksums alone do not establish licensing or quality.
 

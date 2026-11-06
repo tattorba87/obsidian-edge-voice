@@ -247,6 +247,55 @@ describe("Edge Voice settings in Obsidian", () => {
 		}
 	});
 
+	it("never squeezes a row's description into a narrow column beside its buttons", async () => {
+		// Reported on Storage → Downloaded voices: two wide buttons left the text one word wide.
+		await until(() => run<boolean>(`return window.edgeVoiceTab.storage.status === "done";`));
+		run(`window.edgeVoiceTab.display();`);
+		await until(() => run<boolean>(`return !!${SETTING("Downloaded voices")};`));
+		const rows = run<
+			{ name: string; theme: string; width: number; description: number; row: number; overflow: number }[]
+		>(`
+			const tab = window.edgeVoiceTab.containerEl;
+			const originalStyle = tab.style.cssText;
+			const originalTheme = document.body.className;
+			const rows = [];
+			try {
+				for (const theme of ["theme-light", "theme-dark"]) {
+					document.body.classList.remove("theme-light", "theme-dark");
+					document.body.classList.add(theme);
+					for (const width of [700, 480, 360]) {
+						tab.style.width = width + "px";
+						await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+						for (const item of tab.querySelectorAll(".setting-item:not(.setting-item-heading)")) {
+							const description = item.querySelector(".setting-item-description");
+							if (!description || !description.textContent.trim() || !item.getClientRects().length) continue;
+							const box = item.getBoundingClientRect();
+							rows.push({
+								name: item.querySelector(".setting-item-name")?.textContent ?? "",
+								theme, width,
+								description: description.getBoundingClientRect().width,
+								row: box.width,
+								overflow: Math.max(0, ...[...item.querySelectorAll("button, select, input, .setting-item-description")]
+									// Obsidian keeps an invisible select (.is-measuring) to size dropdown labels.
+									.filter((el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden")
+									.map((el) => el.getBoundingClientRect().right - box.right)),
+							});
+						}
+					}
+				}
+			} finally {
+				tab.style.cssText = originalStyle;
+				document.body.className = originalTheme;
+			}
+			return rows;
+		`);
+		expect(rows.some((row) => row.name === "Downloaded voices")).toBe(true);
+		for (const row of rows) {
+			expect(row.description, JSON.stringify(row)).toBeGreaterThanOrEqual(Math.min(240, row.row * 0.7));
+			expect(row.overflow, JSON.stringify(row)).toBeLessThanOrEqual(1);
+		}
+	});
+
 	it("says why when the voice list can't be had, without freezing Obsidian", () => {
 		// As for someone whose engine isn't set up yet. This used to hang Obsidian at 100% CPU:
 		// the failure path returned a Setting, whose then() method a promise keeps calling.

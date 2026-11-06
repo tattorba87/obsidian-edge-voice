@@ -97,18 +97,27 @@ describe("Without an engine, Edge Voice shows how to set it up and installs noth
 });
 
 describe("Dictation setup defaults and navigation", () => {
-	it("enables new dictation settings, preserves a saved off choice and avoids stealing a reading key", () => {
-		const result = run<{ fresh: boolean; savedOff: boolean; readingKey: string; dictationKey: string }>(`
+	it("turns dictation on for new installs only, keeps existing users' settings and avoids stealing a reading key", () => {
+		const result = run<{
+			fresh: boolean;
+			savedOff: boolean;
+			upgraded: boolean;
+			readingKey: string;
+			dictationKey: string;
+		}>(`
             const plugin=${PLUGIN}, settings=plugin.settings, load=plugin.loadData;
             try {
                 plugin.loadData=async()=>null;await plugin.loadSettings();const fresh=plugin.settings.dictationEnabled;
                 plugin.loadData=async()=>({dictationEnabled:false});await plugin.loadSettings();const savedOff=plugin.settings.dictationEnabled;
+                // Settings saved by 0.1.5, before dictation existed.
+                plugin.loadData=async()=>({voice:"kokoro_af_heart",speed:1});await plugin.loadSettings();const upgraded=plugin.settings.dictationEnabled;
                 plugin.loadData=async()=>({doubleTapEnabled:true,doubleTapKey:"MetaLeft"});await plugin.loadSettings();
-                return {fresh,savedOff,readingKey:plugin.settings.doubleTapKey,dictationKey:plugin.settings.dictationKey};
+                return {fresh,savedOff,upgraded,readingKey:plugin.settings.doubleTapKey,dictationKey:plugin.settings.dictationKey};
             } finally {plugin.loadData=load;plugin.settings=settings;}
         `);
 		expect(result.fresh).toBe(true);
 		expect(result.savedOff).toBe(false);
+		expect(result.upgraded).toBe(false);
 		expect(result.readingKey).toBe("MetaLeft");
 		expect(result.dictationKey).not.toBe(result.readingKey);
 	});

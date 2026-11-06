@@ -294,6 +294,10 @@ export default class EdgeVoicePlugin extends Plugin {
 		// Only values of the right type are kept (see settings.ts); then what each must be.
 		const kept = savedSettings(saved, DEFAULT_SETTINGS);
 		const settings: ReaderSettings = { ...DEFAULT_SETTINGS, ...kept };
+		// Dictation is on for new installs. Someone updating from a version without it keeps
+		// what they had: no microphone button or new shortcut until they turn it on.
+		if (saved !== null && saved !== undefined && kept.dictationEnabled === undefined)
+			settings.dictationEnabled = false;
 		if (!isEngineId(settings.voice)) settings.voice = DEFAULT_SETTINGS.voice;
 		if (!isEngineId(settings.language)) settings.language = DEFAULT_SETTINGS.language;
 		if (!["pause", "visible", "always"].includes(settings.inBackground)) {
@@ -326,7 +330,10 @@ export default class EdgeVoicePlugin extends Plugin {
 		if (!settings.dictationCustomKey && !DICTATION_KEY_PRESETS.includes(settings.dictationKey))
 			settings.dictationCustomKey = settings.dictationKey;
 		// New default must not take an existing user's reading shortcut away.
-		if (kept.dictationEnabled === undefined && kept.dictationKey === undefined && shortcutConflict(settings)) {
+		if (
+			kept.dictationKey === undefined &&
+			shortcutConflict({ ...settings, dictationEnabled: true, dictationDoubleTapEnabled: true })
+		) {
 			settings.dictationKey =
 				DICTATION_KEY_PRESETS.find((key) => key !== settings.doubleTapKey) ?? DEFAULT_DICTATION_KEY;
 		}
@@ -1135,6 +1142,8 @@ class ReaderSettingTab extends PluginSettingTab {
 		private readonly plugin: EdgeVoicePlugin,
 	) {
 		super(app, plugin);
+		// Lets rows put wide controls under their description instead of squeezing it (styles.css).
+		this.containerEl.addClass("edge-voice-settings");
 	}
 
 	/** The Voice row, filled in together with Get another voice (see showVoices). */

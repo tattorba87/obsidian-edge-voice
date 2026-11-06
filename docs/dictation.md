@@ -1,6 +1,6 @@
 # English dictation
 
-Write Markdown with your voice using Moonshine's local streaming speech recognition. Dictation and reading aloud run one at a time. Dictation is enabled by default when no preference has been saved. A saved choice to turn it off is preserved. Recording starts only when you click the microphone or use its shortcut; no microphone permission is requested at startup.
+Write Markdown with your voice using Moonshine's local streaming speech recognition. Dictation and reading aloud run one at a time. Dictation is on for new installs. If you're updating from 0.1.x it stays off until you turn it on under **Settings → Edge Voice → English dictation**, so nothing new appears in your player or shortcuts. A saved choice to turn it off is preserved. Recording starts only when you click the microphone or use its shortcut; no microphone permission is requested at startup.
 
 ## Set up
 
@@ -39,7 +39,7 @@ The original non-streaming Tiny/Base models are different and are not supported 
 
 **Apple silicon:** recognition uses Moonshine's native streaming runtime. **Faster voice engine** enables MLX for Kokoro TTS only; it does not change STT. An MLX STT adapter has not been implemented or validated. [MLX-Audio's Moonshine adapter](https://github.com/Blaizzy/mlx-audio/blob/main/mlx_audio/stt/models/moonshine/README.md) documents the original Tiny/Base family rather than these streaming models.
 
-If you previously turned dictation off, its notice has an **Open dictation settings** button; clicking the notice or button opens the English dictation section directly. Upgrading preserves that saved off preference, so enable it once there if needed.
+If you previously turned dictation off, its notice has an **Open dictation settings** button; clicking the notice or button opens the English dictation section directly. Updating from 0.1.x, or with dictation turned off, leaves it off until you enable it there.
 
 ## Controls and preferences
 
