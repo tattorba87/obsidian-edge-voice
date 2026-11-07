@@ -1,4 +1,4 @@
-"""Writes README.md's voice tables from the engine's catalog (engine/voices.json).
+"""Writes docs/voices.md's voice tables from the engine's catalog (engine/voices.json).
 
     python3 -I scripts/voice-table.py          rewrite the tables
     python3 -I scripts/voice-table.py --check  fail if they're out of date
@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "engine" / "src"))
 
 from edge_voice_engine.catalog import SAMPLES, catalog, manifest_data, megabytes  # noqa: E402
 
-README = ROOT / "README.md"
+README = ROOT / "docs" / "voices.md"
 START, END = "<!-- voices:start -->", "<!-- voices:end -->"
 
 
@@ -73,13 +73,13 @@ def tables() -> str:
 def main() -> int:
     text = README.read_text()
     if START not in text or END not in text:
-        sys.exit(f"README.md needs {START} and {END}")
+        sys.exit(f"docs/voices.md needs {START} and {END}")
     before, rest = text.split(START, 1)
     after = rest.split(END, 1)[1]
     updated = before + tables() + after
     if "--check" in sys.argv[1:]:
         if updated != text:
-            sys.exit("README.md's voice tables are out of date: run python3 -I scripts/voice-table.py")
+            sys.exit("docs/voices.md's voice tables are out of date: run python3 -I scripts/voice-table.py")
         return 0
     README.write_text(updated)
     return 0

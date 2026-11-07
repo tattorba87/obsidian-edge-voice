@@ -41,11 +41,11 @@ In Obsidian, install BRAT and use **Add a beta plugin with frozen version based 
 
 ## Setup and preferences
 
-The speech-engine setup window and README list optional TTS voice and STT model commands for each platform. Medium prioritizes word accuracy; Small and Tiny prioritize speed and lower resource use, with more recognition errors expected. Dictation is enabled for new settings, while an existing off choice is preserved. The disabled notice opens English dictation settings directly.
+The speech-engine setup window and README list optional TTS voice and STT model commands for each platform. Medium prioritizes word accuracy; Small and Tiny prioritize speed and lower resource use, with more recognition errors expected. Dictation is on for new installs and off for people updating until they turn it on. The disabled notice opens English dictation settings directly.
 
 ## Set up the local engine
 
-BRAT updates the plugin only. Dictation requires **speech engine 0.4.0** and an English Tiny, Small or Medium streaming model. Follow [setup and update instructions](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/README.md#setup), then **Settings → Edge Voice → English dictation → Get the dictation model**. Run the shown command yourself and enable dictation. Existing TTS voices/settings are retained; dictation is enabled by default for new settings; a saved off choice is retained.
+BRAT updates the plugin only. Dictation requires **speech engine 0.4.0** and an English Tiny, Small or Medium streaming model. Follow [setup and update instructions](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/docs/setup.md), then **Settings → Edge Voice → English dictation → Get the dictation model**. Run the shown command yourself and enable dictation. Existing TTS voices/settings are retained; dictation is on for new installs and stays off for people updating until they turn it on.
 
 Click the microphone to start/finish, or double-tap Left Command (Left Ctrl elsewhere) to start and tap once to stop. TTS and STT run one at a time.
 

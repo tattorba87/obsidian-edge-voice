@@ -33,7 +33,7 @@ Install Edge Voice from Community plugins, then follow its setup commands to ins
 
 Existing users keep their reading preferences and downloaded voices. Dictation is on for new installs; if you're updating, it stays off until you turn it on in settings. It requires engine **0.4.0 or later** and a separate model download. Obsidian's plugin update does not update Python: Edge Voice shows the installed engine version and offers manual setup steps when it is older than the bundled recommendation. This check is local and does not query a server.
 
-[Setup and engine update instructions](https://github.com/tattorba87/obsidian-edge-voice#setup) · [Dictation guide and troubleshooting](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/dictation.md)
+[Setup and engine update instructions](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/setup.md) · [Dictation guide and troubleshooting](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/dictation.md)
 
 ### Privacy and limits
 
@@ -41,4 +41,4 @@ English only. Desktop Obsidian on macOS, Windows and Linux; no mobile support. M
 
 Dictation works in Source mode and Live Preview, not PDFs or Reading view. Stop and wait for final text before editing or switching notes. Live text can change, recognition can make mistakes and undo may step through partial results. The inactivity timer measures time since the transcript changed, rather than acoustic silence. MLX acceleration currently applies to TTS only.
 
-Engine, voices and managed models live outside your vault. Downloads occur only through the setup/voice/model commands you run, from the sources listed in the [privacy documentation](https://github.com/tattorba87/obsidian-edge-voice#privacy-and-network-use). Models and voices retain their own licenses; [license details](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/licenses.md).
+Engine, voices and managed models live outside your vault. Downloads occur only through the setup/voice/model commands you run, from the sources listed in the [privacy documentation](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/privacy.md). Models and voices retain their own licenses; [license details](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/licenses.md).

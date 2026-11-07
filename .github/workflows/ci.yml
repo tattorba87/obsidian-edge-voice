@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
   pull_request:
-    # Documentation alone needs no build: Prettier and the README voice-table
+    # Documentation alone needs no build: Prettier and the voice-table (docs/voices.md)
     # check run in the commit hook.
     paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
   workflow_dispatch:
