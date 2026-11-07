@@ -4,7 +4,7 @@ Write Markdown with your voice using Moonshine's local streaming speech recognit
 
 ## Set up
 
-1. Install the speech engine using the [README setup steps](../README.md#setup). Dictation needs **engine 0.4.0 or later**; an older compatible engine can still read aloud. You can skip the voice download if you only want dictation.
+1. Install the speech engine using the [setup steps](setup.md). Dictation needs **engine 0.4.0 or later**; an older compatible engine can still read aloud. You can skip the voice download if you only want dictation.
 2. Open **Settings → Edge Voice → English dictation**. The **Set up the speech engine** window includes an optional model command too. Choose a model, then **Get the dictation model → Show command**. Run that command yourself in Terminal or PowerShell. The plugin never downloads anything.
 3. Turn on **Enable dictation**. Open a Markdown note in Source mode or Live Preview and put the cursor where you want the words.
 4. Click the microphone in the player bar. Grant Obsidian microphone access when your operating system asks. Wait for **Dictating** before speaking. Click the microphone again to finish and insert the final words.
@@ -90,4 +90,4 @@ On Windows use the executable shown in the setup command. Stop dictation before 
 | Mic is grey                       | Stop reading, including paused playback, before starting dictation.                                                                  |
 | Words keep changing after Stop    | Capture has ended; wait for finalization before editing or switching the note.                                                       |
 
-For a safe test environment see [the sandbox](../CONTRIBUTING.md#the-sandbox); for existing users see [updating the plugin and engine](../README.md#updating-the-plugin-and-speech-engine).
+For a safe test environment see [the sandbox](../CONTRIBUTING.md#the-sandbox); for existing users see [updating the plugin and engine](setup.md#updating-the-plugin-and-speech-engine).
