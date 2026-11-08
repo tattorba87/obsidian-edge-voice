@@ -6,7 +6,7 @@
 
 ![Reading a note with sentence and word highlighting](https://raw.githubusercontent.com/tattorba87/obsidian-edge-voice/main/docs/media/demo.gif)
 
-[Watch the TTS demo with sound](https://github.com/user-attachments/assets/fb9d0ba1-60dc-46e0-a5a7-1c8fc0d4d4ee)
+[Watch the TTS demo with sound](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/media/demo.mp4)
 
 - Follow sentence and word highlights in Markdown editing, Live Preview, Reading view and PDFs.
 - Choose from 66 English Kokoro and Piper voices, with American and British options. Apple silicon Macs can use MLX for faster Kokoro TTS.
@@ -16,16 +16,16 @@ The TTS demo includes Wei et al., _Chain-of-Thought Prompting Elicits Reasoning 
 
 ### Write with your voice
 
-![English dictation with live text, a microphone glow and Dictating status bars](https://raw.githubusercontent.com/tattorba87/obsidian-edge-voice/main/docs/media/dictation-dark.gif)
+![Dictation started with a double tap of Left ⌘, live text, the green done ring, an automatic stop and a single-tap stop](https://raw.githubusercontent.com/tattorba87/obsidian-edge-voice/main/docs/media/dictation.gif)
 
-[Watch the STT demo with sound](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/media/dictation-dark.mp4) · [Light theme demo](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/media/dictation-light.mp4)
+[Watch the STT demo with sound](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/media/dictation.mp4)
 
 - Dictate English at the cursor or replace selected text in a Markdown editor. Partial words can be revised until recognition finishes.
 - Click the microphone to start and finish. Or double-tap **Left ⌘** on Mac (**Left Ctrl** elsewhere) to start, and tap once to stop. Reading uses the right key by default; both shortcuts offer matching symbolic presets and custom keys, with conflict checks.
-- Keep the same player controls in both modes. Reading controls grey out during dictation; the microphone greys out during reading. The processing glow stays on until final text arrives, while the mic glow and three **Dictating** bars follow input volume and fall to zero when quiet.
+- Keep the same player controls in both modes. Reading controls grey out during dictation; the microphone greys out during reading. The mic glow and three **Dictating** bars follow your voice. When everything you said is written, the mic turns green and **Done** counts down, then dictation stops on its own (or tap once).
 - Choose English Moonshine Tiny, Small or Medium Streaming models, all MIT licensed. Optional start/stop sounds, lowercase output and an inactivity timeout are grouped in dictation settings.
 
-The STT recording uses Michael Faraday's _The Chemical History of a Candle_, read by Availle for [LibriVox](https://librivox.org/the-chemical-history-of-a-candle-by-michael-faraday/) (public domain). Licensed audio is routed as microphone input to the real recognizer; text is uncorrected and the video runs in real time, including finalization. It demonstrates transcription rather than live microphone capture. [Credits and recording details](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/media/README.md).
+The STT recording uses Michael Faraday's _The Chemical History of a Candle_, read by Availle for [LibriVox](https://librivox.org/the-chemical-history-of-a-candle-by-michael-faraday/) (public domain). Licensed audio is routed as microphone input to the real recognizer; text is uncorrected and the video runs in real time, including finalization. The key presses are shown on screen. It demonstrates transcription rather than live microphone capture. [Credits and recording details](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/media/README.md).
 
 ### Setup and updates
 
@@ -39,6 +39,6 @@ Existing users keep their reading preferences and downloaded voices. Dictation i
 
 English only. Desktop Obsidian on macOS, Windows and Linux; no mobile support. Microphone access begins only when you start dictation. Audio is processed locally in memory and is not saved to recordings or transcript logs; the resulting words are saved in your note through Obsidian.
 
-Dictation works in Source mode and Live Preview, not PDFs or Reading view. Stop and wait for final text before editing or switching notes. Live text can change, recognition can make mistakes and undo may step through partial results. The inactivity timer measures time since the transcript changed, rather than acoustic silence. MLX acceleration currently applies to TTS only.
+Dictation works in Source mode and Live Preview, not PDFs or Reading view. Stop and wait for final text before editing or switching notes. Live text can change, recognition can make mistakes and undo may step through partial results. The automatic stop waits until the text stops changing and the microphone is quiet. MLX acceleration currently applies to TTS only.
 
 Engine, voices and managed models live outside your vault. Downloads occur only through the setup/voice/model commands you run, from the sources listed in the [privacy documentation](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/privacy.md). Models and voices retain their own licenses; [license details](https://github.com/tattorba87/obsidian-edge-voice/blob/main/docs/licenses.md).

@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-edge-voice",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"private": true,
 	"description": "Read notes and PDFs aloud with word highlighting, or dictate English into Markdown. Private, on-device text-to-speech (TTS) and speech-to-text (STT).",
 	"scripts": {

@@ -50,7 +50,7 @@ If you previously turned dictation off, its notice has an **Open dictation setti
 - **Lowercase dictation:** lowercases recognizer output. Otherwise capitalization and punctuation are preserved. It does not add Markdown formatting, spoken commands or an LLM rewrite.
 - **Starting:** the microphone records as soon as you press it; words spoken while the recognizer loads (about 2 seconds for Medium) appear once it's ready. When dictation stops, the cursor is one space after the dictated words.
 - **Done indicator:** once everything you said has been recognized and the text hasn't changed for a second, the microphone pulses with a green ring and the status bar shows **Done · stops in N s** (or **Done · tap to stop** when automatic stopping is off). It's safe to stop then: nothing more is coming. Speaking again returns to **Dictating**.
-- **Stop after silence:** default 6 seconds, maximum 300; set 0 to turn it off. This measures time since the **transcript last changed**, as in MoonshineFlow, rather than acoustic silence. Slow recognition or unrecognized speech can therefore stop early. Casing and timeout settings apply next session.
+- **Stop after silence:** default 6 seconds, maximum 300; set 0 to turn it off. It counts from the last moment the text changed **or** the microphone heard you, so slow recognition never stops you mid-sentence. A loud room can keep it listening; tap to stop. Casing and timeout settings apply next session.
 
 ## Working in a note
 

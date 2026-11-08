@@ -2,11 +2,21 @@ export type DictationState = "starting" | "recording" | "stopping" | "idle";
 
 /** RMS mapped to a readable microphone glow; does not retain or inspect speech content. */
 export function microphoneLevel(samples: Float32Array): number {
+	return Math.min(1, rms(samples) * 8);
+}
+
+function rms(samples: Float32Array): number {
 	if (!samples.length) return 0;
 	let energy = 0;
 	for (const value of samples) energy += value * value;
-	return Math.min(1, Math.sqrt(energy / samples.length) * 8);
+	return Math.sqrt(energy / samples.length);
 }
+
+/**
+ * Input at least this loud (RMS, about -36 dBFS) counts as someone speaking: above a
+ * microphone's usual noise floor (-50 to -60 dBFS), below conversational speech.
+ */
+export const VOICE_RMS = 0.015;
 
 /** Conservative editor ownership: stop rather than overwrite an intervening edit. */
 export class DictationText {
@@ -86,7 +96,10 @@ export interface DictationOptions {
 	now: () => number;
 }
 
-/** How long the transcript must stay unchanged, with recognition keeping up, to count as done. */
+/**
+ * How long the transcript must stay unchanged, and the microphone quiet, with recognition
+ * keeping up, to count as done.
+ */
 export const DONE_AFTER_MS = 1000;
 
 /** One bounded audio queue, one request at a time; cancellation invalidates late results. */
@@ -100,7 +113,11 @@ export class DictationSession {
 	private rate = 48000;
 	private pending?: Promise<void>;
 	private timer?: number;
+	/** The last transcript change or audible input: silence is measured from here. */
 	private lastSpeech = 0;
+	/** The last audible input, and when the latest answered request was sent. */
+	private heardAt = -Infinity;
+	private answeredAt = -Infinity;
 	private transcript = "";
 	private stopping = false;
 	/** The recognizer's model load, which runs while the microphone already records. */
@@ -167,7 +184,14 @@ export class DictationSession {
 				// Done: words recognized, unchanged for a moment, and recognition keeping up. It
 				// ends only when the words change, so the countdown runs on without flickering
 				// while the microphone keeps sending silence.
-				const done = this.loaded && this.transcript !== "" && quiet >= DONE_AFTER_MS && this.queued < this.rate;
+				// The last answer must also cover audio sent after the speaker went quiet: on a slow
+				// computer the recognizer can still be working through the end of what was said.
+				const done =
+					this.loaded &&
+					this.transcript !== "" &&
+					quiet >= DONE_AFTER_MS &&
+					this.queued < this.rate &&
+					this.answeredAt > this.heardAt;
 				const next = !done
 					? null
 					: silenceSeconds > 0
@@ -188,6 +212,9 @@ export class DictationSession {
 	private receive(samples: Float32Array, rate: number): void {
 		if (!this.recording) return;
 		this.options.level?.(microphoneLevel(samples));
+		// Someone still talking is not silence, even while recognition is too busy to
+		// change the transcript; otherwise a slow computer would stop them mid-sentence.
+		if (this.loaded && rms(samples) >= VOICE_RMS) this.lastSpeech = this.heardAt = this.options.now();
 		if (this.queued + samples.length > rate * 20) {
 			this.fail("Dictation could not keep up with the microphone. Try a smaller model.");
 			return;
@@ -212,10 +239,12 @@ export class DictationSession {
 		}
 		this.queued -= audio.length;
 		const generation = this.generation;
+		const sentAt = this.options.now();
 		const pending = this.options.backend
 			.dictationAudio(audio, this.rate)
 			.then((text) => {
 				if (generation !== this.generation) return;
+				this.answeredAt = Math.max(this.answeredAt, sentAt);
 				if (text !== this.transcript) this.lastSpeech = this.options.now();
 				this.transcript = text;
 				this.options.apply(text);
@@ -280,6 +309,7 @@ export class DictationSession {
 		this.loading = undefined;
 		this.loaded = false;
 		this.transcript = "";
+		this.heardAt = this.answeredAt = -Infinity;
 		this.options.backend.stop();
 		this.options.state("idle");
 	}

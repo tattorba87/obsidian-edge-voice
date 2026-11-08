@@ -12,14 +12,13 @@
  * DEMO_PDF_UNTIL has been said in full. Use only a PDF that's free to show
  * (CC BY, say), and credit it wherever the recording or a frame of it is used.
  *
- * Needs the engine set up (~/.edge-voice/engine) with the voice below, Obsidian
- * installed, and ffmpeg. It runs in CI (the Demo workflow), on a runner, so
- * nobody's own Obsidian or screen is involved.
+ * Uses the sandbox's own engine (bun run sandbox:engine), never yours; set
+ * DEMO_HOME to use another home's ~/.edge-voice (the Demo workflow uses the
+ * runner's). Needs the voice below, Obsidian installed, and ffmpeg.
  */
 import esbuild from "esbuild";
 import { execFileSync } from "child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "fs";
-import { homedir } from "os";
 import { basename, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { buildOptions } from "../../esbuild.config.mjs";
@@ -29,7 +28,8 @@ const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const OUT = resolve(process.argv[2] ?? "demo-out");
 const FRAMES = join(OUT, "frames");
 const VOICE = "kokoro_af_heart";
-const PYTHON = join(homedir(), ".edge-voice", "engine", process.platform === "win32" ? "Scripts" : "bin", "python");
+const HOME = resolve(process.env.DEMO_HOME ?? join(REPO, ".sandbox", "home"));
+const PYTHON = join(HOME, ".edge-voice", "engine", process.platform === "win32" ? "Scripts" : "bin", "python");
 const SIZE = { width: 1280, height: 800 };
 // Another PDF to read instead of the sample (a path), and text to start reading at.
 const DEMO_PDF = process.env.DEMO_PDF ? resolve(process.env.DEMO_PDF) : "";
@@ -67,7 +67,7 @@ async function until(read: () => boolean, ms: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-	if (!existsSync(PYTHON)) throw new Error(`no engine at ${PYTHON}; run the setup steps first`);
+	if (!existsSync(PYTHON)) throw new Error(`no engine at ${PYTHON}; run bun run sandbox:engine first`);
 	rmSync(OUT, { recursive: true, force: true });
 	mkdirSync(FRAMES, { recursive: true });
 
@@ -78,7 +78,6 @@ async function main(): Promise<void> {
 	writeFileSync(join(sandbox.paths.vault, `${NOTE_NAME}.md`), NOTE);
 	if (DEMO_PDF) copyFileSync(DEMO_PDF, join(sandbox.paths.vault, PDF_PATH));
 	sandbox.prepareProfile();
-	const home = sandbox.prepareHome(false, true);
 	sandbox.prepareSettings(false, PYTHON);
 	const settings = join(sandbox.paths.plugin, "data.json");
 	writeFileSync(
@@ -88,9 +87,10 @@ async function main(): Promise<void> {
 			voice: VOICE,
 			language: "en_us",
 			fasterEngine: false,
+			highlightTheme: "purple",
 		}),
 	);
-	await sandbox.launch(home);
+	await sandbox.launch(HOME);
 	await sandbox.waitForPlugin("edge-voice");
 
 	try {

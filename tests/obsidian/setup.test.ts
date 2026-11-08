@@ -108,20 +108,24 @@ describe("Dictation setup defaults and navigation", () => {
 			custom: number;
 			readingKey: string;
 			dictationKey: string;
+			freshColour: string;
+			upgradedColour: string;
+			chosenColour: string;
 		}>(`
             const plugin=${PLUGIN}, settings=plugin.settings, load=plugin.loadData;
             try {
-                plugin.loadData=async()=>null;await plugin.loadSettings();const fresh=plugin.settings.dictationEnabled;
+                plugin.loadData=async()=>null;await plugin.loadSettings();const fresh=plugin.settings.dictationEnabled,freshColour=plugin.settings.highlightTheme;
                 plugin.loadData=async()=>({dictationEnabled:false});await plugin.loadSettings();const savedOff=plugin.settings.dictationEnabled;
                 // Settings saved by 0.1.5, before dictation existed.
-                plugin.loadData=async()=>({voice:"kokoro_af_heart",speed:1});await plugin.loadSettings();const upgraded=plugin.settings.dictationEnabled;
+                plugin.loadData=async()=>({voice:"kokoro_af_heart",speed:1});await plugin.loadSettings();const upgraded=plugin.settings.dictationEnabled,upgradedColour=plugin.settings.highlightTheme;
+                plugin.loadData=async()=>({highlightTheme:"green"});await plugin.loadSettings();const chosenColour=plugin.settings.highlightTheme;
                 const freshSilence=(plugin.loadData=async()=>null,await plugin.loadSettings(),plugin.settings.dictationSilence);
                 // 0.2.0 saved its default of 10 seconds; from 0.2.1 a saved value is the person's choice.
                 plugin.loadData=async()=>({dictationSilence:10});await plugin.loadSettings();const oldDefault=plugin.settings.dictationSilence;
                 plugin.loadData=async()=>({dictationSilence:10,settingsVersion:2});await plugin.loadSettings();const chosen=plugin.settings.dictationSilence;
                 plugin.loadData=async()=>({dictationSilence:20});await plugin.loadSettings();const custom=plugin.settings.dictationSilence;
                 plugin.loadData=async()=>({doubleTapEnabled:true,doubleTapKey:"MetaLeft"});await plugin.loadSettings();
-                return {fresh,savedOff,upgraded,freshSilence,oldDefault,chosen,custom,readingKey:plugin.settings.doubleTapKey,dictationKey:plugin.settings.dictationKey};
+                return {fresh,savedOff,upgraded,freshSilence,oldDefault,chosen,custom,readingKey:plugin.settings.doubleTapKey,dictationKey:plugin.settings.dictationKey,freshColour,upgradedColour,chosenColour};
             } finally {plugin.loadData=load;plugin.settings=settings;}
         `);
 		expect(result.fresh).toBe(true);
@@ -130,6 +134,8 @@ describe("Dictation setup defaults and navigation", () => {
 		expect([result.freshSilence, result.oldDefault, result.chosen, result.custom]).toEqual([6, 6, 10, 20]);
 		expect(result.readingKey).toBe("MetaLeft");
 		expect(result.dictationKey).not.toBe(result.readingKey);
+		// Purple for new installs; existing users keep the colour they had.
+		expect([result.freshColour, result.upgradedColour, result.chosenColour]).toEqual(["purple", "amber", "green"]);
 	});
 
 	it("opens English dictation settings from the disabled notice", () => {
