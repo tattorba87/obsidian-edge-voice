@@ -17,8 +17,13 @@ export const HIGHLIGHT_THEMES: HighlightTheme[] = [
 	{ id: "grey", name: "Grey", sentence: "160, 160, 160", word: "95, 95, 95" },
 ];
 
-export const DEFAULT_HIGHLIGHT_THEME = "amber";
+export const DEFAULT_HIGHLIGHT_THEME = "purple";
+/** The default before 0.2.2, kept for anyone whose saved settings predate the choice. */
+export const FORMER_HIGHLIGHT_THEME = "amber";
 
 export function highlightTheme(id: string): HighlightTheme {
-	return HIGHLIGHT_THEMES.find((theme) => theme.id === id) ?? HIGHLIGHT_THEMES[0];
+	return (
+		HIGHLIGHT_THEMES.find((theme) => theme.id === id) ??
+		HIGHLIGHT_THEMES.find((theme) => theme.id === DEFAULT_HIGHLIGHT_THEME)!
+	);
 }

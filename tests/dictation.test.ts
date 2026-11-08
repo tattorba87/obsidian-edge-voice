@@ -227,6 +227,58 @@ describe("Dictation session", () => {
 		expect(h.options.done).toHaveBeenLastCalledWith(null);
 	});
 
+	it("never auto-stops or says done while the microphone still hears speech, even if the text stalls", async () => {
+		const h = harness();
+		await h.session.start("/model", "medium", 2);
+		h.audio();
+		await tick();
+		// Recognition is busy: the text stays "Hello" while the speaker keeps talking.
+		h.backend.dictationAudio.mockImplementation(() => new Promise(() => undefined));
+		for (let at = 500; at <= 4000; at += 500) {
+			h.timeout(at); // Each check comes half a second after speech was last heard.
+			h.audio(1600, 16000, 0.1);
+			expect(h.session.active).toBe(true);
+		}
+		expect(h.options.done).not.toHaveBeenCalledWith(expect.any(Number));
+		// Quiet input, as from a microphone's noise floor, doesn't count as speech. The text
+		// isn't "done" while the recognizer hasn't answered for the end of the speech...
+		h.audio(1600, 16000, 0.005);
+		h.timeout(5100);
+		expect(h.options.done).not.toHaveBeenCalledWith(expect.any(Number));
+		// ...but the silence still stops it, and stopping finishes the last words.
+		h.timeout(6000);
+		await tick();
+		// Stopping: the microphone is released, and the last words are being finished.
+		expect(h.options.state).toHaveBeenLastCalledWith("stopping");
+		expect(h.microphone.stop).toHaveBeenCalled();
+		h.session.cancel();
+	});
+
+	it("says done only once the recognizer has answered for audio after the speaker went quiet", async () => {
+		const h = harness();
+		await h.session.start("/model", "medium", 6);
+		h.audio(1600, 16000, 0.1); // Speech at 0, answered at once with "Hello".
+		await tick();
+		// The last words, at 1000, go to a recognizer that is now slow to answer.
+		let reply!: (text: string) => void;
+		h.backend.dictationAudio.mockImplementation(() => new Promise((done) => (reply = done)));
+		h.timeout(1000);
+		h.audio(1600, 16000, 0.1);
+		// Quiet for over a second, but the end of the speech hasn't been recognized yet.
+		h.timeout(2100);
+		h.timeout(2600);
+		expect(h.options.done).not.toHaveBeenCalledWith(expect.any(Number));
+		reply("Hello there");
+		await tick();
+		h.audio(); // Silence, sent at 2600 and answered with the same words.
+		await tick();
+		reply("Hello there");
+		await tick();
+		h.timeout(3700);
+		expect(h.options.done).toHaveBeenLastCalledWith(5);
+		h.session.cancel();
+	});
+
 	it("keeps counting down while silence is still being sent, without flicking back to dictating", async () => {
 		const h = harness();
 		await h.session.start("/model", "medium", 6);

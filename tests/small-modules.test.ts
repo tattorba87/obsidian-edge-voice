@@ -171,8 +171,9 @@ describe("highlight themes", () => {
 		}
 	});
 
-	it("falls back to the first theme for an unknown id", () => {
-		expect(highlightTheme("nope")).toBe(HIGHLIGHT_THEMES[0]);
+	it("falls back to the default, purple, for an unknown id", () => {
+		expect(highlightTheme("nope").id).toBe("purple");
+		expect(highlightTheme("amber")).toBe(HIGHLIGHT_THEMES[0]);
 	});
 });
 

@@ -4,6 +4,18 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-08
+
+### Changed
+
+- The highlight colour is now **Purple** by default for new installs. If you already use Edge Voice, your colour stays as it is (Amber unless you picked another); change it under Settings → Highlight colour.
+- New demo videos, GIFs and screenshots in the README and docs: dark theme, Purple, and dictation started with Left ⌘ and stopped by itself or with a single tap.
+
+### Fixed
+
+- **Stop after silence** no longer stops dictation while you're still talking. It used to count time since the text last changed, so on a slower computer, where the live text can lag for several seconds, it could cut you off mid-sentence. It now waits until the microphone is also quiet, and the green **Done** signal does too.
+- The green **Done** signal no longer flashes on and off on a slower computer while the last words are still being recognized: it waits until the recognizer has caught up with everything you said.
+
 ## [0.2.1] - 2026-11-06
 
 ### Added
@@ -115,7 +127,8 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 - The speech engine starts isolated: Python and linker settings in your environment (`PYTHONPATH`, `DYLD_*`/`LD_*`) can't change what runs. It never downloads: a voice that isn't on your computer gets a notice with the command that fetches it.
 - The speech engine and its connection check what passes between them: voice IDs, text length, speed, audio and reply size; a stuck engine is restarted instead of blocking reading, and settings of the wrong type fall back to their defaults.
 
-[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.2.1...HEAD
+[Unreleased]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.2.2...HEAD
+[0.2.2]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.5...0.2.0
 [0.1.5]: https://github.com/tattorba87/obsidian-edge-voice/compare/0.1.4...0.1.5

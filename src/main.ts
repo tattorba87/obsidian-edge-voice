@@ -61,7 +61,7 @@ import {
 import { Reader, ReaderState, SegmentSource } from "./reader";
 import { MissingVoiceError, Sidecar } from "./sidecar";
 import { megabytes, VOICE_SAMPLES, VoiceInfo, voiceGroups, voiceLabel } from "./voices";
-import { DEFAULT_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "./colors";
+import { DEFAULT_HIGHLIGHT_THEME, FORMER_HIGHLIGHT_THEME, HIGHLIGHT_THEMES, highlightTheme } from "./colors";
 import { formatSpeed, nearestSpeed, PlayerBar, PlayerControls, showSpeedMenu, SPEEDS, stepSpeed } from "./player-bar";
 
 interface ReaderSettings {
@@ -301,6 +301,9 @@ export default class EdgeVoicePlugin extends Plugin {
 		// what they had: no microphone button or new shortcut until they turn it on.
 		if (saved !== null && saved !== undefined && kept.dictationEnabled === undefined)
 			settings.dictationEnabled = false;
+		// Purple is the default from 0.2.2; anyone who already uses Edge Voice keeps the amber they've seen.
+		if (saved !== null && saved !== undefined && kept.highlightTheme === undefined)
+			settings.highlightTheme = FORMER_HIGHLIGHT_THEME;
 		if (!isEngineId(settings.voice)) settings.voice = DEFAULT_SETTINGS.voice;
 		if (!isEngineId(settings.language)) settings.language = DEFAULT_SETTINGS.language;
 		if (!["pause", "visible", "always"].includes(settings.inBackground)) {
@@ -1418,7 +1421,7 @@ class ReaderSettingTab extends PluginSettingTab {
 					),
 					{
 						name: "Stop after silence",
-						desc: "Seconds without a transcript change; 0 disables automatic stopping. Maximum 300 seconds.",
+						desc: "Seconds of quiet with no new words; 0 disables automatic stopping. Maximum 300 seconds.",
 						render: (setting) => {
 							setting.addText((input) =>
 								input.setValue(String(settings.dictationSilence)).onChange((value) => {

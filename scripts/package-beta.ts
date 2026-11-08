@@ -55,7 +55,7 @@ English Markdown editing only. MLX accelerates TTS only. Automated checks passed
 
 For rollback, select stable 0.1.5 explicitly in BRAT or reinstall stable, then remove beta tracking. Do not assume an automatic downgrade.
 
-[Dictation guide](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/docs/dictation.md) · [STT demo with audio](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/docs/media/dictation-dark.mp4) · [License and model notes](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/docs/licenses.md)
+[Dictation guide](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/docs/dictation.md) · [STT demo with audio](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/docs/media/dictation.mp4) · [License and model notes](https://github.com/tattorba87/obsidian-edge-voice/blob/${version}/docs/licenses.md)
 `,
 );
 process.stdout.write(`Prepared BRAT assets: ${out}\nNothing was committed, tagged or published.\n`);

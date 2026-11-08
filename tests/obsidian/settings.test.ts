@@ -22,7 +22,7 @@ beforeAll(() => {
 afterAll(() => {
 	run(`window.edgeVoiceTab.containerEl.remove(); delete window.edgeVoiceTab;`);
 	setSettings({
-		highlightTheme: "amber",
+		highlightTheme: "purple",
 		inBackground: "visible",
 		doubleTapEnabled: false,
 		doubleTapCustomKey: null,

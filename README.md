@@ -8,18 +8,18 @@
 
 ![Edge Voice reading a note aloud in Obsidian, highlighting the sentence and the word being spoken](docs/media/demo.gif)
 
-▶ **[Watch the demo with sound](https://github.com/user-attachments/assets/fb9d0ba1-60dc-46e0-a5a7-1c8fc0d4d4ee)**
+▶ **[Watch the demo with sound](docs/media/demo.mp4)**
 
 ## What it does
 
 - **Read along.** Listen to notes and PDFs while the sentence and each spoken word light up on the page.
 - **Natural voices.** 66 English voices, American and British, from Kokoro and Piper.
-- **Write with your voice.** Click the microphone (or double-tap Left ⌘ / Left Ctrl) and your words appear in the note as you speak. A green signal shows when it's done, and it stops on its own when you pause.
+- **Write with your voice.** Double-tap Left ⌘ (Left Ctrl on Windows and Linux) or click the microphone, and your words appear in the note as you speak. When you pause, the mic turns green and dictation stops on its own; or tap the key once to stop.
 - **Start anywhere.** Right-click a sentence and choose _Start text-to-speech here_; pause, skip and change speed from the player bar.
 
-![English dictation writing words into a Markdown note, with the microphone glowing](docs/media/dictation-dark.gif)
+![Dictation started with a double tap of Left ⌘, words appearing in a note, the microphone turning green and stopping on its own, then a single tap to stop](docs/media/dictation.gif)
 
-▶ **[Watch the dictation demo with sound](https://github.com/user-attachments/assets/fe08ed58-8f0d-4998-8886-9cf76395186a)**
+▶ **[Watch the dictation demo with sound](docs/media/dictation.mp4)**
 
 English only for now. Obsidian desktop only (macOS, Windows, Linux).
 
