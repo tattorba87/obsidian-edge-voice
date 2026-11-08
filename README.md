@@ -8,7 +8,7 @@
 
 ![Edge Voice reading a note aloud in Obsidian, highlighting the sentence and the word being spoken](docs/media/demo.gif)
 
-▶ **[Watch the demo with sound](docs/media/demo.mp4)**
+▶ **[Watch the demo with sound](https://github.com/user-attachments/assets/da1f8547-274f-45d5-817c-39d1bc4ff3dc)**
 
 ## What it does
 
@@ -19,7 +19,7 @@
 
 ![Dictation started with a double tap of Left ⌘, words appearing in a note, the microphone turning green and stopping on its own, then a single tap to stop](docs/media/dictation.gif)
 
-▶ **[Watch the dictation demo with sound](docs/media/dictation.mp4)**
+▶ **[Watch the dictation demo with sound](https://github.com/user-attachments/assets/daae8eb7-3541-4c98-a819-1b3edc170b5c)**
 
 English only for now. Obsidian desktop only (macOS, Windows, Linux).
 
