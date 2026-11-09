@@ -68,7 +68,7 @@ jobs:
           fi
       # Only the LFS files a macOS build reads; the rest (Android, iOS, wasm) are hundreds of MB.
       - run: git lfs pull --include "core/cpp-annote/**,core/moonshine-tts/**,core/third-party/onnxruntime/lib/macos/${{ matrix.arch }}/**"
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
       - run: scripts/build-pip.sh
       - name: Check the wheel installs and its library loads on this processor
         working-directory: language-bindings/python
