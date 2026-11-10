@@ -4,6 +4,10 @@ All notable changes to Edge Voice are listed here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Security
+
+- The tools that build the engine release's docopt wheel now use pip 26.2.2, which fixes CVE-2025-8869, CVE-2026-1703, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 and CVE-2026-13346. The `wheel` package (CVE-2026-24049) is no longer used, because setuptools builds the wheel itself. These tools only run on the release builder; they are not part of what you install.
+
 ## [0.2.2] - 2026-11-08
 
 ### Changed
