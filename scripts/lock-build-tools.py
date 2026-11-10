@@ -11,7 +11,7 @@ from urllib.request import urlopen
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = {
     "build-constraints.txt": {"uv_build": "0.13.1"},
-    "docopt-build-requirements.txt": {"pip": "25.2", "setuptools": "84.1.0", "wheel": "0.45.1"},
+    "docopt-build-requirements.txt": {"pip": "26.2.2", "setuptools": "84.1.0"},
 }
 
 

@@ -31,7 +31,7 @@ grep -A1 "^docopt==" "${ROOT}/locks/darwin-arm64-mlx.txt" | tr -d '\\\n' > "${WO
 uv venv -q "${WORK}/pip" --python 3.12
 uv pip install -q --python "${WORK}/pip" --require-hashes --no-build -r "${ROOT}/engine/docopt-build-requirements.txt"
 # No isolated build environment may fetch an unhashed backend: use only the
-# already hash-checked setuptools/wheel above, and the hash-locked docopt source.
+# already hash-checked setuptools above, and the hash-locked docopt source.
 "${WORK}/pip/bin/python" -I -m pip wheel -q --no-build-isolation --no-deps --require-hashes -r "${WORK}/docopt.txt" -w "${OUT}"
 
 python3 -I "${ROOT}/scripts/engine-requirements.py" "${OUT}" "${BASE}" "${OUT}"
